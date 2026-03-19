@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 declare global {
   interface Window {
@@ -65,6 +65,126 @@ const Btn = ({children,onClick,v="dk",sm}: BtnProps) => {
   const styles: Record<BtnVariant, React.CSSProperties> = {dk:{background:DK,color:"#fff",border:"none"},ol:{background:"transparent",color:DK,border:"1px solid "+DK},gd:{background:G,color:"#fff",border:"none"}};
   return <button onClick={onClick} style={{...styles[v],padding:sm?"5px 12px":"9px 20px",borderRadius:4,fontSize:sm?10:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.5px"}}>{children}</button>;
 };
+
+const PROJECT_STORAGE_PREFIX = "curva.project.v1";
+const PROJECT_STORAGE_EVENT = "curva-project-storage-change";
+
+const storageKey = (key: string) => `${PROJECT_STORAGE_PREFIX}.${key}`;
+const resolveValue = <T,>(value: T | (() => T)): T => (
+  typeof value === "function" ? (value as () => T)() : value
+);
+const isPlainObject = (value: unknown): value is Record<string, unknown> => (
+  typeof value === "object" && value !== null && !Array.isArray(value)
+);
+const isStringRecord = (value: unknown): value is Record<string, string> => (
+  isPlainObject(value) && Object.values(value).every((item) => typeof item === "string")
+);
+
+const notifyStorageChange = () => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(PROJECT_STORAGE_EVENT));
+};
+
+const readStorage = <T,>(
+  key: string,
+  fallback: T | (() => T),
+  validate?: (value: unknown) => value is T
+): T => {
+  const fallbackValue = resolveValue(fallback);
+  if (typeof window === "undefined") return fallbackValue;
+  try {
+    const raw = window.localStorage.getItem(storageKey(key));
+    if (raw === null) return fallbackValue;
+    const parsed: unknown = JSON.parse(raw);
+    if (validate && !validate(parsed)) return fallbackValue;
+    return parsed as T;
+  } catch {
+    return fallbackValue;
+  }
+};
+
+const writeStorage = <T,>(key: string, value: T) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(storageKey(key), JSON.stringify(value));
+    notifyStorageChange();
+  } catch {
+    // localStorage can fail in private mode or quota issues
+  }
+};
+
+const removeStorage = (key: string) => {
+  if (typeof window === "undefined") return;
+  try {
+    const keyName = storageKey(key);
+    if (window.localStorage.getItem(keyName) === null) return;
+    window.localStorage.removeItem(keyName);
+    notifyStorageChange();
+  } catch {
+    // no-op
+  }
+};
+
+const clearProjectStorage = () => {
+  if (typeof window === "undefined") return;
+  try {
+    const keysToDelete: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) keysToDelete.push(key);
+    }
+    if (!keysToDelete.length) return;
+    keysToDelete.forEach((key) => window.localStorage.removeItem(key));
+    notifyStorageChange();
+  } catch {
+    // no-op
+  }
+};
+
+const hasSavedProjectData = () => {
+  if (typeof window === "undefined") return false;
+  try {
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+function usePersistentState<T>(
+  key: string,
+  initialValue: T | (() => T),
+  validate?: (value: unknown) => value is T
+) {
+  const initialRef = React.useRef<T | null>(null);
+  if (initialRef.current === null) initialRef.current = resolveValue(initialValue);
+
+  const [state, setState] = useState<T>(() => readStorage(key, initialRef.current as T, validate));
+  const skipFirstEffect = React.useRef(true);
+
+  useEffect(() => {
+    if (skipFirstEffect.current) {
+      skipFirstEffect.current = false;
+      return;
+    }
+
+    try {
+      if (JSON.stringify(state) === JSON.stringify(initialRef.current)) {
+        removeStorage(key);
+        return;
+      }
+    } catch {
+      // If value can't be stringified, fallback to direct write.
+    }
+
+    writeStorage(key, state);
+  }, [key, state]);
+
+  return [state, setState] as const;
+}
 
 // ── PRINT ─────────────────────────────────────────────────────────────
 function openPrint(html: string) {
@@ -234,13 +354,13 @@ const MF: Record<string, number> = {"Suma alzada":1,"Precios unitarios":1.05,"Co
 
 function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [step,ss]=useState(1);
-  const [cl,scl]=useState(""); const [pr,spr]=useState(""); const [fe,sfe]=useState(today);
-  const [ti,sti]=useState("Vivienda"); const [et,set_]=useState("Anteproyecto");
-  const [ar,sar]=useState(""); const [mo,smo]=useState("Suma alzada"); const [ig,sig]=useState(true);
-  const [co,sco]=useState("Media"); const [ur,sur]=useState("Normal"); const [tc,stc]=useState("Particular");
-  const [mg,smg]=useState(0); const [dc,sdc]=useState(0); const [rd,srd]=useState(50);
-  const [rx,srx]=useState(0); const [vx,svx]=useState(0); const [nx,snx]=useState(0);
+  const [step,ss]=usePersistentState("calc.step",1);
+  const [cl,scl]=usePersistentState("calc.cl",""); const [pr,spr]=usePersistentState("calc.pr",""); const [fe,sfe]=usePersistentState("calc.fe",today);
+  const [ti,sti]=usePersistentState("calc.ti","Vivienda"); const [et,set_]=usePersistentState("calc.et","Anteproyecto");
+  const [ar,sar]=usePersistentState("calc.ar",""); const [mo,smo]=usePersistentState("calc.mo","Suma alzada"); const [ig,sig]=usePersistentState("calc.ig",true);
+  const [co,sco]=usePersistentState("calc.co","Media"); const [ur,sur]=usePersistentState("calc.ur","Normal"); const [tc,stc]=usePersistentState("calc.tc","Particular");
+  const [mg,smg]=usePersistentState("calc.mg",0); const [dc,sdc]=usePersistentState("calc.dc",0); const [rd,srd]=usePersistentState("calc.rd",50);
+  const [rx,srx]=usePersistentState("calc.rx",0); const [vx,svx]=usePersistentState("calc.vx",0); const [nx,snx]=usePersistentState("calc.nx",0);
 
   const c=useMemo(()=>{
     const a=+ar||0,t=(TAR[ti]||{})[et]||0,b=t*a;
@@ -413,12 +533,12 @@ const etapaTextColor: Record<string,string>={"Levantamiento":"#2471A3","Anteproy
 
 function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=useState(""); const [pr,spr]=useState(""); const [ub,sub]=useState(""); const [fe,sfe]=useState(today);
-  const [paq,spaq]=useState("Anteproyecto");
-  const [items,setItems]=useState(()=>ITEMS_BASE.map(it=>({...it,on:true})));
-  const [newEnt,setNewEnt]=useState("__custom__"); const [newCustom,setNewCustom]=useState("");
-  const [newEtapa,setNewEtapa]=useState("Levantamiento"); const [newFmt,setNewFmt]=useState("PDF");
-  const [newCant,setNewCant]=useState("1"); const [showAdd,setShowAdd]=useState(false);
+  const [cl,scl]=usePersistentState("matrix.cl",""); const [pr,spr]=usePersistentState("matrix.pr",""); const [ub,sub]=usePersistentState("matrix.ub",""); const [fe,sfe]=usePersistentState("matrix.fe",today);
+  const [paq,spaq]=usePersistentState("matrix.paq","Anteproyecto");
+  const [items,setItems]=usePersistentState("matrix.items",()=>ITEMS_BASE.map(it=>({...it,on:true})),Array.isArray);
+  const [newEnt,setNewEnt]=usePersistentState("matrix.newEnt","__custom__"); const [newCustom,setNewCustom]=usePersistentState("matrix.newCustom","");
+  const [newEtapa,setNewEtapa]=usePersistentState("matrix.newEtapa","Levantamiento"); const [newFmt,setNewFmt]=usePersistentState("matrix.newFmt","PDF");
+  const [newCant,setNewCant]=usePersistentState("matrix.newCant","1"); const [showAdd,setShowAdd]=usePersistentState("matrix.showAdd",false);
 
   const otherItems=ITEMS_BASE.filter(it=>it.paquete!==paq);
   const uniqueOthers=otherItems.filter((it,i,arr)=>arr.findIndex(x=>x.entregable===it.entregable)===i);
@@ -596,14 +716,14 @@ const ESTADO_BADGE: Record<string,{bg:string,c:string}>={"Excluido":{bg:"#FDEBD0
 
 function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=useState(""); const [pr,spr]=useState(""); const [cod,scod]=useState("");
-  const [fe,sfe]=useState(today); const [resp,sresp]=useState("");
-  const [items,setItems]=useState(()=>BIBLIOTECA_BASE.map((b,i)=>({id:"EX-"+String(i+1).padStart(3,"0"),cat:b.cat,item:b.item,estado:b.estado,mostrar:MOSTRAR_DEFAULT.includes(b.item),texto:b.texto})));
-  const [showAdd,setShowAdd]=useState(false);
-  const [newCat,setNewCat]=useState("Exclusiones generales");
-  const [newItem,setNewItem]=useState("__biblioteca__");
-  const [newCustomItem,setNewCustomItem]=useState(""); const [newCustomTexto,setNewCustomTexto]=useState(""); const [newEstado,setNewEstado]=useState("Excluido");
-  const [editId,setEditId]=useState(null); const [editTexto,setEditTexto]=useState("");
+  const [cl,scl]=usePersistentState("excl.cl",""); const [pr,spr]=usePersistentState("excl.pr",""); const [cod,scod]=usePersistentState("excl.cod","");
+  const [fe,sfe]=usePersistentState("excl.fe",today); const [resp,sresp]=usePersistentState("excl.resp","");
+  const [items,setItems]=usePersistentState("excl.items",()=>BIBLIOTECA_BASE.map((b,i)=>({id:"EX-"+String(i+1).padStart(3,"0"),cat:b.cat,item:b.item,estado:b.estado,mostrar:MOSTRAR_DEFAULT.includes(b.item),texto:b.texto})),Array.isArray);
+  const [showAdd,setShowAdd]=usePersistentState("excl.showAdd",false);
+  const [newCat,setNewCat]=usePersistentState("excl.newCat","Exclusiones generales");
+  const [newItem,setNewItem]=usePersistentState("excl.newItem","__biblioteca__");
+  const [newCustomItem,setNewCustomItem]=usePersistentState("excl.newCustomItem",""); const [newCustomTexto,setNewCustomTexto]=usePersistentState("excl.newCustomTexto",""); const [newEstado,setNewEstado]=usePersistentState("excl.newEstado","Excluido");
+  const [editId,setEditId]=usePersistentState<string | null>("excl.editId",null); const [editTexto,setEditTexto]=usePersistentState("excl.editTexto","");
 
   const bibFiltered=BIBLIOTECA_BASE.filter(b=>!items.find(it=>it.item===b.item));
   const tog=(id: string)=>setItems((p: any[])=>p.map((it: any)=>it.id===id?{...it,mostrar:!it.mostrar}:it));
@@ -750,10 +870,10 @@ const ETAPAS_CRON=[
 
 function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=useState(""); const [pr,spr]=useState(""); const [fe,sfe]=useState(today);
-  const [inicio,sInicio]=useState(today);
-  const [etapas,setEtapas]=useState(ETAPAS_CRON);
-  const [honorario,setHonorario]=useState(""); const [nota,setNota]=useState("");
+  const [cl,scl]=usePersistentState("cron.cl",""); const [pr,spr]=usePersistentState("cron.pr",""); const [fe,sfe]=usePersistentState("cron.fe",today);
+  const [inicio,sInicio]=usePersistentState("cron.inicio",today);
+  const [etapas,setEtapas]=usePersistentState("cron.etapas",ETAPAS_CRON,Array.isArray);
+  const [honorario,setHonorario]=usePersistentState("cron.honorario",""); const [nota,setNota]=usePersistentState("cron.nota","");
 
   const startResize=(e: any, etapaId: string)=>{
     e.preventDefault();
@@ -942,17 +1062,17 @@ const SOLICITANTES=["Cliente","Arquitecto","Obra","Contratista"];
 
 function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=useState(""); const [pr,spr]=useState(""); const [cod,scod]=useState("OC-01");
-  const [fe,sfe]=useState(today); const [cot,scot]=useState(""); const [sol,ssol]=useState("Cliente");
-  const [desc,sdesc]=useState(""); const [motivo,smotivo]=useState("Pedido del cliente"); const [impacto,simpacto]=useState("Alcance + Honorarios");
-  const [docsAfect,sdocsAfect]=useState("");
-  const [antesAlc,santesAlc]=useState(""); const [despAlc,sdespAlc]=useState("");
-  const [antesEnt,santesEnt]=useState(""); const [despEnt,sdespEnt]=useState("");
-  const [antesPlazo,santesPlazo]=useState(""); const [despPlazo,sdespPlazo]=useState("");
-  const [honorAd,shonorad]=useState(""); const [extPlazo,sextPlazo]=useState(""); const [nuevoTotal,snuevoTotal]=useState("");
-  const [hitoPago,shitoPago]=useState(""); const [obsKey,sobsKey]=useState(""); const [ajusteCron,sajusteCron]=useState("No"); const [notaCron,snotaCron]=useState("");
-  const [emiteNom,semiteNom]=useState(""); const [emiteCargo,semiteCargo]=useState("Arquitecto a cargo"); const [emiteFe,semiteFe]=useState(today);
-  const [apruebaNom,sapruebaNom]=useState(""); const [apruebaCargo,sapruebaCargo]=useState(""); const [apruebeFe,sapruebeFe]=useState("");
+  const [cl,scl]=usePersistentState("oc.cl",""); const [pr,spr]=usePersistentState("oc.pr",""); const [cod,scod]=usePersistentState("oc.cod","OC-01");
+  const [fe,sfe]=usePersistentState("oc.fe",today); const [cot,scot]=usePersistentState("oc.cot",""); const [sol,ssol]=usePersistentState("oc.sol","Cliente");
+  const [desc,sdesc]=usePersistentState("oc.desc",""); const [motivo,smotivo]=usePersistentState("oc.motivo","Pedido del cliente"); const [impacto,simpacto]=usePersistentState("oc.impacto","Alcance + Honorarios");
+  const [docsAfect,sdocsAfect]=usePersistentState("oc.docsAfect","");
+  const [antesAlc,santesAlc]=usePersistentState("oc.antesAlc",""); const [despAlc,sdespAlc]=usePersistentState("oc.despAlc","");
+  const [antesEnt,santesEnt]=usePersistentState("oc.antesEnt",""); const [despEnt,sdespEnt]=usePersistentState("oc.despEnt","");
+  const [antesPlazo,santesPlazo]=usePersistentState("oc.antesPlazo",""); const [despPlazo,sdespPlazo]=usePersistentState("oc.despPlazo","");
+  const [honorAd,shonorad]=usePersistentState("oc.honorAd",""); const [extPlazo,sextPlazo]=usePersistentState("oc.extPlazo",""); const [nuevoTotal,snuevoTotal]=usePersistentState("oc.nuevoTotal","");
+  const [hitoPago,shitoPago]=usePersistentState("oc.hitoPago",""); const [obsKey,sobsKey]=usePersistentState("oc.obsKey",""); const [ajusteCron,sajusteCron]=usePersistentState("oc.ajusteCron","No"); const [notaCron,snotaCron]=usePersistentState("oc.notaCron","");
+  const [emiteNom,semiteNom]=usePersistentState("oc.emiteNom",""); const [emiteCargo,semiteCargo]=usePersistentState("oc.emiteCargo","Arquitecto a cargo"); const [emiteFe,semiteFe]=usePersistentState("oc.emiteFe",today);
+  const [apruebaNom,sapruebaNom]=usePersistentState("oc.apruebaNom",""); const [apruebaCargo,sapruebaCargo]=usePersistentState("oc.apruebaCargo",""); const [apruebeFe,sapruebeFe]=usePersistentState("oc.apruebaFe","");
 
   const row = (label: string, val: string) => (
     <div style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
@@ -1109,21 +1229,21 @@ function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
 // ── TOOL: PROGRAMA ARQUITECTÓNICO / BRIEF ─────────────────────────────
 function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
   const today = new Date().toISOString().split("T")[0];
-  const [step, setStep] = useState(1);
+  const [step, setStep] = usePersistentState("brief.step",1);
 
   // Bloque 1 — Identidad
-  const [cl,   scl]   = useState(""); // cliente
-  const [pr,   spr]   = useState(""); // proyecto
-  const [cod,  scod]  = useState(""); // código
-  const [ub,   sub]   = useState(""); // ubicación
-  const [tipoP,sTipoP]= useState("Arquitectura nueva");
-  const [areaTe,sAreaTe] = useState("");
-  const [areaEx,sAreaEx] = useState("");
-  const [presup,sPresup] = useState("");
-  const [feObj, sFeObj]  = useState("");
-  const [estado,sEstado] = useState("Idea");
-  const [resp,  sResp]   = useState("");
-  const [feLev, sFeLev]  = useState(today);
+  const [cl,   scl]   = usePersistentState("brief.cl",""); // cliente
+  const [pr,   spr]   = usePersistentState("brief.pr",""); // proyecto
+  const [cod,  scod]  = usePersistentState("brief.cod",""); // código
+  const [ub,   sub]   = usePersistentState("brief.ub",""); // ubicación
+  const [tipoP,sTipoP]= usePersistentState("brief.tipoP","Arquitectura nueva");
+  const [areaTe,sAreaTe] = usePersistentState("brief.areaTe","");
+  const [areaEx,sAreaEx] = usePersistentState("brief.areaEx","");
+  const [presup,sPresup] = usePersistentState("brief.presup","");
+  const [feObj, sFeObj]  = usePersistentState("brief.feObj","");
+  const [estado,sEstado] = usePersistentState("brief.estado","Idea");
+  const [resp,  sResp]   = usePersistentState("brief.resp","");
+  const [feLev, sFeLev]  = usePersistentState("brief.feLev",today);
 
   // Bloque 2 — Programa
   const newRow = () => ({
@@ -1131,19 +1251,42 @@ function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
     zona:"Privada", espacio:"", cantidad:"1",
     areaUnit:"", usuarios:"", relacion:"Directa", prioridad:"Media", obs:""
   });
-  const [rows, setRows] = useState([newRow()]);
-  const [matrixOpen, setMatrixOpen] = useState(false);
-  const [matrix, setMatrix] = useState<Record<string,string>>({});
+  const [rows, setRows] = usePersistentState("brief.rows",()=>[newRow()],Array.isArray);
+  const [matrixOpen, setMatrixOpen] = usePersistentState("brief.matrixOpen",false);
+  const [matrix, setMatrix] = usePersistentState<Record<string,string>>("brief.matrix",{},isStringRecord);
 
   // Bloque 3 — Condicionantes
-  const [norm, sNorm] = useState({
+  const [norm, sNorm] = usePersistentState<{
+    normAplicable: string;
+    retiros: string;
+    altura: string;
+    parametros: string;
+    servidumbres: string;
+    restricLote: string;
+    condComite: string;
+  }>("brief.norm",{
     normAplicable:"", retiros:"", altura:"", parametros:"",
     servidumbres:"", restricLote:"", condComite:""
   });
-  const [tec, sTec] = useState({
+  const [tec, sTec] = usePersistentState<{
+    estadoExist: string;
+    limitEstructural: string;
+    instalaciones: string;
+    accesos: string;
+    restricObra: string;
+  }>("brief.tec",{
     estadoExist:"", limitEstructural:"", instalaciones:"", accesos:"", restricObra:""
   });
-  const [pref, sPref] = useState({
+  const [pref, sPref] = usePersistentState<{
+    materialidad: string;
+    estilo: string;
+    prioFunc: string;
+    prefAmbiental: string;
+    deseados: string;
+    noDeseados: string;
+    referencias: string;
+    obsAbiertas: string;
+  }>("brief.pref",{
     materialidad:"", estilo:"", prioFunc:"", prefAmbiental:"",
     deseados:"", noDeseados:"", referencias:"", obsAbiertas:""
   });
@@ -1688,13 +1831,63 @@ const DEFAULT_TOOLS=[
   {id:"brief",label:"Programa Arquitectónico",     component:ToolBrief, checked:true},
   {id:"oc",   label:"Orden de Cambio",             component:ToolOC,    checked:true},
 ];
+type PersistedToolState = { id: string; checked: boolean };
+const DEFAULT_TOOL_STATES: PersistedToolState[] = DEFAULT_TOOLS.map((tool) => ({id: tool.id, checked: tool.checked}));
+const isValidToolStateArray = (value: unknown): value is PersistedToolState[] => Array.isArray(value);
 
 // ══ MAIN APP ══════════════════════════════════════════════════════════
 export default function App() {
-  const [tools,setTools]=useState(DEFAULT_TOOLS);
-  const [active,setActive]=useState("calc");
+  const [storedTools,setStoredTools]=usePersistentState<PersistedToolState[]>("app.tools",DEFAULT_TOOL_STATES,isValidToolStateArray);
+  const [active,setActive]=usePersistentState("app.active","calc",(value): value is string => (
+    typeof value === "string" && DEFAULT_TOOLS.some((tool) => tool.id === value)
+  ));
+  const [projectResetToken,setProjectResetToken]=useState(0);
+  const [hasSavedData,setHasSavedData]=useState(() => hasSavedProjectData());
 
-  const toggleCheck=(id: string)=>setTools(p=>p.map(t=>t.id===id?{...t,checked:!t.checked}:t));
+  useEffect(() => {
+    const syncSavedFlag = () => setHasSavedData(hasSavedProjectData());
+    syncSavedFlag();
+    window.addEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
+    window.addEventListener("storage", syncSavedFlag);
+    return () => {
+      window.removeEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
+      window.removeEventListener("storage", syncSavedFlag);
+    };
+  }, []);
+
+  const tools = useMemo(() => {
+    const checkedMap = new Map<string, boolean>();
+    if (Array.isArray(storedTools)) {
+      storedTools.forEach((entry) => {
+        if (!entry || typeof entry !== "object") return;
+        if (typeof entry.id !== "string" || typeof entry.checked !== "boolean") return;
+        checkedMap.set(entry.id, entry.checked);
+      });
+    }
+    return DEFAULT_TOOLS.map((tool) => ({
+      ...tool,
+      checked: checkedMap.get(tool.id) ?? tool.checked,
+    }));
+  }, [storedTools]);
+
+  const toggleCheck=(id: string)=>setStoredTools((prev)=>{
+    const base = Array.isArray(prev) ? prev : DEFAULT_TOOL_STATES;
+    return DEFAULT_TOOLS.map((tool) => {
+      const current = base.find((entry) => entry?.id === tool.id);
+      const checked = typeof current?.checked === "boolean" ? current.checked : tool.checked;
+      return {id: tool.id, checked: tool.id === id ? !checked : checked};
+    });
+  });
+
+  const handleNewProject = () => {
+    const shouldReset = window.confirm("Se limpiará todo el proyecto activo y se eliminarán los datos guardados. ¿Deseas continuar?");
+    if (!shouldReset) return;
+    clearProjectStorage();
+    setStoredTools(DEFAULT_TOOL_STATES);
+    setActive("calc");
+    setProjectResetToken((n) => n + 1);
+    setHasSavedData(false);
+  };
 
   const printTool=(id: string)=>{
     const el=document.querySelector(`[data-doc-id="${id}"]`);
@@ -1781,6 +1974,12 @@ export default function App() {
             <span style={{color:nChecked>0?G:"#3A3A3A",fontWeight:700}}>{nChecked}</span>
             <span> de {tools.length} secciones seleccionadas</span>
           </div>
+          <button
+            onClick={handleNewProject}
+            style={{width:"100%",padding:"9px 0",marginTop:10,background:"transparent",color:"#A7A7A7",border:"1px solid #3A3A3A",borderRadius:4,fontSize:10,fontWeight:700,cursor:"pointer",letterSpacing:"0.4px"}}
+          >
+            Nuevo proyecto
+          </button>
         </div>
       </div>
 
@@ -1792,9 +1991,17 @@ export default function App() {
               {(()=>{const Icon=TOOL_ICONS[current?.id ?? "calc"]||IconCalc;return <Icon c={DK} s={18}/>;})()}
               {current?.label}
             </h1>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:tools.find(t=>t.id===active)?.checked?G:"#333"}}/>
-              <span style={{fontSize:9,color:"#AAA"}}>{tools.find(t=>t.id===active)?.checked?"Incluida en propuesta":"No incluida"}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:tools.find(t=>t.id===active)?.checked?G:"#333"}}/>
+                <span style={{fontSize:9,color:"#AAA"}}>{tools.find(t=>t.id===active)?.checked?"Incluida en propuesta":"No incluida"}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:999,border:`1px solid ${hasSavedData ? "#D6C299" : "#DDD8CC"}`,background:hasSavedData ? "#FBF7EF" : "#F6F4EF"}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:hasSavedData ? "#5A8F22" : "#9D9D9D"}}/>
+                <span style={{fontSize:9,color:hasSavedData ? "#70562A" : "#8A8A8A",fontWeight:700}}>
+                  {hasSavedData ? "Datos guardados" : "Sin datos guardados"}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1802,7 +2009,7 @@ export default function App() {
           {tools.map(t=>{
             const C=t.component;
             return (
-              <div key={t.id} style={{display:active===t.id?"block":"none"}}>
+              <div key={`${projectResetToken}-${t.id}`} style={{display:active===t.id?"block":"none"}}>
                 <C toolId={t.id} onPrint={()=>printTool(t.id)}/>
               </div>
             );
