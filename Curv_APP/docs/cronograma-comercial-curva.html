@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CURVA - Cronograma Comercial 12 Semanas</title>
+  <style>
+    :root{
+      --bg:#f3f0ea;
+      --paper:#ffffff;
+      --ink:#1f242b;
+      --muted:#626d79;
+      --line:#dfe4ea;
+      --accent:#b58a3a;
+      --accent-soft:#f7f0e3;
+      --ok:#3f7f59;
+      --warn:#9b6920;
+      --risk:#a13f3f;
+      --blue:#4f7398;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"Avenir Next","Segoe UI","Trebuchet MS",sans-serif;line-height:1.42}
+    .wrap{max-width:1040px;margin:26px auto;padding:0 18px 24px}
+    .hero{
+      background:linear-gradient(120deg,#fff 0%,#f8f4ec 100%);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:18px 20px;
+      margin-bottom:12px;
+      box-shadow:0 6px 20px rgba(24,34,46,0.05);
+    }
+    .brand{font-size:11px;font-weight:800;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase}
+    h1{margin:7px 0 5px;font-size:26px;line-height:1.15}
+    .sub{color:var(--muted);font-size:13px}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
+    .kpi{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;
+    }
+    .kpi .k{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+    .kpi .v{font-size:19px;font-weight:800;margin-top:2px}
+    .kpi .n{font-size:10px;color:var(--muted);margin-top:2px}
+    .card{
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:14px 15px;
+      margin-top:11px;
+    }
+    .section-note{
+      display:inline-block;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      color:var(--accent);
+      border:1px solid #e9d7b9;
+      background:var(--accent-soft);
+      border-radius:999px;
+      padding:3px 8px;
+      margin-bottom:8px;
+    }
+    .fine{font-size:11px;color:var(--muted)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 8px;border-bottom:1px solid var(--line);font-size:12px;text-align:left;vertical-align:top}
+    th{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:800}
+    td.r{text-align:right}
+    .small{font-size:11px;color:var(--muted)}
+    .risk{color:var(--risk);font-weight:700}
+    .ok{color:var(--ok);font-weight:700}
+    .warn{color:var(--warn);font-weight:700}
+    .dep{
+      display:inline-flex;align-items:center;gap:5px;
+      font-size:10px;font-weight:700;color:var(--muted);
+      border:1px solid var(--line);border-radius:999px;padding:3px 7px;background:#fbfcfd
+    }
+
+    .gantt{
+      border:1px solid var(--line);
+      border-radius:12px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .g-head{
+      display:grid;
+      grid-template-columns:300px 1fr;
+      background:#f8fafc;
+      border-bottom:1px solid var(--line);
+    }
+    .g-head .left{
+      padding:8px 10px;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.7px;text-transform:uppercase;
+      border-right:1px solid var(--line);
+    }
+    .weeks{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+    }
+    .week{
+      padding:8px 0;text-align:center;font-size:10px;font-weight:700;color:var(--muted);
+      border-left:1px solid #eef2f7;
+    }
+    .g-row{
+      display:grid;
+      grid-template-columns:300px 1fr;
+      border-bottom:1px solid var(--line);
+      min-height:48px;
+    }
+    .g-row:last-child{border-bottom:none}
+    .task{
+      padding:8px 10px;border-right:1px solid var(--line);
+    }
+    .task .t{font-size:12px;font-weight:700}
+    .task .m{font-size:10px;color:var(--muted);margin-top:2px}
+    .lane{
+      position:relative;
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      background:
+        linear-gradient(to right, rgba(0,0,0,.035) 1px, transparent 1px);
+      background-size:calc(100% / 12) 100%;
+    }
+    .bar{
+      position:absolute;top:9px;bottom:9px;border-radius:7px;
+      background:linear-gradient(90deg,var(--blue),#6a8db0);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.36);
+      display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:700;color:#fff;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .bar.hosting{background:linear-gradient(90deg,#6a5a96,#836eb1)}
+    .bar.market{background:linear-gradient(90deg,#507b5d,#6a9a77)}
+    .bar.research{background:linear-gradient(90deg,#9b6f35,#bc8b45)}
+
+    .legend{
+      display:flex;gap:8px;flex-wrap:wrap;margin-top:8px
+    }
+    .legend .i{
+      display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);
+      border:1px solid var(--line);border-radius:999px;padding:3px 8px;background:#fbfcfd;
+    }
+    .dot{width:8px;height:8px;border-radius:999px;background:var(--blue)}
+    .dot.market{background:#5f8e6b}
+    .dot.research{background:#aa7b3d}
+    .dot.hosting{background:#7864a7}
+
+    @media (max-width:940px){
+      .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .g-head,.g-row{grid-template-columns:220px 1fr}
+      .task .t{font-size:11px}
+    }
+
+    @media print{
+      @page{size:A4;margin:12mm}
+      body{background:#fff}
+      .wrap{max-width:none;margin:0;padding:0}
+      .hero,.card,.kpi{box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="brand">CURVA · ROADMAP OPERATIVO</div>
+      <h1>Cronograma Comercial y Tecnico (12 semanas)</h1>
+      <div class="sub">
+        Plan integrado para produccion tecnica, lanzamiento comercial y validacion de mercado.
+        Horizonte cerrado: 12 semanas corridas.
+      </div>
+      <div class="kpis">
+        <article class="kpi">
+          <div class="k">Duracion total</div>
+          <div class="v">12 semanas</div>
+          <div class="n">Ciclo de lanzamiento v1</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Frentes principales</div>
+          <div class="v">7 frentes</div>
+          <div class="n">Tecnico + comercial + mercado</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Hito objetivo</div>
+          <div class="v">Semana 6</div>
+          <div class="n">Producto publicable con landing + hosting</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Salida de mercado</div>
+          <div class="v">Sem 7-12</div>
+          <div class="n">Pipeline, pricing y estrategia de entrada</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <span class="section-note">1. Vista ejecutiva y dependencias</span>
+      <p class="fine">
+        Ruta principal: Backend/Metadata -> Auth -> Monedas -> Landing -> Hosting -> Marketing/Ventas -> Estudio mercado/Pricing.
+      </p>
+      <div class="legend">
+        <span class="i"><span class="dot"></span> Producto / plataforma</span>
+        <span class="i"><span class="dot hosting"></span> Infraestructura</span>
+        <span class="i"><span class="dot market"></span> Growth / pipeline</span>
+        <span class="i"><span class="dot research"></span> Estrategia comercial</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <span class="section-note">2. Mini Gantt (12 semanas)</span>
+      <div class="gantt" role="img" aria-label="Gantt de 12 semanas">
+        <div class="g-head">
+          <div class="left">Frente de trabajo</div>
+          <div class="weeks">
+            <div class="week">S1</div><div class="week">S2</div><div class="week">S3</div><div class="week">S4</div>
+            <div class="week">S5</div><div class="week">S6</div><div class="week">S7</div><div class="week">S8</div>
+            <div class="week">S9</div><div class="week">S10</div><div class="week">S11</div><div class="week">S12</div>
+          </div>
+        </div>
+
+        <div class="g-row">
+          <div class="task">
+            <div class="t">2.1 Backend legible + metadata</div>
+            <div class="m">Sem 1-2 · base para auth/monedas</div>
+          </div>
+          <div class="lane">
+            <div class="bar" style="left:0%;width:16.66%">Sem 1-2</div>
+          </div>
+        </div>
+
+        <div class="g-row">
+          <div class="task">
+            <div class="t">2.2 Usuarios / inicio de sesion</div>
+            <div class="m">Sem 3-4 · depende de backend</div>
+          </div>
+          <div class="lane">
+            <div class="bar" style="left:16.66%;width:16.66%">Sem 3-4</div>
+          </div>
+        </div>
+
+        <div class="g-row">
+          <div class="task">
+            <div class="t">2.3 Monedas (S/ USD EUR)</div>
+            <div class="m">Sem 4-5 · solapa con auth</div>
+          </div>
+          <div class="lane">
+            <div class="bar" style="left:25%;width:16.66%">Sem 4-5</div>
+          </div>
+        </div>
+
+        <div class="g-row">
+          <div class="task">
+            <div class="t">2.4 Landing page de ventas</div>
+            <div class="m">Sem 5-6 · requiere propuesta de valor estable</div>
+          </div>
+          <div class="lane">
+            <div class="bar" style="left:33.33%;width:16.66%">Sem 5-6</div>
+          </div>
+        </div>
+
+        <div class="g-row">
+          <div class="task">
+            <div class="t">2.5 Implementacion de hosting</div>
+            <div class="m">Sem 6 · puesta en produccion</div>
+          </div>
+          <div class="lane">
+            <div class="bar hosting" style="left:41.66%;width:8.33%">Sem 6</div>
+          </div>
+        </div>
+
+        <div class="g-row">
+          <div class="task">
+            <div class="t">2.6 Marketing / ventas / pipeline</div>
+            <div class="m">Sem 7-9 · arranque GTM</div>
+          </div>
+          <div class="lane">
+            <div class="bar market" style="left:50%;width:25%">Sem 7-9</div>
+          </div>
+        </div>
+
+        <div class="g-row">
+          <div class="task">
+            <div class="t">2.7 Mercado + pricing + entrada</div>
+            <div class="m">Sem 10-12 · consolidacion comercial</div>
+          </div>
+          <div class="lane">
+            <div class="bar research" style="left:75%;width:25%">Sem 10-12</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <span class="section-note">3. Tabla detallada por frente</span>
+      <table aria-label="Cronograma detallado">
+        <thead>
+          <tr>
+            <th>Frente</th>
+            <th>Semanas</th>
+            <th>Objetivo</th>
+            <th>Entregable</th>
+            <th>Owner sugerido</th>
+            <th>Criterio de cierre</th>
+            <th>Riesgo principal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>2.1 Backend legible + metadata</strong><br><span class="small">Dependencia: inicio</span></td>
+            <td>S1-S2</td>
+            <td>Normalizar estructura y trazabilidad para escalar funciones.</td>
+            <td>Schema legible + endpoints base + metadata explotable.</td>
+            <td>Tech Lead</td>
+            <td>Documentacion minima + pruebas de lectura/consulta estables.</td>
+            <td class="risk">Deuda tecnica previa ralentiza limpieza.</td>
+          </tr>
+          <tr>
+            <td><strong>2.2 Usuarios / inicio de sesion</strong><br><span class="small">Depende: 2.1</span></td>
+            <td>S3-S4</td>
+            <td>Habilitar multiusuario y control de acceso.</td>
+            <td>Login funcional, sesiones activas y permisos base.</td>
+            <td>Full-stack</td>
+            <td>Registro/login/logout y recuperacion de acceso operativos.</td>
+            <td class="risk">Seguridad incompleta en primeros pases.</td>
+          </tr>
+          <tr>
+            <td><strong>2.3 Monedas S/ USD EUR</strong><br><span class="small">Depende: 2.2 (parcial)</span></td>
+            <td>S4-S5</td>
+            <td>Soporte comercial multipais en propuestas.</td>
+            <td>Select de moneda + conversion + formato consistente.</td>
+            <td>Producto + Frontend</td>
+            <td>Calculos y documentos muestran moneda correcta sin errores.</td>
+            <td class="warn">Inconsistencias de redondeo por herramienta.</td>
+          </tr>
+          <tr>
+            <td><strong>2.4 Landing page de ventas</strong><br><span class="small">Depende: 2.2 y 2.3</span></td>
+            <td>S5-S6</td>
+            <td>Capturar demanda calificada con mensaje claro.</td>
+            <td>Landing publicada con CTA, prueba social y formulario.</td>
+            <td>Marketing + Diseno</td>
+            <td>Tracking de leads, eventos y canales funcionando.</td>
+            <td class="warn">Mensaje comercial poco especifico.</td>
+          </tr>
+          <tr>
+            <td><strong>2.5 Hosting</strong><br><span class="small">Depende: 2.1 y 2.4</span></td>
+            <td>S6</td>
+            <td>Publicacion estable para uso real.</td>
+            <td>Entorno productivo, dominio, SSL, backup y monitoreo.</td>
+            <td>DevOps / Tech Lead</td>
+            <td>Deploy reproducible + uptime objetivo inicial.</td>
+            <td class="risk">Configuracion incompleta en salida.</td>
+          </tr>
+          <tr>
+            <td><strong>2.6 Marketing / ventas / pipeline</strong><br><span class="small">Depende: 2.4 y 2.5</span></td>
+            <td>S7-S9</td>
+            <td>Generar flujo continuo de oportunidades.</td>
+            <td>Embudo con fuentes activas, CRM y cadencia comercial.</td>
+            <td>Growth + Ventas</td>
+            <td>Pipeline semanal con etapas y responsables definidos.</td>
+            <td class="risk">CAC alto por falta de foco de canal.</td>
+          </tr>
+          <tr>
+            <td><strong>2.7 Mercado / pricing / entrada</strong><br><span class="small">Depende: 2.6</span></td>
+            <td>S10-S12</td>
+            <td>Optimizar oferta para escalamiento comercial.</td>
+            <td>Paquetes de pricing, segmento objetivo y narrativa final GTM.</td>
+            <td>Founder + Comercial</td>
+            <td>Playbook de ventas y politica de precios aprobada.</td>
+            <td class="warn">Subprecio o sobreprecio sin validacion suficiente.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <span class="section-note">4. Hitos de control y governance</span>
+      <table aria-label="Hitos de control">
+        <thead>
+          <tr>
+            <th>Hito</th>
+            <th class="r">Semana</th>
+            <th>Decision de management</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Gate tecnico: backend + auth aceptados</td>
+            <td class="r">4</td>
+            <td>Autorizar implementacion de monedas y preparacion comercial.</td>
+          </tr>
+          <tr>
+            <td>Go-live: landing + hosting operativos</td>
+            <td class="r">6</td>
+            <td>Iniciar inversion comercial planificada y pipeline semanal.</td>
+          </tr>
+          <tr>
+            <td>Gate comercial: primer ciclo de ventas medido</td>
+            <td class="r">9</td>
+            <td>Ajustar CAC, mensaje y canales con datos reales.</td>
+          </tr>
+          <tr>
+            <td>Gate estrategico: pricing + entrada a mercado</td>
+            <td class="r">12</td>
+            <td>Definir plan de escalamiento del trimestre siguiente.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="fine" style="margin-top:8px">
+        Recomendacion operativa: comite semanal de 45 minutos (tech + comercial) para controlar desviaciones.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

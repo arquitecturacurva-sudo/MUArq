@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CURVA - Business Plan B2B SaaS</title>
+  <style>
+    :root{
+      --bg:#f3f0ea;
+      --paper:#ffffff;
+      --ink:#1e2329;
+      --muted:#5f6975;
+      --line:#dde2e8;
+      --accent:#b58a3a;
+      --accent-soft:#f6efe2;
+      --ok:#3f7f59;
+      --warn:#9b6920;
+      --danger:#9b3f3f;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"Avenir Next","Segoe UI","Trebuchet MS",sans-serif;line-height:1.45}
+    .wrap{max-width:1020px;margin:26px auto;padding:0 18px 24px}
+    .hero{
+      background:linear-gradient(120deg,#fff 0%,#f8f4ec 100%);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:18px 20px;
+      margin-bottom:14px;
+      box-shadow:0 6px 20px rgba(24,34,46,0.05);
+    }
+    .brand{font-size:11px;font-weight:800;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase}
+    h1{margin:7px 0 5px;font-size:26px;line-height:1.15}
+    .sub{color:var(--muted);font-size:13px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:13px 0 0}
+    .kpi{
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+    }
+    .kpi .k{font-size:10px;font-weight:800;letter-spacing:.7px;color:var(--muted);text-transform:uppercase}
+    .kpi .v{margin-top:3px;font-size:21px;font-weight:800;color:var(--ink)}
+    .kpi .n{margin-top:3px;font-size:11px;color:var(--muted)}
+    .card{
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:14px 15px;
+      margin-top:12px;
+    }
+    .card h2{margin:0 0 9px;font-size:15px;letter-spacing:.3px}
+    .section-note{
+      display:inline-block;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      color:var(--accent);
+      border:1px solid #e9d7b9;
+      background:var(--accent-soft);
+      border-radius:999px;
+      padding:3px 8px;
+      margin-bottom:8px;
+    }
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 9px;border-bottom:1px solid var(--line);font-size:12px;text-align:left;vertical-align:top}
+    th{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:800}
+    td.r{text-align:right}
+    .total-row td{font-weight:800;background:#faf7f1}
+    .fine{font-size:11px;color:var(--muted)}
+    .split{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}
+    .list{margin:0;padding-left:18px}
+    .list li{margin-bottom:5px;font-size:12px}
+    .badge{
+      display:inline-flex;align-items:center;gap:5px;
+      border:1px solid var(--line);border-radius:999px;padding:3px 8px;
+      font-size:10px;font-weight:700;color:var(--muted);background:#fbfcfd
+    }
+    .dot{width:7px;height:7px;border-radius:999px;background:var(--ok)}
+    .sim-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+    label{display:block;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+    input{
+      width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;
+      background:#fff;color:var(--ink);font-size:12px
+    }
+    .sim-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .sim-kpis .kpi{padding:8px 9px}
+    .sim-kpis .v{font-size:16px}
+    .sim-kpis .n{font-size:10px}
+    .warn{color:var(--warn)}
+    .danger{color:var(--danger)}
+    .ok{color:var(--ok)}
+    .footer{
+      margin-top:12px;font-size:10px;color:var(--muted);
+      border-top:1px solid var(--line);padding-top:8px
+    }
+
+    @media (max-width:920px){
+      .grid-4,.sim-grid,.sim-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .split{grid-template-columns:1fr}
+    }
+
+    @media print{
+      @page{size:A4;margin:12mm}
+      body{background:#fff}
+      .wrap{max-width:none;margin:0;padding:0}
+      .hero,.card,.kpi{box-shadow:none}
+      .no-print{display:none!important}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="brand">CURVA · PLAN COMERCIAL</div>
+      <h1>Business Plan B2B SaaS (Lean)</h1>
+      <div class="sub">
+        Objetivo: vender la plataforma a empresas de diseno y construccion por paquetes anuales.
+        Base financiera cerrada en S/ (fecha de corte: 26/03/2026).
+      </div>
+      <div class="grid-4">
+        <article class="kpi">
+          <div class="k">OPEX mensual</div>
+          <div class="v">S/ 7,900</div>
+          <div class="n">Operacion lean objetivo</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Unidad comercial</div>
+          <div class="v">Empresa</div>
+          <div class="n">Cuenta B2B activa por plan</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Modelo de ingresos</div>
+          <div class="v">MRR + setup</div>
+          <div class="n">Suscripcion anual prorrateada + onboarding</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Meta de retorno</div>
+          <div class="v">3-5 meses</div>
+          <div class="n">Con ejecucion comercial disciplinada</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <span class="section-note">1. Resumen ejecutivo</span>
+      <div class="split">
+        <div>
+          <h2>Tesis comercial B2B</h2>
+          <p class="fine">
+            El negocio principal es SaaS B2B por cuentas empresariales, no servicios por cliente final de Curva.
+            El foco es vender licencias por plan a estudios y constructoras con un onboarding controlado.
+          </p>
+          <ul class="list">
+            <li>Unidad de venta: empresa cliente (no proyecto individual).</li>
+            <li>Monetizacion: precio por plan + setup fee unico por empresa.</li>
+            <li>Retorno: alcanzar break-even por crecimiento de cuentas activas recurrentes.</li>
+          </ul>
+        </div>
+        <div>
+          <h2>Rol de Curva</h2>
+          <p class="fine">
+            Curva se posiciona como piloto interno y validacion inicial del producto, no como fuente principal
+            de ingresos del modelo financiero.
+          </p>
+          <div class="badge"><span class="dot"></span> Validacion inicial: caso real operando en produccion interna</div>
+          <ul class="list" style="margin-top:8px">
+            <li>Producto probado en flujo completo.</li>
+            <li>Aprendizajes transferibles a clientes B2B.</li>
+            <li>Roadmap comercial basado en adopcion empresarial.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <span class="section-note">2. Estructura de costos mensuales (cerrada)</span>
+      <table aria-label="Costos mensuales">
+        <thead>
+          <tr>
+            <th>Rubro</th>
+            <th>Descripcion</th>
+            <th class="r">Costo mensual</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Backend legible + metadata</td>
+            <td>Desarrollo, limpieza de estructura, trazabilidad y obtencion de metadata utilizable.</td>
+            <td class="r">S/ 3,200</td>
+          </tr>
+          <tr>
+            <td>Hosting</td>
+            <td>Infra base, dominios, backups operativos y monitoreo inicial.</td>
+            <td class="r">S/ 700</td>
+          </tr>
+          <tr>
+            <td>Marketing</td>
+            <td>Ads de captacion + piezas comerciales + soporte de embudo.</td>
+            <td class="r">S/ 3,400</td>
+          </tr>
+          <tr>
+            <td>Contabilidad</td>
+            <td>Gestion contable, tributaria y reportes de control financiero.</td>
+            <td class="r">S/ 600</td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="2">Total OPEX mensual</td>
+            <td class="r">S/ 7,900</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <span class="section-note">3. Pricing B2B y modelo financiero</span>
+      <div class="split">
+        <div>
+          <h2>Tabla de pricing B2B (anual)</h2>
+          <table aria-label="Tabla de pricing B2B">
+            <thead>
+              <tr>
+                <th>Plan</th>
+                <th>Perfil</th>
+                <th class="r">Precio anual</th>
+                <th class="r">Equivalente mensual</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base</td>
+                <td>Estudios pequenos y equipos iniciales.</td>
+                <td class="r">S/ 599</td>
+                <td class="r">S/ 49.92</td>
+              </tr>
+              <tr>
+                <td>Pro</td>
+                <td>Estudios y constructoras en crecimiento.</td>
+                <td class="r">S/ 899</td>
+                <td class="r">S/ 74.92</td>
+              </tr>
+              <tr>
+                <td>Empresa</td>
+                <td>Operaciones con mayor complejidad y control.</td>
+                <td class="r">S/ 1,199</td>
+                <td class="r">S/ 99.92</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="fine" style="margin-top:8px">
+            MRR reconocido = precio anual por plan / 12 x empresas activas de ese plan.
+          </p>
+        </div>
+        <div>
+          <h2>Reglas del modelo financiero B2B</h2>
+          <table aria-label="Reglas financieras">
+            <thead>
+              <tr>
+                <th>Indicador</th>
+                <th class="r">Definicion</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>MRR total</td><td class="r">Suma del MRR de Base + Pro + Empresa</td></tr>
+              <tr><td>Ingreso setup mes</td><td class="r">Setup fee unico x nuevas empresas del mes</td></tr>
+              <tr><td>Ingreso total mensual</td><td class="r">MRR total + ingreso setup mes</td></tr>
+              <tr><td>ARPA mensual</td><td class="r">MRR total / empresas activas totales</td></tr>
+              <tr><td>Break-even (principal)</td><td class="r">Cuentas B2B activas requeridas por MRR</td></tr>
+            </tbody>
+          </table>
+          <p class="fine" style="margin-top:8px">
+            El break-even principal se evalua de forma conservadora usando solo ingreso recurrente (MRR).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <span class="section-note">4. Simulador B2B (sandbox editable)</span>
+      <p class="fine no-print">
+        Este bloque es editable para iteraciones internas. El resumen ejecutivo superior mantiene
+        la narrativa cerrada del modelo B2B.
+      </p>
+
+      <div class="sim-grid">
+        <div>
+          <label for="price-base">Precio anual Base (S/)</label>
+          <input id="price-base" type="number" value="599" min="0" step="1" />
+        </div>
+        <div>
+          <label for="price-pro">Precio anual Pro (S/)</label>
+          <input id="price-pro" type="number" value="899" min="0" step="1" />
+        </div>
+        <div>
+          <label for="price-ent">Precio anual Empresa (S/)</label>
+          <input id="price-ent" type="number" value="1199" min="0" step="1" />
+        </div>
+        <div>
+          <label for="setup-fee">Setup fee unico (S/)</label>
+          <input id="setup-fee" type="number" value="250" min="0" step="10" />
+        </div>
+        <div>
+          <label for="acc-base">Empresas activas Base</label>
+          <input id="acc-base" type="number" value="40" min="0" step="1" />
+        </div>
+        <div>
+          <label for="acc-pro">Empresas activas Pro</label>
+          <input id="acc-pro" type="number" value="20" min="0" step="1" />
+        </div>
+        <div>
+          <label for="acc-ent">Empresas activas Empresa</label>
+          <input id="acc-ent" type="number" value="10" min="0" step="1" />
+        </div>
+        <div>
+          <label for="new-acc">Nuevas empresas / mes</label>
+          <input id="new-acc" type="number" value="6" min="0" step="1" />
+        </div>
+      </div>
+
+      <div class="sim-kpis">
+        <article class="kpi">
+          <div class="k">Empresas activas</div>
+          <div id="sim-active" class="v">0</div>
+          <div class="n">Base + Pro + Empresa</div>
+        </article>
+        <article class="kpi">
+          <div class="k">MRR total</div>
+          <div id="sim-mrr" class="v">S/ 0</div>
+          <div class="n">Ingreso recurrente mensual</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Ingreso setup mes</div>
+          <div id="sim-setup" class="v">S/ 0</div>
+          <div class="n">Setup fee x nuevas empresas</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Ingreso total mensual</div>
+          <div id="sim-total" class="v">S/ 0</div>
+          <div class="n">MRR + setup del mes</div>
+        </article>
+        <article class="kpi">
+          <div class="k">ARPA mensual</div>
+          <div id="sim-arpa" class="v">S/ 0</div>
+          <div class="n">MRR / empresas activas</div>
+        </article>
+        <article class="kpi">
+          <div class="k">Break-even cuentas</div>
+          <div id="sim-break-even" class="v">0</div>
+          <div class="n">Ceil(OPEX / ARPA mensual)</div>
+        </article>
+      </div>
+
+      <table aria-label="MRR por plan" style="margin-top:10px">
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th class="r">MRR por plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Base</td><td id="sim-mrr-base" class="r">S/ 0</td></tr>
+          <tr><td>Pro</td><td id="sim-mrr-pro" class="r">S/ 0</td></tr>
+          <tr><td>Empresa</td><td id="sim-mrr-ent" class="r">S/ 0</td></tr>
+        </tbody>
+      </table>
+
+      <p id="sim-status" class="fine" style="margin-top:10px"></p>
+    </section>
+
+    <footer class="footer">
+      CURVA - Documento ejecutivo B2B v2. Curva se mantiene como piloto interno y validacion inicial del producto.
+    </footer>
+  </main>
+
+  <script>
+    (function(){
+      var OPEX = 7900;
+
+      function money(v){
+        return "S/ " + Number(v || 0).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function read(id){
+        var el = document.getElementById(id);
+        return Number(el && el.value ? el.value : 0);
+      }
+
+      function setText(id, val, cls){
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = val;
+        el.classList.remove("ok","warn","danger");
+        if (cls) el.classList.add(cls);
+      }
+
+      function recalc(){
+        var priceBase = Math.max(0, read("price-base"));
+        var pricePro = Math.max(0, read("price-pro"));
+        var priceEnt = Math.max(0, read("price-ent"));
+        var setupFee = Math.max(0, read("setup-fee"));
+        var accBase = Math.max(0, read("acc-base"));
+        var accPro = Math.max(0, read("acc-pro"));
+        var accEnt = Math.max(0, read("acc-ent"));
+        var newAcc = Math.max(0, read("new-acc"));
+
+        var mrrBase = (priceBase / 12) * accBase;
+        var mrrPro = (pricePro / 12) * accPro;
+        var mrrEnt = (priceEnt / 12) * accEnt;
+
+        var activeTotal = accBase + accPro + accEnt;
+        var mrrTotal = mrrBase + mrrPro + mrrEnt;
+        var setupMonth = setupFee * newAcc;
+        var totalMonth = mrrTotal + setupMonth;
+        var arpa = activeTotal > 0 ? (mrrTotal / activeTotal) : 0;
+        var breakEvenAccounts = arpa > 0 ? Math.ceil(OPEX / arpa) : 0;
+
+        setText("sim-active", activeTotal.toLocaleString("es-PE"));
+        setText("sim-mrr", money(mrrTotal), mrrTotal >= OPEX ? "ok" : "warn");
+        setText("sim-setup", money(setupMonth));
+        setText("sim-total", money(totalMonth), totalMonth >= OPEX ? "ok" : "warn");
+        setText("sim-arpa", money(arpa));
+        setText("sim-break-even", breakEvenAccounts ? breakEvenAccounts.toLocaleString("es-PE") : "0", breakEvenAccounts > 0 ? "warn" : "");
+        setText("sim-mrr-base", money(mrrBase));
+        setText("sim-mrr-pro", money(mrrPro));
+        setText("sim-mrr-ent", money(mrrEnt));
+
+        var status = document.getElementById("sim-status");
+        if (!status) return;
+
+        if (activeTotal === 0) {
+          status.innerHTML = "<strong class='warn'>Sin cuentas activas:</strong> define empresas por plan para estimar MRR y punto de equilibrio.";
+          return;
+        }
+
+        if (mrrTotal >= OPEX) {
+          status.innerHTML = "<strong class='ok'>Break-even recurrente alcanzado:</strong> el MRR cubre el OPEX mensual con " + activeTotal.toLocaleString("es-PE") + " cuentas activas.";
+          return;
+        }
+
+        var gapMrr = OPEX - mrrTotal;
+        if (totalMonth >= OPEX) {
+          status.innerHTML = "<strong class='warn'>Cobertura temporal:</strong> el mes cubre OPEX por efecto del setup, pero faltan " + money(gapMrr) + " de MRR para equilibrio recurrente.";
+        } else {
+          status.innerHTML = "<strong class='danger'>Por debajo de break-even:</strong> faltan " + money(gapMrr) + " de MRR para cubrir OPEX sin depender de setup.";
+        }
+      }
+
+      [
+        "price-base","price-pro","price-ent","setup-fee",
+        "acc-base","acc-pro","acc-ent","new-acc"
+      ].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", recalc);
+      });
+
+      recalc();
+    })();
+  </script>
+</body>
+</html>

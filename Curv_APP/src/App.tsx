@@ -30,8 +30,32 @@ type BtnProps = {
   v?: BtnVariant;
   sm?: boolean;
 };
+type InlineEmptyStateCardProps = {
+  title: string;
+  context: string;
+  build: string;
+  first: string;
+  unlock: string;
+};
+type TourStep = {
+  id: string;
+  title: string;
+  desc: string;
+  target: string;
+};
 
-const G="#C9A96E", DK="#1A1A1A", BG="#F5F3EF";
+const G="var(--ui-accent)", DK="var(--ui-text)", BG="var(--ui-bg)";
+const UI = {
+  accent: G,
+  accentSoft: "var(--ui-accent-soft)",
+  text: DK,
+  textMuted: "var(--ui-text-muted)",
+  bg: BG,
+  card: "var(--ui-card)",
+  border: "var(--ui-border)",
+  borderSoft: "var(--ui-border-soft)",
+  dark: "var(--ui-dark)",
+};
 const fmt = (n: any) => "S/ " + Math.round(Number(n) || 0).toLocaleString("es-PE");
 const rnd = (n: number, s: any) => {
   const step = Number(s) || 0;
@@ -53,23 +77,215 @@ const addWeeks = (dateStr: string, weeks: number) => {
   const d = new Date(dateStr); d.setDate(d.getDate() + weeks * 7);
   return d.toISOString().split("T")[0];
 };
+const parseDateISO = (value: string) => {
+  const [y, m, d] = (value || "").split("-").map((n) => Number(n));
+  if (!y || !m || !d) return new Date();
+  return new Date(y, m - 1, d);
+};
+const toISODate = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+const isWorkDayMonSat = (date: Date) => date.getDay() !== 0;
+const alignToWorkDay = (date: Date, direction: 1 | -1 = 1) => {
+  const aligned = new Date(date);
+  while (!isWorkDayMonSat(aligned)) aligned.setDate(aligned.getDate() + direction);
+  return aligned;
+};
+const normalizeWorkDate = (value: string) => toISODate(alignToWorkDay(parseDateISO(value), 1));
+const addWorkDaysMonSat = (value: string, delta: number) => {
+  let cursor = alignToWorkDay(parseDateISO(value), delta >= 0 ? 1 : -1);
+  if (delta === 0) return toISODate(cursor);
+  const step = delta > 0 ? 1 : -1;
+  let remaining = Math.abs(delta);
+  while (remaining > 0) {
+    cursor.setDate(cursor.getDate() + step);
+    if (isWorkDayMonSat(cursor)) remaining -= 1;
+  }
+  return toISODate(cursor);
+};
+const cmpDateISO = (a: string, b: string) => parseDateISO(a).getTime() - parseDateISO(b).getTime();
+const diffDateDays = (a: string, b: string) => {
+  const start = parseDateISO(a).getTime();
+  const end = parseDateISO(b).getTime();
+  return Math.round((end - start) / 86400000);
+};
 
-const si: React.CSSProperties = {width:"100%",padding:"8px 10px",border:"1px solid #DDD8CC",borderRadius:4,background:"#FDFCF9",color:DK,fontSize:12,boxSizing:"border-box",outline:"none",fontFamily:"inherit"};
-const lb: React.CSSProperties = {fontSize:9,fontWeight:700,color:"#888",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4,display:"block"};
-const cardS: React.CSSProperties = {background:"#fff",borderRadius:8,padding:22,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",marginBottom:16};
+const si: React.CSSProperties = {width:"100%",padding:"9px 10px",border:`1px solid ${UI.border}`,borderRadius:6,background:"var(--ui-input-bg,#fff)",color:"var(--ui-input-text,var(--ui-text))",fontSize:12,boxSizing:"border-box",outline:"none",fontFamily:"inherit",lineHeight:1.4};
+const lb: React.CSSProperties = {fontSize:9,fontWeight:700,color:UI.textMuted,textTransform:"uppercase",letterSpacing:"0.9px",marginBottom:5,display:"block"};
+const cardS: React.CSSProperties = {background:UI.card,borderRadius:10,padding:22,border:`1px solid ${UI.borderSoft}`,boxShadow:"0 1px 2px rgba(16,24,40,0.04)",marginBottom:16};
 
 const Fld = ({label,children}: FldProps) => <div style={{marginBottom:12}}><label style={lb}>{label}</label>{children}</div>;
 const Inp = ({value,onChange,type="text",placeholder,min}: InpProps) => <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} min={min} style={si}/>;
-const Sel = ({value,onChange,options}: SelProps) => <select value={value} onChange={e=>onChange(e.target.value)} style={si}>{options.map(o=><option key={o}>{o}</option>)}</select>;
+const Sel = ({value,onChange,options}: SelProps) => <select value={value} onChange={e=>onChange(e.target.value)} style={{...si,appearance:"none"}}>{options.map(o=><option key={o}>{o}</option>)}</select>;
 const Btn = ({children,onClick,v="dk",sm}: BtnProps) => {
-  const styles: Record<BtnVariant, React.CSSProperties> = {dk:{background:DK,color:"#fff",border:"none"},ol:{background:"transparent",color:DK,border:"1px solid "+DK},gd:{background:G,color:"#fff",border:"none"}};
-  return <button onClick={onClick} style={{...styles[v],padding:sm?"5px 12px":"9px 20px",borderRadius:4,fontSize:sm?10:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.5px"}}>{children}</button>;
+  const styles: Record<BtnVariant, React.CSSProperties> = {
+    dk:{background:"var(--ui-btn-dk-bg,var(--ui-dark))",color:"var(--ui-btn-dk-text,#fff)",border:"1px solid var(--ui-btn-dk-border,#0F141A)"},
+    ol:{background:"var(--ui-btn-ol-bg,var(--ui-card))",color:"var(--ui-btn-ol-text,var(--ui-text))",border:"1px solid var(--ui-btn-ol-border,var(--ui-border))"},
+    gd:{background:UI.accent,color:"var(--ui-btn-gd-text,#111827)",border:`1px solid ${UI.accent}`},
+  };
+  return <button onClick={onClick} style={{...styles[v],padding:sm?"6px 12px":"9px 20px",borderRadius:6,fontSize:sm?10:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.3px",transition:"all 0.15s ease",lineHeight:1.25}}>{children}</button>;
 };
+const InlineEmptyStateCard = ({title,context,build,first,unlock}: InlineEmptyStateCardProps) => (
+  <div style={{background:"var(--ui-empty-bg,#FCFAF5)",border:"1px dashed var(--ui-empty-border,#DCCBAA)",borderRadius:8,padding:"10px 12px",marginBottom:12}}>
+    <div style={{fontSize:11,fontWeight:800,color:"var(--ui-empty-title,#1A1A1A)",marginBottom:5}}>{title}</div>
+    <div style={{fontSize:10,color:"var(--ui-empty-text,#777)",lineHeight:1.55,marginBottom:8}}>{context}</div>
+    {[
+      ["Que estas construyendo",build],
+      ["Que llenar primero",first],
+      ["Que desbloquea ese paso",unlock],
+    ].map(([label,value])=>(
+      <div key={label} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:4}}>
+        <span style={{color:G,fontSize:10,fontWeight:800,lineHeight:1.4}}>•</span>
+        <div style={{fontSize:9,lineHeight:1.5,color:"var(--ui-empty-text,#666)"}}>
+          <span style={{fontWeight:700,color:"var(--ui-empty-label,#8A6D3A)"}}>{label}:</span> {value}
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const PROJECT_STORAGE_PREFIX = "curva.project.v1";
 const PROJECT_STORAGE_EVENT = "curva-project-storage-change";
+const PROJECT_SCOPE_SEGMENT = "p";
+const GLOBAL_STORAGE_KEYS = new Set([
+  "app.projects",
+  "app.activeProjectId",
+  "app.route",
+  "app.darkMode",
+  "app.onboardingSeen",
+  "app.migrated.multiProject.v1",
+]);
 
-const storageKey = (key: string) => `${PROJECT_STORAGE_PREFIX}.${key}`;
+type TrackId = "diseno" | "construccion" | "seguimiento";
+type TrackState = "No iniciado" | "En curso" | "Completado";
+type CommercialStatus = "Lead" | "Propuesta" | "Negociacion" | "Ganado" | "Perdido";
+type OcResolutionStatus = "Pendiente" | "Resuelto";
+type CronHitoCobro = { id: string; label: string; pct: number; when: string; checked: boolean };
+type ProjectRecord = {
+  id: string;
+  name: string;
+  type: string;
+  location: string;
+  tracks: Record<TrackId, boolean>;
+  archived: boolean;
+  commercialStatus: CommercialStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+type DashboardMetrics = {
+  states: Record<TrackId, TrackState>;
+  diseno: { honorario: number; cobrado: number; pctCobrado: number };
+  construccion: { cotizado: number; cronTotalDias: number; cronConflictos: number; cronPct: number };
+  seguimiento: { pctAvance: number; valorizadoAc: number; ocPendiente: boolean };
+};
+
+const DEFAULT_TRACKS: Record<TrackId, boolean> = {
+  diseno: true,
+  construccion: true,
+  seguimiento: true,
+};
+
+const COMMERCIAL_STATUS_OPTIONS: CommercialStatus[] = ["Lead", "Propuesta", "Negociacion", "Ganado", "Perdido"];
+const CRON_HITOS_BASE: CronHitoCobro[] = [
+  { id: "adelanto", label: "Adelanto", pct: 50, when: "Al inicio / firma", checked: false },
+  { id: "mitad", label: "Mitad", pct: 25, when: "A mitad del proyecto", checked: false },
+  { id: "entrega", label: "Entrega", pct: 25, when: "Entrega final", checked: false },
+];
+const LEGACY_MIGRATION_FLAG_KEY = "app.migrated.multiProject.v1";
+const TRACK_LABELS: Record<TrackId, string> = {
+  diseno: "Diseño",
+  construccion: "Construcción",
+  seguimiento: "Seguimiento",
+};
+const TRACK_STATUS_COLORS: Record<TrackState, string> = {
+  "No iniciado": "#8A93A0",
+  "En curso": "#C9A96E",
+  "Completado": "#3E8B5D",
+};
+
+let activeStorageProjectId = "";
+const setActiveStorageProjectId = (projectId: string) => {
+  activeStorageProjectId = projectId.trim();
+};
+
+const isValidTrackId = (value: unknown): value is TrackId => (
+  value === "diseno" || value === "construccion" || value === "seguimiento"
+);
+const isValidCommercialStatus = (value: unknown): value is CommercialStatus => (
+  value === "Lead" || value === "Propuesta" || value === "Negociacion" || value === "Ganado" || value === "Perdido"
+);
+const isValidOcResolutionStatus = (value: unknown): value is OcResolutionStatus => (
+  value === "Pendiente" || value === "Resuelto"
+);
+const createProjectId = () => (
+  `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+);
+const nowIso = () => new Date().toISOString();
+const normalizeTracks = (value: unknown): Record<TrackId, boolean> => {
+  if (!isPlainObject(value)) return {...DEFAULT_TRACKS};
+  return {
+    diseno: typeof value.diseno === "boolean" ? value.diseno : true,
+    construccion: typeof value.construccion === "boolean" ? value.construccion : true,
+    seguimiento: typeof value.seguimiento === "boolean" ? value.seguimiento : true,
+  };
+};
+const toProjectRecord = (value: unknown): ProjectRecord | null => {
+  if (!isPlainObject(value)) return null;
+  if (typeof value.id !== "string" || !value.id.trim()) return null;
+  return {
+    id: value.id,
+    name: typeof value.name === "string" && value.name.trim() ? value.name : "Proyecto sin nombre",
+    type: typeof value.type === "string" ? value.type : "",
+    location: typeof value.location === "string" ? value.location : "",
+    tracks: normalizeTracks(value.tracks),
+    archived: Boolean(value.archived),
+    commercialStatus: isValidCommercialStatus(value.commercialStatus) ? value.commercialStatus : "Lead",
+    createdAt: typeof value.createdAt === "string" ? value.createdAt : nowIso(),
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : nowIso(),
+  };
+};
+const isProjectRecordArray = (value: unknown): value is ProjectRecord[] => (
+  Array.isArray(value) && value.every((item) => toProjectRecord(item) !== null)
+);
+const normalizeProjectRecords = (value: unknown): ProjectRecord[] => (
+  Array.isArray(value)
+    ? value.map((item) => toProjectRecord(item)).filter((item): item is ProjectRecord => item !== null)
+    : []
+);
+const createProjectRecord = (seed?: Partial<ProjectRecord>): ProjectRecord => {
+  const createdAt = nowIso();
+  return {
+    id: seed?.id || createProjectId(),
+    name: seed?.name?.trim() || "Nuevo proyecto",
+    type: seed?.type || "",
+    location: seed?.location || "",
+    tracks: seed?.tracks ? normalizeTracks(seed.tracks) : {...DEFAULT_TRACKS},
+    archived: Boolean(seed?.archived),
+    commercialStatus: seed?.commercialStatus && isValidCommercialStatus(seed.commercialStatus) ? seed.commercialStatus : "Lead",
+    createdAt: seed?.createdAt || createdAt,
+    updatedAt: seed?.updatedAt || createdAt,
+  };
+};
+
+const resolveProjectScopeId = (scopeProjectId?: string) => {
+  if (typeof scopeProjectId === "string") return scopeProjectId.trim();
+  return activeStorageProjectId.trim();
+};
+const isGlobalStorageKey = (key: string) => GLOBAL_STORAGE_KEYS.has(key);
+const storageKey = (key: string, scopeProjectId?: string) => {
+  if (isGlobalStorageKey(key)) return `${PROJECT_STORAGE_PREFIX}.${key}`;
+  const projectId = resolveProjectScopeId(scopeProjectId);
+  if (!projectId) return `${PROJECT_STORAGE_PREFIX}.${key}`;
+  return `${PROJECT_STORAGE_PREFIX}.${PROJECT_SCOPE_SEGMENT}.${projectId}.${key}`;
+};
+const extractRawStorageKey = (fullKey: string) => (
+  fullKey.startsWith(`${PROJECT_STORAGE_PREFIX}.`) ? fullKey.slice(PROJECT_STORAGE_PREFIX.length + 1) : fullKey
+);
+const isScopedStorageRawKey = (rawKey: string) => rawKey.startsWith(`${PROJECT_SCOPE_SEGMENT}.`);
+const projectScopePrefix = (projectId: string) => `${PROJECT_STORAGE_PREFIX}.${PROJECT_SCOPE_SEGMENT}.${projectId}.`;
 const resolveValue = <T,>(value: T | (() => T)): T => (
   typeof value === "function" ? (value as () => T)() : value
 );
@@ -79,6 +295,25 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => (
 const isStringRecord = (value: unknown): value is Record<string, string> => (
   isPlainObject(value) && Object.values(value).every((item) => typeof item === "string")
 );
+const isString = (value: unknown): value is string => typeof value === "string";
+
+const SHARED_PROJECT_CLIENT_KEY = "project.client";
+const SHARED_PROJECT_NAME_KEY = "project.name";
+const SHARED_PROJECT_LOCATION_KEY = "project.location";
+const SHARED_PROJECT_CODE_KEY = "project.code";
+
+const PROJECT_CLIENT_LEGACY_KEYS = ["calc.cl", "matrix.cl", "excl.cl", "cron.cl", "oc.cl", "brief.cl"];
+const PROJECT_NAME_LEGACY_KEYS = ["calc.pr", "matrix.pr", "excl.pr", "cron.pr", "oc.pr", "brief.pr"];
+const PROJECT_LOCATION_LEGACY_KEYS = ["matrix.ub", "brief.ub"];
+const PROJECT_CODE_LEGACY_KEYS = ["excl.cod", "brief.cod"];
+
+const firstStoredNonEmptyString = (keys: readonly string[]) => {
+  for (const key of keys) {
+    const value = readStorage<string>(key, "", isString);
+    if (value.trim()) return value;
+  }
+  return "";
+};
 
 const notifyStorageChange = () => {
   if (typeof window === "undefined") return;
@@ -88,12 +323,13 @@ const notifyStorageChange = () => {
 const readStorage = <T,>(
   key: string,
   fallback: T | (() => T),
-  validate?: (value: unknown) => value is T
+  validate?: (value: unknown) => value is T,
+  scopeProjectId?: string
 ): T => {
   const fallbackValue = resolveValue(fallback);
   if (typeof window === "undefined") return fallbackValue;
   try {
-    const raw = window.localStorage.getItem(storageKey(key));
+    const raw = window.localStorage.getItem(storageKey(key, scopeProjectId));
     if (raw === null) return fallbackValue;
     const parsed: unknown = JSON.parse(raw);
     if (validate && !validate(parsed)) return fallbackValue;
@@ -103,20 +339,20 @@ const readStorage = <T,>(
   }
 };
 
-const writeStorage = <T,>(key: string, value: T) => {
+const writeStorage = <T,>(key: string, value: T, scopeProjectId?: string) => {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(storageKey(key), JSON.stringify(value));
+    window.localStorage.setItem(storageKey(key, scopeProjectId), JSON.stringify(value));
     notifyStorageChange();
   } catch {
     // localStorage can fail in private mode or quota issues
   }
 };
 
-const removeStorage = (key: string) => {
+const removeStorage = (key: string, scopeProjectId?: string) => {
   if (typeof window === "undefined") return;
   try {
-    const keyName = storageKey(key);
+    const keyName = storageKey(key, scopeProjectId);
     if (window.localStorage.getItem(keyName) === null) return;
     window.localStorage.removeItem(keyName);
     notifyStorageChange();
@@ -125,13 +361,20 @@ const removeStorage = (key: string) => {
   }
 };
 
-const clearProjectStorage = () => {
+const clearProjectStorage = (scopeProjectId?: string) => {
   if (typeof window === "undefined") return;
   try {
     const keysToDelete: string[] = [];
+    const projectId = resolveProjectScopeId(scopeProjectId);
+    const scopedPrefix = projectId ? projectScopePrefix(projectId) : "";
     for (let i = 0; i < window.localStorage.length; i += 1) {
       const key = window.localStorage.key(i);
-      if (key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) keysToDelete.push(key);
+      if (!key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) continue;
+      if (!projectId) {
+        if (!isGlobalStorageKey(extractRawStorageKey(key))) keysToDelete.push(key);
+        continue;
+      }
+      if (key.startsWith(scopedPrefix)) keysToDelete.push(key);
     }
     if (!keysToDelete.length) return;
     keysToDelete.forEach((key) => window.localStorage.removeItem(key));
@@ -141,12 +384,20 @@ const clearProjectStorage = () => {
   }
 };
 
-const hasSavedProjectData = () => {
+const hasSavedProjectData = (scopeProjectId?: string) => {
   if (typeof window === "undefined") return false;
   try {
+    const projectId = resolveProjectScopeId(scopeProjectId);
+    const scopedPrefix = projectId ? projectScopePrefix(projectId) : "";
     for (let i = 0; i < window.localStorage.length; i += 1) {
       const key = window.localStorage.key(i);
-      if (key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) return true;
+      if (!key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) continue;
+      if (!projectId) {
+        const rawKey = extractRawStorageKey(key);
+        if (!isGlobalStorageKey(rawKey)) return true;
+      } else if (key.startsWith(scopedPrefix)) {
+        return true;
+      }
     }
     return false;
   } catch {
@@ -159,11 +410,19 @@ function usePersistentState<T>(
   initialValue: T | (() => T),
   validate?: (value: unknown) => value is T
 ) {
-  const initialRef = React.useRef<T | null>(null);
-  if (initialRef.current === null) initialRef.current = resolveValue(initialValue);
-
-  const [state, setState] = useState<T>(() => readStorage(key, initialRef.current as T, validate));
+  const initialRef = React.useRef<T>(resolveValue(initialValue));
+  const keyRef = React.useRef(key);
+  const [state, setState] = useState<T>(() => readStorage(key, initialRef.current, validate));
   const skipFirstEffect = React.useRef(true);
+
+  useEffect(() => {
+    if (keyRef.current === key) return;
+    keyRef.current = key;
+    const initial = resolveValue(initialValue);
+    initialRef.current = initial;
+    skipFirstEffect.current = true;
+    setState(readStorage(key, initial, validate));
+  }, [initialValue, key, validate]);
 
   useEffect(() => {
     if (skipFirstEffect.current) {
@@ -184,6 +443,38 @@ function usePersistentState<T>(
   }, [key, state]);
 
   return [state, setState] as const;
+}
+
+function useSharedProjectTextField(
+  sharedKey: string,
+  legacyKeys: readonly string[],
+  initialValue = ""
+) {
+  const [value, setValue] = usePersistentState<string>(
+    sharedKey,
+    () => {
+      const sharedValue = readStorage<string>(sharedKey, "", isString);
+      if (sharedValue.trim()) return sharedValue;
+      const legacyValue = firstStoredNonEmptyString(legacyKeys);
+      return legacyValue || initialValue;
+    },
+    isString
+  );
+  const migratedRef = React.useRef(false);
+
+  useEffect(() => {
+    if (migratedRef.current) return;
+    migratedRef.current = true;
+
+    const sharedValue = readStorage<string>(sharedKey, "", isString);
+    if (!sharedValue.trim()) {
+      const legacyValue = firstStoredNonEmptyString(legacyKeys);
+      if (legacyValue.trim()) writeStorage(sharedKey, legacyValue);
+    }
+    legacyKeys.forEach((legacyKey) => removeStorage(legacyKey));
+  }, [legacyKeys, sharedKey]);
+
+  return [value, setValue] as const;
 }
 
 // ── PRINT ─────────────────────────────────────────────────────────────
@@ -246,7 +537,10 @@ const README: ReadmeMap = {
   matrix:{title:"Matriz de Entregables",steps:[{n:1,t:"Selecciona el paquete",d:"Elige el tipo de servicio. Los ítems se filtran automáticamente."},{n:2,t:"Activa o desactiva ítems",d:"Clic en ✓/○ para incluir o excluir cada entregable."},{n:3,t:"Agrega ítems",d:"Usa '+ Agregar ítem' para sumar entregables de otros paquetes."},{n:4,t:"Exporta",d:"Usa 🖨 para imprimir o guarda como PDF desde el panel de vista."}],nota:"Los entregables específicos deben confirmarse en el contrato de servicios."},
   excl:{title:"Exclusiones y Supuestos",steps:[{n:1,t:"Datos del encargo",d:"Ingresa cliente, proyecto, código y responsable."},{n:2,t:"Activa 'Mostrar'",d:"Solo los ítems con ✓ en Mostrar aparecen en la presentación al cliente."},{n:3,t:"Edita el texto",d:"Clic en cualquier texto de 'Texto para cliente' para editarlo."},{n:4,t:"Cambia el estado",d:"Cada ítem puede ser Excluido, Supuesto o Revisión."},{n:5,t:"Agrega ítems",d:"Usa '+ Agregar ítem' para agregar de la biblioteca o crear uno personalizado."}],nota:"Este documento no reemplaza el contrato. Sirve para delimitar el alcance."},
   cron:{title:"Cronograma por Etapas",steps:[{n:1,t:"Fecha de inicio",d:"Define la fecha de inicio estimada. Las fechas se calculan automáticamente."},{n:2,t:"Activa las etapas",d:"Marca las etapas que aplican al encargo."},{n:3,t:"Ajusta las duraciones",d:"Cambia el número de semanas o arrastra los bloques del Gantt."},{n:4,t:"Honorario opcional",d:"Si ingresas el honorario total, se muestran los hitos de cobro con montos."}],nota:"Los plazos están condicionados a aprobaciones oportunas del cliente."},
+  cronobra:{title:"Cronograma de Obra",steps:[{n:1,t:"Sincroniza partidas",d:"Usa 'Actualizar desde Cotización' para traer categorías y partidas vigentes."},{n:2,t:"Define dependencias",d:"Relaciona cada partida con Fin a Inicio, Inicio a Inicio o Fin a Fin y desfase en días."},{n:3,t:"Ajusta duración y avance",d:"Configura duración en días y % de avance por partida para control de obra."},{n:4,t:"Revisa Gantt y exporta",d:"Valida checklist de dependencias, cronograma detallado y exporta el documento final."}],nota:"Calendario laboral configurado en lunes a sábado. Ajusta desfases según frente de trabajo y secuencia real de campo."},
   oc:{title:"Orden de Cambio",steps:[{n:1,t:"Datos generales",d:"Asigna un código correlativo e indica quién solicita el cambio."},{n:2,t:"Resumen del cambio",d:"Describe qué cambia, el motivo y el tipo de impacto."},{n:3,t:"Detalle comparativo",d:"Completa la tabla Antes / Después para alcance, entregables y plazo."},{n:4,t:"Impacto económico",d:"Indica el honorario adicional, la extensión de plazo y el nuevo total."},{n:5,t:"Aprobación",d:"Completa los datos de firma de ambas partes."}],nota:"La ejecución del cambio queda sujeta a aprobación expresa del cliente."},
+  cot:{title:"Cotización de Obra",steps:[{n:1,t:"Categorías y partidas",d:"Crea categorías y agrega partidas con costo de mano de obra y materiales."},{n:2,t:"Precio cliente",d:"Ajusta utilidad y riesgo por partida para obtener el precio unitario al cliente."},{n:3,t:"Datos finales",d:"Completa cuenta bancaria, GG, supervisión e IGV para cerrar la propuesta."},{n:4,t:"Documento",d:"Revisa la tabla final y exporta en PDF para enviar al cliente."}],nota:"Los precios son referenciales y deben validarse contra alcance final y condiciones de contrato."},
+  val:{title:"Valorización de Avance",steps:[{n:1,t:"Datos generales",d:"Completa cliente, proyecto, código, período y estado de valorización."},{n:2,t:"Contrato y partidas",d:"Registra montos de contrato y avance acumulado por partida."},{n:3,t:"Resumen económico",d:"Verifica KPIs: valorizado período, acumulado, pagado y saldo por pagar."},{n:4,t:"Documento",d:"Genera la hoja de valorización para impresión o PDF."}],nota:"Montos y avances deben ser revisados y aprobados por las partes antes del pago."},
   brief:{
     title:"Programa Arquitectónico",
     steps:[
@@ -267,7 +561,7 @@ function InfoBubble({toolId}: {toolId: string}) {
       {open&&<div onClick={()=>setOpen(false)} style={{position:"fixed",inset:0,zIndex:90,background:"rgba(0,0,0,0.25)"}}/>}
       <div style={{position:"fixed",bottom:24,right:28,zIndex:100}}>
         {open&&(
-          <div style={{position:"absolute",bottom:52,right:0,width:340,background:"#fff",borderRadius:10,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",overflow:"hidden",border:"1px solid #E5DDD0"}}>
+          <div style={{position:"absolute",bottom:52,right:0,width:340,background:UI.card,borderRadius:10,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",overflow:"hidden",border:`1px solid ${UI.border}`}}>
             <div style={{background:DK,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{color:G,fontWeight:800,fontSize:11,textTransform:"uppercase",letterSpacing:"1px"}}>Cómo usar</span>
               <span style={{color:"#fff",fontWeight:700,fontSize:12}}>{info.title}</span>
@@ -276,10 +570,10 @@ function InfoBubble({toolId}: {toolId: string}) {
               {info.steps.map(s=>(
                 <div key={s.n} style={{display:"flex",gap:10,marginBottom:12}}>
                   <div style={{width:20,height:20,borderRadius:"50%",background:G,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{s.n}</div>
-                  <div><div style={{fontSize:11,fontWeight:700,color:DK,marginBottom:2}}>{s.t}</div><div style={{fontSize:10,color:"#666",lineHeight:1.5}}>{s.d}</div></div>
+                  <div><div style={{fontSize:11,fontWeight:700,color:DK,marginBottom:2}}>{s.t}</div><div style={{fontSize:10,color:UI.textMuted,lineHeight:1.5}}>{s.d}</div></div>
                 </div>
               ))}
-              {info.nota&&<div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"8px 10px",display:"flex",gap:8,marginTop:4}}><span style={{color:G,fontWeight:700,fontSize:11,flexShrink:0}}>!</span><span style={{fontSize:9,color:"#888",lineHeight:1.5}}>{info.nota}</span></div>}
+              {info.nota&&<div style={{background:UI.accentSoft,border:`1px solid ${UI.border}`,borderRadius:6,padding:"8px 10px",display:"flex",gap:8,marginTop:4}}><span style={{color:G,fontWeight:700,fontSize:11,flexShrink:0}}>!</span><span style={{fontSize:9,color:UI.textMuted,lineHeight:1.5}}>{info.nota}</span></div>}
             </div>
           </div>
         )}
@@ -355,7 +649,7 @@ const MF: Record<string, number> = {"Suma alzada":1,"Precios unitarios":1.05,"Co
 function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
   const [step,ss]=usePersistentState("calc.step",1);
-  const [cl,scl]=usePersistentState("calc.cl",""); const [pr,spr]=usePersistentState("calc.pr",""); const [fe,sfe]=usePersistentState("calc.fe",today);
+  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [fe,sfe]=usePersistentState("calc.fe",today);
   const [ti,sti]=usePersistentState("calc.ti","Vivienda"); const [et,set_]=usePersistentState("calc.et","Anteproyecto");
   const [ar,sar]=usePersistentState("calc.ar",""); const [mo,smo]=usePersistentState("calc.mo","Suma alzada"); const [ig,sig]=usePersistentState("calc.ig",true);
   const [co,sco]=usePersistentState("calc.co","Media"); const [ur,sur]=usePersistentState("calc.ur","Normal"); const [tc,stc]=usePersistentState("calc.tc","Particular");
@@ -372,6 +666,7 @@ function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   },[ti,et,ar,co,ur,tc,mo,mg,dc,rd,ig,rx,vx,nx]);
 
   const ST=["Datos del proyecto","Factores y extras","Resultado"];
+  const showCalcEmpty = step===1 && !String(cl).trim() && !String(pr).trim() && !String(ar).trim();
   return (
     <div>
       <div style={{display:"flex",gap:20,marginBottom:16,paddingBottom:12,borderBottom:"1px solid #E8E2D8"}}>
@@ -384,6 +679,15 @@ function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
 
       {step===1&&(
         <div style={cardS}>
+          {showCalcEmpty&&(
+            <InlineEmptyStateCard
+              title="Empieza por los datos base"
+              context="Con tres campos bien definidos tendrás una estimación inicial inmediata y luego podrás afinar factores."
+              build="Una propuesta de honorarios con rango, hitos de cobro y total referencial."
+              first="Cliente, proyecto y área aproximada en m2."
+              unlock="Tarifa base y monto estimado para seguir con ajustes."
+            />
+          )}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
             <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
             <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
@@ -533,7 +837,7 @@ const etapaTextColor: Record<string,string>={"Levantamiento":"#2471A3","Anteproy
 
 function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=usePersistentState("matrix.cl",""); const [pr,spr]=usePersistentState("matrix.pr",""); const [ub,sub]=usePersistentState("matrix.ub",""); const [fe,sfe]=usePersistentState("matrix.fe",today);
+  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [ub,sub]=useSharedProjectTextField(SHARED_PROJECT_LOCATION_KEY,PROJECT_LOCATION_LEGACY_KEYS); const [fe,sfe]=usePersistentState("matrix.fe",today);
   const [paq,spaq]=usePersistentState("matrix.paq","Anteproyecto");
   const [items,setItems]=usePersistentState("matrix.items",()=>ITEMS_BASE.map(it=>({...it,on:true})),Array.isArray);
   const [newEnt,setNewEnt]=usePersistentState("matrix.newEnt","__custom__"); const [newCustom,setNewCustom]=usePersistentState("matrix.newCustom","");
@@ -561,10 +865,20 @@ function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
     setItems(p=>[...p,{id,paquete:paq,etapa:newEtapa,entregable,formato:src?src.formato:newFmt,cantidad:src?src.cantidad:newCant,notas:src?src.notas:"",on:true}]);
     setNewEnt("__custom__"); setNewCustom(""); setShowAdd(false);
   };
+  const showMatrixEmpty = !String(cl).trim() && !String(pr).trim() && !String(ub).trim();
 
   return (
     <div>
       <div style={cardS}>
+        {showMatrixEmpty&&(
+          <InlineEmptyStateCard
+            title="Configura la matriz del encargo"
+            context="Define primero la cabecera y el paquete; así podrás activar entregables con una lógica clara."
+            build="Una matriz de entregables por etapa lista para cliente y exportación."
+            first="Cliente, proyecto, ubicación y paquete de servicio."
+            unlock="Listado filtrado de entregables para incluir/excluir y ajustar."
+          />
+        )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"0 14px",marginBottom:12}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Proyecto"/></Fld>
@@ -716,7 +1030,7 @@ const ESTADO_BADGE: Record<string,{bg:string,c:string}>={"Excluido":{bg:"#FDEBD0
 
 function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=usePersistentState("excl.cl",""); const [pr,spr]=usePersistentState("excl.pr",""); const [cod,scod]=usePersistentState("excl.cod","");
+  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [cod,scod]=useSharedProjectTextField(SHARED_PROJECT_CODE_KEY,PROJECT_CODE_LEGACY_KEYS);
   const [fe,sfe]=usePersistentState("excl.fe",today); const [resp,sresp]=usePersistentState("excl.resp","");
   const [items,setItems]=usePersistentState("excl.items",()=>BIBLIOTECA_BASE.map((b,i)=>({id:"EX-"+String(i+1).padStart(3,"0"),cat:b.cat,item:b.item,estado:b.estado,mostrar:MOSTRAR_DEFAULT.includes(b.item),texto:b.texto})),Array.isArray);
   const [showAdd,setShowAdd]=usePersistentState("excl.showAdd",false);
@@ -746,10 +1060,20 @@ function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
     if (its.length) acc[e] = its;
     return acc;
   }, {} as Record<string, any[]>);
+  const showExclEmpty = !String(cl).trim() && !String(pr).trim() && !String(cod).trim() && !String(resp).trim();
 
   return (
     <div>
       <div style={cardS}>
+        {showExclEmpty&&(
+          <InlineEmptyStateCard
+            title="Delimita alcance desde el inicio"
+            context="Esta herramienta evita malentendidos: muestra qué no está incluido y bajo qué supuestos se trabajará."
+            build="Un documento de exclusiones, supuestos y eventos de recotización."
+            first="Cliente, proyecto, código interno y responsable."
+            unlock="Edición de ítems para mostrar al cliente con texto y estado."
+          />
+        )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:"0 14px"}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
@@ -870,10 +1194,11 @@ const ETAPAS_CRON=[
 
 function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=usePersistentState("cron.cl",""); const [pr,spr]=usePersistentState("cron.pr",""); const [fe,sfe]=usePersistentState("cron.fe",today);
+  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [fe,sfe]=usePersistentState("cron.fe",today);
   const [inicio,sInicio]=usePersistentState("cron.inicio",today);
   const [etapas,setEtapas]=usePersistentState("cron.etapas",ETAPAS_CRON,Array.isArray);
   const [honorario,setHonorario]=usePersistentState("cron.honorario",""); const [nota,setNota]=usePersistentState("cron.nota","");
+  const [hitosCobro,setHitosCobro]=usePersistentState<CronHitoCobro[]>("cron.hitosCobro",CRON_HITOS_BASE,Array.isArray);
 
   const startResize=(e: any, etapaId: string)=>{
     e.preventDefault();
@@ -913,11 +1238,21 @@ function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () => void}
   const timeline=active.map(e=>{const start=cursor;const end=addWeeks(start,e.semanas);cursor=end;return {...e,start,end,pct:e.semanas/totalWeeks*100};});
   const endDate=cursor;
   const hon=parseFloat(honorario.replace(/[^0-9.]/g,""))||0;
-  const hitos=[{label:"Adelanto",pct:50,cuando:"Al inicio / firma"},{label:"Mitad",pct:25,cuando:"A mitad del proyecto"},{label:"Entrega",pct:25,cuando:"Entrega final"}];
+  const hitos = normalizeCronHitos(hitosCobro);
+  const showCronEmpty = !String(cl).trim() && !String(pr).trim() && !String(honorario).trim();
 
   return (
     <div>
       <div style={cardS}>
+        {showCronEmpty&&(
+          <InlineEmptyStateCard
+            title="Arma la ruta temporal del proyecto"
+            context="Con una base de fechas y etapas activas podrás presentar plazos, entregas y hitos de cobro."
+            build="Un cronograma por etapas con fecha estimada de entrega."
+            first="Cliente, proyecto, fecha de inicio estimada y etapas que aplican."
+            unlock="Visual de línea de tiempo y tabla lista para PDF."
+          />
+        )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"0 14px"}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
@@ -950,6 +1285,27 @@ function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () => void}
           <div><div style={lb}>Duración total</div><div style={{fontWeight:700,fontSize:13}}>{totalWeeks} semanas</div></div>
           <div><div style={lb}>Entrega estimada</div><div style={{fontWeight:700,fontSize:13,color:G}}>{fDate(endDate)}</div></div>
         </div>
+        {hon>0&&(
+          <div style={{marginBottom:18}}>
+            <p style={{...lb,color:G,marginBottom:8}}>Hitos de cobro (checklist)</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+              {hitos.map((h)=>(
+                <button
+                  key={h.id}
+                  onClick={()=>setHitosCobro((prev)=>normalizeCronHitos(prev).map((item)=>item.id===h.id?{...item,checked:!item.checked}:item))}
+                  style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"10px 12px",background:h.checked?"#F3E9D6":"#fff",cursor:"pointer",textAlign:"left"}}
+                >
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <span style={{fontSize:10,fontWeight:800,color:h.checked?G:"#555"}}>{h.label}</span>
+                    <span style={{fontSize:10,color:h.checked?G:"#AAA",fontWeight:700}}>{h.checked?"✓":"○"}</span>
+                  </div>
+                  <div style={{fontSize:13,fontWeight:800,color:G,marginBottom:2}}>{fmt(hon*h.pct/100)}</div>
+                  <div style={{fontSize:9,color:"#8A93A0"}}>{h.when}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {active.length>0&&(
           <div>
             <p style={{...lb,color:G,margin:"0 0 6px"}}>Línea de tiempo — <span style={{fontWeight:400,color:"#AAA"}}>arrastra para mover · borde derecho para redimensionar</span></p>
@@ -1041,7 +1397,8 @@ function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () => void}
                 <div key={h.label} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:12,textAlign:"center"}}>
                   <div style={{...lb,margin:"0 0 4px"}}>{h.label}</div>
                   <div style={{fontWeight:800,fontSize:16,color:G}}>{fmt(hon*h.pct/100)}</div>
-                  <div style={{fontSize:9,color:"#AAA",marginTop:4}}>{h.cuando}</div>
+                  <div style={{fontSize:9,color:"#AAA",marginTop:4}}>{h.when}</div>
+                  <div style={{fontSize:9,color:h.checked?"#3E8B5D":"#AAA",marginTop:5,fontWeight:700}}>{h.checked?"Cobrado":"Pendiente"}</div>
                 </div>
               ))}
             </div>
@@ -1062,9 +1419,10 @@ const SOLICITANTES=["Cliente","Arquitecto","Obra","Contratista"];
 
 function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
-  const [cl,scl]=usePersistentState("oc.cl",""); const [pr,spr]=usePersistentState("oc.pr",""); const [cod,scod]=usePersistentState("oc.cod","OC-01");
+  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [cod,scod]=usePersistentState("oc.cod","OC-01");
   const [fe,sfe]=usePersistentState("oc.fe",today); const [cot,scot]=usePersistentState("oc.cot",""); const [sol,ssol]=usePersistentState("oc.sol","Cliente");
   const [desc,sdesc]=usePersistentState("oc.desc",""); const [motivo,smotivo]=usePersistentState("oc.motivo","Pedido del cliente"); const [impacto,simpacto]=usePersistentState("oc.impacto","Alcance + Honorarios");
+  const [estadoResolucion,sEstadoResolucion]=usePersistentState<OcResolutionStatus>("oc.estadoResolucion","Pendiente",isValidOcResolutionStatus);
   const [docsAfect,sdocsAfect]=usePersistentState("oc.docsAfect","");
   const [antesAlc,santesAlc]=usePersistentState("oc.antesAlc",""); const [despAlc,sdespAlc]=usePersistentState("oc.despAlc","");
   const [antesEnt,santesEnt]=usePersistentState("oc.antesEnt",""); const [despEnt,sdespEnt]=usePersistentState("oc.despEnt","");
@@ -1090,10 +1448,20 @@ function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
     </div>
   );
   const conditions=["Esta orden de cambio modifica exclusivamente los puntos aquí indicados y mantiene vigentes las demás condiciones de la cotización o contrato base.","Cualquier trabajo adicional no descrito en este formato deberá evaluarse y formalizarse mediante una nueva orden de cambio.","Los plazos actualizados se contabilizan desde la aprobación de esta orden y desde la disponibilidad de la información o pagos requeridos.","La ejecución del cambio queda sujeta a la aprobación expresa del cliente."];
+  const showOCEmpty = !String(cl).trim() && !String(pr).trim() && !String(desc).trim() && !String(docsAfect).trim();
 
   return (
     <div>
       <div style={cardS}>
+        {showOCEmpty&&(
+          <InlineEmptyStateCard
+            title="Documenta el cambio con trazabilidad"
+            context="Registra el antes/después y su impacto para evitar ambigüedades contractuales."
+            build="Una orden de cambio formal con impacto en alcance, plazo y honorarios."
+            first="Cliente, proyecto, descripción del cambio y documentos afectados."
+            unlock="Comparativo, costos adicionales y bloque de aprobación."
+          />
+        )}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{...lb,color:G,margin:0}}>Datos del formulario</p>
           <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
@@ -1113,6 +1481,7 @@ function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
           <Fld label="Documentos afectados"><textarea value={docsAfect} onChange={e=>sdocsAfect(e.target.value)} placeholder="Planos, cronograma, propuesta, matriz de entregables..." style={{...si,height:64,resize:"vertical"}}/></Fld>
           <Fld label="Motivo"><Sel value={motivo} onChange={smotivo} options={MOTIVOS}/></Fld>
           <Fld label="Impacto principal"><Sel value={impacto} onChange={simpacto} options={IMPACTOS}/></Fld>
+          <Fld label="Estado de resolución"><Sel value={estadoResolucion} onChange={(value)=>sEstadoResolucion(value as OcResolutionStatus)} options={["Pendiente","Resuelto"]}/></Fld>
         </div>
         <p style={{...lb,color:G,margin:"8px 0"}}>3. Detalle comparativo</p>
         <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
@@ -1177,7 +1546,7 @@ function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
             <div style={{fontSize:10,lineHeight:1.6,color:DK,padding:"6px 0"}}>{desc||"—"}</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
-            {row("Motivo",motivo)}{row("Impacto principal",impacto)}{row("Documentos afectados",docsAfect)}
+            {row("Motivo",motivo)}{row("Impacto principal",impacto)}{row("Documentos afectados",docsAfect)}{row("Estado resolución",estadoResolucion)}
           </div>
         </Sec>
         <Sec n="3" title="Detalle comparativo">
@@ -1232,10 +1601,10 @@ function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
   const [step, setStep] = usePersistentState("brief.step",1);
 
   // Bloque 1 — Identidad
-  const [cl,   scl]   = usePersistentState("brief.cl",""); // cliente
-  const [pr,   spr]   = usePersistentState("brief.pr",""); // proyecto
-  const [cod,  scod]  = usePersistentState("brief.cod",""); // código
-  const [ub,   sub]   = usePersistentState("brief.ub",""); // ubicación
+  const [cl,   scl]   = useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); // cliente
+  const [pr,   spr]   = useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); // proyecto
+  const [cod,  scod]  = useSharedProjectTextField(SHARED_PROJECT_CODE_KEY,PROJECT_CODE_LEGACY_KEYS); // código
+  const [ub,   sub]   = useSharedProjectTextField(SHARED_PROJECT_LOCATION_KEY,PROJECT_LOCATION_LEGACY_KEYS); // ubicación
   const [tipoP,sTipoP]= usePersistentState("brief.tipoP","Arquitectura nueva");
   const [areaTe,sAreaTe] = usePersistentState("brief.areaTe","");
   const [areaEx,sAreaEx] = usePersistentState("brief.areaEx","");
@@ -1321,6 +1690,17 @@ function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
     "I":{bg:"#D6EAF8",c:"#2471A3"},
     "—":{bg:"#F5F3EF",c:"#AAA"}
   };
+  const showBriefStep1Empty = step===1 && !String(cl).trim() && !String(pr).trim() && !String(cod).trim() && !String(ub).trim();
+  const isInitialProgramRowBlank = rows.length===1
+    && !String(rows[0]?.espacio ?? "").trim()
+    && !String(rows[0]?.areaUnit ?? "").trim()
+    && !String(rows[0]?.usuarios ?? "").trim()
+    && !String(rows[0]?.obs ?? "").trim();
+  const showBriefStep2Empty = step===2 && isInitialProgramRowBlank;
+  const allNormEmpty = Object.values(norm).every(v=>!String(v).trim());
+  const allTecEmpty = Object.values(tec).every(v=>!String(v).trim());
+  const allPrefEmpty = Object.values(pref).every(v=>!String(v).trim());
+  const showBriefStep3Empty = step===3 && allNormEmpty && allTecEmpty && allPrefEmpty;
 
   return (
     <div>
@@ -1344,6 +1724,15 @@ function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
       {/* ─── STEP 1: IDENTIDAD ─── */}
       {step===1&&(
         <div style={cardS}>
+          {showBriefStep1Empty&&(
+            <InlineEmptyStateCard
+              title="Define la identidad del brief"
+              context="La ficha inicial fija contexto y criterios de trabajo antes de diseñar espacios."
+              build="Un programa arquitectónico validable con trazabilidad desde el encargo."
+              first="Cliente, proyecto, código y ubicación."
+              unlock="Marco base para estructurar programa y condicionantes."
+            />
+          )}
           <p style={{...lb,color:G,margin:"0 0 12px"}}>Datos de identificación del proyecto</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
             <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
@@ -1369,6 +1758,15 @@ function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
       {step===2&&(
         <div>
           <div style={cardS}>
+            {showBriefStep2Empty&&(
+              <InlineEmptyStateCard
+                title="Construye el programa de espacios"
+                context="Empieza con una primera lista corta; luego podrás afinar áreas, relaciones y prioridades."
+                build="Cuadro de áreas por zona y base para la matriz de relaciones."
+                first="Nombre de espacio, cantidad y área unitaria en la primera fila."
+                unlock="Totales por zona, porcentajes y lectura funcional."
+              />
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <p style={{...lb,color:G,margin:0}}>Programa de espacios</p>
               <div style={{display:"flex",gap:8}}>
@@ -1542,6 +1940,15 @@ function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
       {/* ─── STEP 3: CONDICIONANTES ─── */}
       {step===3&&(
         <div>
+          {showBriefStep3Empty&&(
+            <InlineEmptyStateCard
+              title="Completa condicionantes clave"
+              context="Este bloque traduce restricciones reales del proyecto en decisiones de diseño más seguras."
+              build="Resumen técnico y de preferencias para guiar el desarrollo."
+              first="Normativa aplicable, estado existente y prioridades del cliente."
+              unlock="Documento final del brief más sólido y defendible."
+            />
+          )}
           {/* Normativa */}
           <div style={cardS}>
             <p style={{...lb,color:G,margin:"0 0 12px"}}>Normativa</p>
@@ -1804,6 +2211,1017 @@ function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) {
   );
 }
 
+// ══ COTIZACION DE OBRA ═════════════════════════════════════════════════
+const COT_CATEGORIES_BASE = ["Trabajos preliminares","Estructuras","Arquitectura","Carpinteria","Instalaciones"];
+const COT_UNITS = ["UND","M2","M3","ML","GLB","DIA","KG"];
+const fmtMoney2 = (n: any) => "S/ " + Number(n || 0).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
+
+type CotPartida = {
+  id: number;
+  categoria: string;
+  codPartida: string;
+  descripcion: string;
+  und: string;
+  cant: number;
+  manoObra: number;
+  materiales: number;
+  utilidadPct: number;
+  riesgoPct: number;
+};
+
+const newCotPartida = (id: number, categoria: string): CotPartida => ({
+  id,
+  categoria,
+  codPartida: "",
+  descripcion: "",
+  und: "UND",
+  cant: 1,
+  manoObra: 0,
+  materiales: 0,
+  utilidadPct: 0,
+  riesgoPct: 0,
+});
+
+function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
+  const today = new Date().toISOString().split("T")[0];
+  const [step, setStep] = usePersistentState("cot.step", 1);
+  const [cl, scl] = useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY, PROJECT_CLIENT_LEGACY_KEYS);
+  const [pr, spr] = useSharedProjectTextField(SHARED_PROJECT_NAME_KEY, PROJECT_NAME_LEGACY_KEYS);
+  const [cod, scod] = useSharedProjectTextField(SHARED_PROJECT_CODE_KEY, PROJECT_CODE_LEGACY_KEYS);
+  const [ub, sub] = useSharedProjectTextField(SHARED_PROJECT_LOCATION_KEY, PROJECT_LOCATION_LEGACY_KEYS);
+  const [fe, sfe] = usePersistentState("cot.fe", today);
+  const [categorias, setCategorias] = usePersistentState<string[]>("cot.categorias", COT_CATEGORIES_BASE, isStringArray);
+  const [newCategoria, setNewCategoria] = usePersistentState("cot.newCategoria", "");
+  const [nextId, setNextId] = usePersistentState("cot.nextId", 2);
+  const [partidas, setPartidas] = usePersistentState<CotPartida[]>("cot.partidas", () => [newCotPartida(1, COT_CATEGORIES_BASE[0])], Array.isArray);
+  const [nCuenta, sNCuenta] = usePersistentState("cot.nCuenta", "");
+  const [banco, sBanco] = usePersistentState("cot.banco", "");
+  const [cci, sCci] = usePersistentState("cot.cci", "");
+  const [ggPct, sGgPct] = usePersistentState("cot.ggPct", 0);
+  const [supPct, sSupPct] = usePersistentState("cot.supPct", 0);
+  const [igvPct, sIgvPct] = usePersistentState("cot.igvPct", 18);
+  const [condPago, sCondPago] = usePersistentState("cot.condPago", "50% adelanto y 50% contra entrega");
+  const [obs, sObs] = usePersistentState("cot.obs", "");
+
+  const categoriasSafe = useMemo(() => (
+    categorias.length ? categorias : COT_CATEGORIES_BASE
+  ), [categorias]);
+
+  useEffect(() => {
+    const maxId = partidas.reduce((max, item) => Math.max(max, Number(item?.id) || 0), 0);
+    if (nextId <= maxId) setNextId(maxId + 1);
+  }, [nextId, partidas, setNextId]);
+
+  const upPartString = (id: number, key: "categoria" | "codPartida" | "descripcion" | "und", value: string) => {
+    setPartidas((prev: CotPartida[]) => prev.map((item) => item.id === id ? {...item, [key]: value} : item));
+  };
+  const upPartNumber = (id: number, key: "cant" | "manoObra" | "materiales" | "utilidadPct" | "riesgoPct", value: string) => {
+    const n = Number(value) || 0;
+    setPartidas((prev: CotPartida[]) => prev.map((item) => item.id === id ? {...item, [key]: n} : item));
+  };
+
+  const addCategoria = () => {
+    const name = newCategoria.trim();
+    if (!name) return;
+    if (categoriasSafe.some((cat) => cat.toLowerCase() === name.toLowerCase())) {
+      setNewCategoria("");
+      return;
+    }
+    setCategorias((prev) => [...prev, name]);
+    setNewCategoria("");
+  };
+
+  const addPartida = () => {
+    const categoriaDefault = categoriasSafe[0] || "General";
+    const id = nextId;
+    setPartidas((prev: CotPartida[]) => [...prev, newCotPartida(id, categoriaDefault)]);
+    setNextId((n) => n + 1);
+  };
+  const delPartida = (id: number) => setPartidas((prev: CotPartida[]) => prev.filter((item) => item.id !== id));
+
+  const calcPartida = (item: CotPartida) => {
+    const costoBase = (Number(item.manoObra) || 0) + (Number(item.materiales) || 0);
+    const precioUnitario = costoBase * (1 + (Number(item.utilidadPct) || 0) / 100) * (1 + (Number(item.riesgoPct) || 0) / 100);
+    const parcial = precioUnitario * (Number(item.cant) || 0);
+    const subTotal = parcial;
+    return {costoBase, precioUnitario, parcial, subTotal};
+  };
+
+  const sums = useMemo(() => {
+    const subtotalPartidas = partidas.reduce((acc, item) => acc + calcPartida(item).subTotal, 0);
+    const ggMonto = subtotalPartidas * ((Number(ggPct) || 0) / 100);
+    const supMonto = subtotalPartidas * ((Number(supPct) || 0) / 100);
+    const baseImponible = subtotalPartidas + ggMonto + supMonto;
+    const igvMonto = baseImponible * ((Number(igvPct) || 0) / 100);
+    const total = baseImponible + igvMonto;
+    return {subtotalPartidas, ggMonto, supMonto, baseImponible, igvMonto, total};
+  }, [ggPct, igvPct, partidas, supPct]);
+
+  const partidasByCategory = useMemo(() => {
+    const categories = [...categoriasSafe];
+    partidas.forEach((item) => {
+      if (item.categoria && !categories.includes(item.categoria)) categories.push(item.categoria);
+    });
+    return categories.map((cat) => ({cat, items: partidas.filter((item) => item.categoria === cat)})).filter((group) => group.items.length > 0);
+  }, [categoriasSafe, partidas]);
+
+  const showCotEmpty = step === 1 && !String(cl).trim() && !String(pr).trim() && !partidas.length;
+  const ST = ["Partidas y categorías","Documento final"];
+
+  return (
+    <div>
+      <div style={{display:"flex",gap:20,marginBottom:16,paddingBottom:12,borderBottom:"1px solid #E8E2D8"}}>
+        {ST.map((label, index) => {
+          const n = index + 1;
+          const done = step > n;
+          const active = step === n;
+          return (
+            <div key={label} style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={() => setStep(n)}>
+              <div style={{width:19,height:19,borderRadius:"50%",background:done?G:active?DK:"#D9D4C8",color:done?"#fff":active?"#fff":"#888",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{done ? "✓" : n}</div>
+              <span style={{fontSize:10,fontWeight:active?700:500,color:active?DK:"#888"}}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {step === 1 && (
+        <div>
+          {showCotEmpty && (
+            <InlineEmptyStateCard
+              title="Empieza tu cotización"
+              context="Crea categorías y partidas para calcular automáticamente precio unitario y total para cliente."
+              build="Una cotización de obra clara por partida, lista para presentar."
+              first="Cliente, proyecto y al menos una partida con mano de obra y materiales."
+              unlock="Podrás generar el documento final con subtotales, GG, supervisión e IGV."
+            />
+          )}
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{...lb,color:G,marginBottom:8}}>Datos base de cotización</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+              <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
+              <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Nombre del proyecto"/></Fld>
+              <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="COT-001"/></Fld>
+              <Fld label="Ubicación"><Inp value={ub} onChange={sub} placeholder="Ciudad / distrito"/></Fld>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <Fld label="Fecha"><Inp type="date" value={fe} onChange={sfe}/></Fld>
+            </div>
+          </div>
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{...lb,color:G,margin:0}}>Categorías</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input value={newCategoria} onChange={(e) => setNewCategoria(e.target.value)} placeholder="Nueva categoría" style={{...si,width:170}}/>
+                <Btn v="ol" sm onClick={addCategoria}>+ Categoría</Btn>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+              {categoriasSafe.map((cat) => (
+                <span key={cat} style={{padding:"4px 8px",borderRadius:999,background:"#F8F6F1",border:"1px solid #E5DDD0",fontSize:9,fontWeight:700,color:"#666"}}>
+                  {cat}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <div style={{...lb,color:G,margin:0}}>Partidas</div>
+                <span style={{fontSize:9,color:UI.textMuted}}>
+                  Precio cliente = (MO + Materiales) × (1 + Utilidad%) × (1 + Riesgo%)
+                </span>
+              </div>
+              <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
+            </div>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead>
+                  <tr style={{background:"#F8F6F1"}}>
+                    {["Categoría","Cod. partida","Descripción","UND","Cant","Mano de obra","Materiales","Utilidad %","Riesgo %","Precio cliente",""].map((h) => (
+                      <th key={h} style={{padding:"6px 7px",fontSize:9,color:"#888",textAlign:h==="Descripción"?"left":"right",borderBottom:"1px solid #E5DDD0",whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {!partidas.length && (
+                    <tr><td colSpan={11} style={{padding:"20px 0",textAlign:"center",fontSize:10,color:"#AAA"}}>No hay partidas. Usa "+ Partida" para comenzar.</td></tr>
+                  )}
+                  {partidas.map((item, index) => {
+                    const calc = calcPartida(item);
+                    return (
+                      <tr key={item.id} style={{background:index%2 ? "#fff" : "#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
+                        <td style={{padding:"6px 7px"}}>
+                          <select value={item.categoria} onChange={(e) => upPartString(item.id, "categoria", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:130}}>
+                            {categoriasSafe.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                          </select>
+                        </td>
+                        <td style={{padding:"6px 7px"}}><input value={item.codPartida} onChange={(e) => upPartString(item.id, "codPartida", e.target.value)} placeholder="1.01" style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:88}}/></td>
+                        <td style={{padding:"6px 7px"}}><input value={item.descripcion} onChange={(e) => upPartString(item.id, "descripcion", e.target.value)} placeholder="Descripción de partida" style={{...si,padding:"5px 6px",fontSize:10,minWidth:170}}/></td>
+                        <td style={{padding:"6px 7px"}}><select value={item.und} onChange={(e) => upPartString(item.id, "und", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:72}}>{COT_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</select></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.cant} onChange={(e) => upPartNumber(item.id, "cant", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:78}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.manoObra} onChange={(e) => upPartNumber(item.id, "manoObra", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:94}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.materiales} onChange={(e) => upPartNumber(item.id, "materiales", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:94}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.utilidadPct} onChange={(e) => upPartNumber(item.id, "utilidadPct", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:74}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.riesgoPct} onChange={(e) => upPartNumber(item.id, "riesgoPct", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:74}}/></td>
+                        <td style={{padding:"6px 7px",fontSize:10,fontWeight:700,color:G,textAlign:"right",whiteSpace:"nowrap"}}>{fmtMoney2(calc.precioUnitario)}</td>
+                        <td style={{padding:"6px 7px",textAlign:"center"}}><button onClick={() => delPartida(item.id)} style={{background:"none",border:"none",color:"#CCC",fontSize:13,cursor:"pointer",padding:0}}>×</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{background:"#F8F6F1",borderTop:"2px solid #E5DDD0"}}>
+                    <td colSpan={9} style={{padding:"6px 8px",fontSize:10,fontWeight:700}}>Subtotal partidas</td>
+                    <td style={{padding:"6px 8px",fontSize:10,fontWeight:800,color:G,textAlign:"right"}}>{fmtMoney2(sums.subtotalPartidas)}</td>
+                    <td/>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div style={{textAlign:"right",marginTop:14}}>
+            <Btn onClick={() => setStep(2)}>Siguiente →</Btn>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div>
+          <div style={{...cardS,padding:18}}>
+            <div style={{...lb,color:G,marginBottom:8}}>Datos finales de pago y recargos</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+              <Fld label="Banco"><Inp value={banco} onChange={sBanco} placeholder="Banco"/></Fld>
+              <Fld label="N.° cuenta"><Inp value={nCuenta} onChange={sNCuenta} placeholder="N.° de cuenta"/></Fld>
+              <Fld label="CCI"><Inp value={cci} onChange={sCci} placeholder="CCI"/></Fld>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+              <Fld label="Gastos generales %"><input type="number" value={ggPct} onChange={(e) => sGgPct(Number(e.target.value) || 0)} style={si}/></Fld>
+              <Fld label="Supervisión %"><input type="number" value={supPct} onChange={(e) => sSupPct(Number(e.target.value) || 0)} style={si}/></Fld>
+              <Fld label="IGV %"><input type="number" value={igvPct} onChange={(e) => sIgvPct(Number(e.target.value) || 0)} style={si}/></Fld>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <Fld label="Condiciones de pago"><Inp value={condPago} onChange={sCondPago} placeholder="Condición acordada"/></Fld>
+              <Fld label="Observaciones"><Inp value={obs} onChange={sObs} placeholder="Notas adicionales"/></Fld>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:4}}>
+              {[
+                ["Subtotal partidas", fmtMoney2(sums.subtotalPartidas)],
+                [`Gastos generales (${Number(ggPct)||0}%)`, fmtMoney2(sums.ggMonto)],
+                [`Supervisión (${Number(supPct)||0}%)`, fmtMoney2(sums.supMonto)],
+                ["Base imponible", fmtMoney2(sums.baseImponible)],
+                [`IGV (${Number(igvPct)||0}%)`, fmtMoney2(sums.igvMonto)],
+                ["Total final", fmtMoney2(sums.total)],
+              ].map(([k,v]) => (
+                <div key={k} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"8px 10px",background:"#FBF9F4"}}>
+                  <div style={{fontSize:9,color:"#888",marginBottom:4}}>{k}</div>
+                  <div style={{fontSize:12,fontWeight:800,color:k==="Total final"?G:DK}}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div data-doc-id={toolId} style={{...cardS,padding:26}}>
+            <DocHeader title="Cotización de Obra" cl={cl} pr={pr} fe={fe}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>
+              {[
+                ["Código", cod || "—"],
+                ["Ubicación", ub || "—"],
+                ["Banco", banco || "—"],
+                ["N.° cuenta", nCuenta || "—"],
+              ].map(([k,v]) => (
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #F0EBE0"}}>
+                  <span style={{fontSize:10,color:"#888"}}>{k}</span>
+                  <span style={{fontSize:10,fontWeight:700}}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:7}}>Detalle por partidas</div>
+            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",marginBottom:14}}>
+              <thead>
+                <tr style={{background:"#1A1A1A"}}>
+                  {["COD. PARTIDA","DESCRIPCIÓN","UND","CANT","PRECIO UNITARIO","PARCIAL","SUB-TOTAL"].map((h, i) => (
+                    <th key={h} style={{padding:"6px 8px",fontSize:9,color:G,textAlign:i>=3?"right":"left",borderBottom:"1px solid #222"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {!partidas.length && (
+                  <tr><td colSpan={7} style={{padding:14,textAlign:"center",fontSize:10,color:"#AAA"}}>Sin partidas registradas.</td></tr>
+                )}
+                {partidasByCategory.map((group) => (
+                  <React.Fragment key={group.cat}>
+                    <tr style={{background:"#F8F6F1"}}>
+                      <td colSpan={7} style={{padding:"6px 8px",fontSize:9,fontWeight:800,color:"#6F5A2F",textTransform:"uppercase"}}>{group.cat}</td>
+                    </tr>
+                    {group.items.map((item, idx) => {
+                      const calc = calcPartida(item);
+                      return (
+                        <tr key={item.id} style={{background:idx%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
+                          <td style={{padding:"6px 8px",fontSize:10,fontWeight:600}}>{item.codPartida || "—"}</td>
+                          <td style={{padding:"6px 8px",fontSize:10}}>{item.descripcion || "—"}</td>
+                          <td style={{padding:"6px 8px",fontSize:10}}>{item.und || "—"}</td>
+                          <td style={{padding:"6px 8px",fontSize:10,textAlign:"right"}}>{Number(item.cant||0).toLocaleString("es-PE")}</td>
+                          <td style={{padding:"6px 8px",fontSize:10,textAlign:"right"}}>{fmtMoney2(calc.precioUnitario)}</td>
+                          <td style={{padding:"6px 8px",fontSize:10,textAlign:"right"}}>{fmtMoney2(calc.parcial)}</td>
+                          <td style={{padding:"6px 8px",fontSize:10,textAlign:"right",fontWeight:700,color:G}}>{fmtMoney2(calc.subTotal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{background:"#F8F6F1",borderTop:"2px solid #E5DDD0"}}>
+                  <td colSpan={6} style={{padding:"7px 9px",fontSize:10,fontWeight:700}}>Subtotal partidas</td>
+                  <td style={{padding:"7px 9px",fontSize:10,fontWeight:800,textAlign:"right",color:G}}>{fmtMoney2(sums.subtotalPartidas)}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:16}}>
+              <div style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"10px 12px"}}>
+                <div style={{...lb,color:G,marginBottom:8}}>Información de pago</div>
+                {[
+                  ["Banco", banco || "—"],
+                  ["N.° Cuenta", nCuenta || "—"],
+                  ["CCI", cci || "—"],
+                  ["Condiciones", condPago || "—"],
+                ].map(([k,v]) => (
+                  <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
+                    <span style={{fontSize:10,color:"#888"}}>{k}</span>
+                    <span style={{fontSize:10,fontWeight:600}}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"10px 12px"}}>
+                <div style={{...lb,color:G,marginBottom:8}}>Resumen económico final</div>
+                {[
+                  [`Gastos generales (${Number(ggPct)||0}%)`, fmtMoney2(sums.ggMonto)],
+                  [`Supervisión (${Number(supPct)||0}%)`, fmtMoney2(sums.supMonto)],
+                  ["Base imponible", fmtMoney2(sums.baseImponible)],
+                  [`IGV (${Number(igvPct)||0}%)`, fmtMoney2(sums.igvMonto)],
+                  ["Total final", fmtMoney2(sums.total)],
+                ].map(([k,v]) => (
+                  <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
+                    <span style={{fontSize:10,color:"#888"}}>{k}</span>
+                    <span style={{fontSize:10,fontWeight:700,color:k==="Total final"?G:DK}}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {obs && <div style={{marginTop:12,borderTop:"1px solid #E5DDD0",paddingTop:8,fontSize:9,color:"#7A7A7A"}}><b>Observaciones:</b> {obs}</div>}
+          </div>
+
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+            <Btn v="ol" onClick={() => setStep(1)}>← Anterior</Btn>
+            <Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ CRONOGRAMA DE OBRA ════════════════════════════════════════════════
+type ObraDepTipo = "FS" | "SS" | "FF";
+type ObraPartida = {
+  id: number;
+  sourceCotId: number | null;
+  categoria: string;
+  codPartida: string;
+  descripcion: string;
+  und: string;
+  cant: number;
+  duracionDias: number;
+  predecesoraId: number | null;
+  tipoDep: ObraDepTipo;
+  desfaseDias: number;
+  avancePct: number;
+};
+type ObraPlan = ObraPartida & {
+  inicioPlan: string;
+  finPlan: string;
+  depLista: boolean;
+  depTexto: string;
+  estado: "Bloqueada" | "Lista" | "En progreso" | "Completada" | "Conflicto";
+  ciclo: boolean;
+  avanceNorm: number;
+};
+const OBRA_DEP_LABEL: Record<ObraDepTipo, string> = {FS:"Fin a Inicio",SS:"Inicio a Inicio",FF:"Fin a Fin"};
+const OBRA_COLORS = ["#C9A96E","#4C7EA8","#5F8D62","#A66D5B","#8A6FB5","#5F9EA0","#A5822A","#8C6E63","#4E9D8F","#B16D7C"];
+const newObraPartida = (id: number, seed?: Partial<ObraPartida>): ObraPartida => ({
+  id,
+  sourceCotId: null,
+  categoria: "General",
+  codPartida: "",
+  descripcion: "",
+  und: "UND",
+  cant: 1,
+  duracionDias: 1,
+  predecesoraId: null,
+  tipoDep: "FS",
+  desfaseDias: 0,
+  avancePct: 0,
+  ...seed,
+});
+
+function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
+  const today = new Date().toISOString().split("T")[0];
+  const [cl, scl] = useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY, PROJECT_CLIENT_LEGACY_KEYS);
+  const [pr, spr] = useSharedProjectTextField(SHARED_PROJECT_NAME_KEY, PROJECT_NAME_LEGACY_KEYS);
+  const [cod, scod] = useSharedProjectTextField(SHARED_PROJECT_CODE_KEY, PROJECT_CODE_LEGACY_KEYS);
+  const [ub, sub] = useSharedProjectTextField(SHARED_PROJECT_LOCATION_KEY, PROJECT_LOCATION_LEGACY_KEYS);
+  const [fe, sfe] = usePersistentState("obra.fe", today);
+  const [inicio, sInicio] = usePersistentState("obra.inicio", today);
+  const [resp, sResp] = usePersistentState("obra.resp", "");
+  const [obs, sObs] = usePersistentState("obra.obs", "");
+  const [syncAt, setSyncAt] = usePersistentState("obra.syncAt", "");
+  const [nextId, setNextId] = usePersistentState("obra.nextId", 1);
+  const [partidas, setPartidas] = usePersistentState<ObraPartida[]>("obra.partidas", [], Array.isArray);
+
+  useEffect(() => {
+    const maxId = partidas.reduce((max, item) => Math.max(max, Number(item?.id) || 0), 0);
+    if (nextId <= maxId) setNextId(maxId + 1);
+  }, [nextId, partidas, setNextId]);
+
+  const syncFromCotizacion = () => {
+    const cotPartidas = readStorage<CotPartida[]>("cot.partidas", [], Array.isArray).filter((item) => item && typeof item === "object");
+    if (!cotPartidas.length) {
+      window.alert("No hay partidas en Cotización de Obra. Completa esa herramienta y vuelve a sincronizar.");
+      return;
+    }
+    setPartidas((prev) => {
+      const prevBySource = new Map<number, ObraPartida>();
+      prev.forEach((item) => { if (item.sourceCotId) prevBySource.set(item.sourceCotId, item); });
+      let cursorId = prev.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+      const fromCot: ObraPartida[] = cotPartidas.map((cot, idx) => {
+        const found = prevBySource.get(cot.id);
+        const base = {categoria:cot.categoria || "General",codPartida:cot.codPartida || "",descripcion:cot.descripcion || `Partida ${idx+1}`,und:cot.und || "UND",cant:Math.max(0, Number(cot.cant) || 0)};
+        if (found) return {...found, ...base, sourceCotId: cot.id};
+        cursorId += 1;
+        return newObraPartida(cursorId, {...base, sourceCotId: cot.id, duracionDias: Math.max(1, Math.round(Number(cot.cant) || 1))});
+      });
+      const manual = prev.filter((item) => !item.sourceCotId);
+      const merged = [...fromCot, ...manual];
+      const validIds = new Set(merged.map((item) => item.id));
+      return merged.map((item) => ({...item, predecesoraId: item.predecesoraId && validIds.has(item.predecesoraId) && item.predecesoraId !== item.id ? item.predecesoraId : null}));
+    });
+    setSyncAt(new Date().toISOString());
+  };
+
+  const addPartida = () => {
+    const id = nextId;
+    const firstCategory = partidas.find((item) => String(item.categoria).trim())?.categoria || "General";
+    setPartidas((prev) => [...prev, newObraPartida(id, {categoria:firstCategory})]);
+    setNextId((n) => n + 1);
+  };
+  const removePartida = (id: number) => setPartidas((prev) => prev.filter((item) => item.id !== id).map((item) => ({...item, predecesoraId: item.predecesoraId === id ? null : item.predecesoraId})));
+  const upString = (id: number, key: "categoria" | "codPartida" | "descripcion" | "und", value: string) => setPartidas((prev) => prev.map((item) => item.id === id ? {...item, [key]: value} : item));
+  const upNumber = (id: number, key: "cant" | "duracionDias" | "desfaseDias" | "avancePct", value: string) => {
+    let n = Number(value) || 0;
+    if (key === "duracionDias") n = Math.max(1, Math.round(n));
+    if (key === "avancePct") n = Math.max(0, Math.min(100, n));
+    if (key === "cant") n = Math.max(0, n);
+    setPartidas((prev) => prev.map((item) => item.id === id ? {...item, [key]: n} : item));
+  };
+  const upPred = (id: number, value: string) => {
+    const next = Number(value) || null;
+    setPartidas((prev) => prev.map((item) => item.id === id ? {...item, predecesoraId: next && next !== id ? next : null} : item));
+  };
+  const upDep = (id: number, value: string) => {
+    const dep = value === "SS" || value === "FF" ? value : "FS";
+    setPartidas((prev) => prev.map((item) => item.id === id ? {...item, tipoDep: dep} : item));
+  };
+
+  const plan = useMemo(() => {
+    const startProject = normalizeWorkDate(inicio || today);
+    const byId = new Map<number, ObraPartida>();
+    partidas.forEach((item) => byId.set(item.id, item));
+    const memo = new Map<number, {inicioPlan: string; finPlan: string; ciclo: boolean}>();
+    const visiting = new Set<number>();
+    const range = (id: number): {inicioPlan: string; finPlan: string; ciclo: boolean} => {
+      const cached = memo.get(id);
+      if (cached) return cached;
+      const row = byId.get(id);
+      if (!row) return {inicioPlan:startProject,finPlan:startProject,ciclo:false};
+      if (visiting.has(id)) return {inicioPlan:startProject,finPlan:startProject,ciclo:true};
+      visiting.add(id);
+      const dur = Math.max(1, Math.round(Number(row.duracionDias) || 1));
+      let inicioPlan = startProject;
+      let ciclo = false;
+      const predId = row.predecesoraId;
+      if (predId && predId !== id && byId.has(predId)) {
+        const pred = range(predId);
+        if (pred.ciclo) ciclo = true;
+        else {
+          const lag = Math.round(Number(row.desfaseDias) || 0);
+          if (row.tipoDep === "FS") inicioPlan = addWorkDaysMonSat(pred.finPlan, 1 + lag);
+          else if (row.tipoDep === "SS") inicioPlan = addWorkDaysMonSat(pred.inicioPlan, lag);
+          else inicioPlan = addWorkDaysMonSat(addWorkDaysMonSat(pred.finPlan, lag), -(dur - 1));
+        }
+      } else if (predId === id) {
+        ciclo = true;
+      }
+      if (cmpDateISO(inicioPlan, startProject) < 0) inicioPlan = startProject;
+      const finPlan = addWorkDaysMonSat(inicioPlan, dur - 1);
+      const result = {inicioPlan, finPlan, ciclo};
+      memo.set(id, result);
+      visiting.delete(id);
+      return result;
+    };
+    const rows: ObraPlan[] = partidas.map((item) => {
+      const r = range(item.id);
+      const pred = item.predecesoraId ? byId.get(item.predecesoraId) : undefined;
+      const depLista = !pred ? true : item.tipoDep === "FS" ? (Number(pred.avancePct) || 0) >= 100 : item.tipoDep === "SS" ? (Number(pred.avancePct) || 0) > 0 : true;
+      const lag = Math.round(Number(item.desfaseDias) || 0);
+      const depTexto = !pred ? "Sin dependencia" : `${pred.codPartida || `#${pred.id}`} · ${OBRA_DEP_LABEL[item.tipoDep]} (${lag>0?`+${lag}`:lag}d)`;
+      const avanceNorm = Math.max(0, Math.min(100, Number(item.avancePct) || 0));
+      const estado = r.ciclo ? "Conflicto" : avanceNorm >= 100 ? "Completada" : avanceNorm > 0 ? "En progreso" : depLista ? "Lista" : "Bloqueada";
+      return {...item, ...r, depLista, depTexto, estado, avanceNorm};
+    });
+    const rowsById = new Map<number, ObraPlan>();
+    rows.forEach((item) => rowsById.set(item.id, item));
+    const orderedRows = [...rows].sort((a, b) => cmpDateISO(a.inicioPlan, b.inicioPlan) || a.id - b.id);
+    const minDate = orderedRows.length ? orderedRows.reduce((min, row) => cmpDateISO(row.inicioPlan, min) < 0 ? row.inicioPlan : min, orderedRows[0].inicioPlan) : startProject;
+    const maxDate = orderedRows.length ? orderedRows.reduce((max, row) => cmpDateISO(row.finPlan, max) > 0 ? row.finPlan : max, orderedRows[0].finPlan) : startProject;
+    const workDays: string[] = [];
+    let cursor = minDate;
+    while (cmpDateISO(cursor, maxDate) <= 0 && workDays.length < 540) { workDays.push(cursor); cursor = addWorkDaysMonSat(cursor, 1); }
+    if (!workDays.length) workDays.push(startProject);
+    const dayIndex = new Map<string, number>(); workDays.forEach((d, i) => dayIndex.set(d, i));
+    const criticalIds: number[] = [];
+    if (orderedRows.length) {
+      const tail = orderedRows.reduce((best, row) => cmpDateISO(row.finPlan, best.finPlan) > 0 ? row : best, orderedRows[0]);
+      const seen = new Set<number>(); let cursorRow: ObraPlan | undefined = tail;
+      while (cursorRow && !seen.has(cursorRow.id)) { criticalIds.unshift(cursorRow.id); seen.add(cursorRow.id); cursorRow = cursorRow.predecesoraId ? rowsById.get(cursorRow.predecesoraId) : undefined; }
+    }
+    return {rows, rowsById, orderedRows, minDate, maxDate, dayIndex, workDays, totalDias: orderedRows.length ? diffDateDays(minDate, maxDate) + 1 : 0, conflictCount: rows.filter((row) => row.ciclo).length, criticalIds, startProject};
+  }, [inicio, partidas, today]);
+
+  const catColors = useMemo(() => {
+    const map: Record<string, string> = {};
+    Array.from(new Set(plan.rows.map((row) => row.categoria || "General"))).forEach((cat, i) => { map[cat] = OBRA_COLORS[i % OBRA_COLORS.length]; });
+    return map;
+  }, [plan.rows]);
+
+  const showEmpty = !partidas.length && !String(cl).trim() && !String(pr).trim();
+  const dayCell = 16;
+  const timelineWidth = Math.max(420, plan.workDays.length * dayCell);
+  const labelWidth = 250;
+
+  return (
+    <div>
+      {showEmpty && <InlineEmptyStateCard title="Cronograma de obra por partidas" context="Sincroniza partidas desde Cotización, define dependencias y obtén un Gantt detallado." build="Un cronograma técnico de obra con secuencia real y control de avance." first="Actualizar desde Cotización, luego asignar duración (días) y predecesoras." unlock="Fechas automáticas, checklist de dependencias y documento imprimible."/>}
+      <div style={cardS}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+          <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Cliente"/></Fld>
+          <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Proyecto"/></Fld>
+          <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="OBR-001"/></Fld>
+          <Fld label="Ubicación"><Inp value={ub} onChange={sub} placeholder="Ciudad / distrito"/></Fld>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+          <Fld label="Fecha"><Inp type="date" value={fe} onChange={sfe}/></Fld>
+          <Fld label="Inicio obra (Lun–Sáb)"><Inp type="date" value={inicio} onChange={sInicio}/></Fld>
+          <Fld label="Responsable"><Inp value={resp} onChange={sResp} placeholder="Ing. residente / PM"/></Fld>
+        </div>
+        <Fld label="Observaciones"><Inp value={obs} onChange={sObs} placeholder="Notas de secuencia y restricciones"/></Fld>
+      </div>
+
+      <div style={cardS}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+          <div style={{...lb,color:G,margin:0}}>Partidas + dependencias (Fin a Inicio · Inicio a Inicio · Fin a Fin + Desfase)</div>
+          <div style={{display:"flex",gap:8}}>
+            <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
+            <Btn v="gd" sm onClick={syncFromCotizacion}>Actualizar desde Cotización</Btn>
+          </div>
+        </div>
+        <div style={{fontSize:9,color:"#8A93A0",marginBottom:10}}>{syncAt ? `Última sincronización: ${new Date(syncAt).toLocaleString("es-PE")}` : "Sincroniza para traer partidas de Cotización."}</div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr style={{background:"#F8F6F1"}}>{["Categoría","Cod.","Descripción","UND","Cant.","Dur. días","Predecesora","Tipo","Desfase","Avance %","Inicio","Fin","Checklist",""].map((h) => <th key={h} style={{padding:"6px 7px",fontSize:9,color:"#888",textAlign:h==="Descripción"?"left":"right",borderBottom:"1px solid #E5DDD0",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {!partidas.length && <tr><td colSpan={14} style={{padding:"20px 0",textAlign:"center",fontSize:10,color:"#AAA"}}>No hay partidas. Sincroniza o agrega manualmente.</td></tr>}
+              {partidas.map((item, idx) => {
+                const row = plan.rowsById.get(item.id); const ok = row?.depLista ?? true;
+                return <tr key={item.id} style={{background:idx%2 ? "#fff" : "#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
+                  <td style={{padding:"6px 7px"}}><input value={item.categoria} onChange={(e) => upString(item.id, "categoria", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:112}}/></td>
+                  <td style={{padding:"6px 7px"}}><input value={item.codPartida} onChange={(e) => upString(item.id, "codPartida", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:84,textAlign:"right"}}/></td>
+                  <td style={{padding:"6px 7px"}}><input value={item.descripcion} onChange={(e) => upString(item.id, "descripcion", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:180}}/></td>
+                  <td style={{padding:"6px 7px"}}><input value={item.und} onChange={(e) => upString(item.id, "und", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:62}}/></td>
+                  <td style={{padding:"6px 7px"}}><input type="number" min="0" value={item.cant} onChange={(e) => upNumber(item.id, "cant", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:70,textAlign:"right"}}/></td>
+                  <td style={{padding:"6px 7px"}}><input type="number" min="1" value={item.duracionDias} onChange={(e) => upNumber(item.id, "duracionDias", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:74,textAlign:"right"}}/></td>
+                  <td style={{padding:"6px 7px"}}><select value={item.predecesoraId ?? ""} onChange={(e) => upPred(item.id, e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:145}}><option value="">Sin predecesora</option>{partidas.filter((opt) => opt.id !== item.id).map((opt) => <option key={opt.id} value={opt.id}>{opt.codPartida || `#${opt.id}`} · {opt.descripcion || "Partida"}</option>)}</select></td>
+                  <td style={{padding:"6px 7px"}}><select value={item.tipoDep} onChange={(e) => upDep(item.id, e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:136}}><option value="FS">Fin a Inicio</option><option value="SS">Inicio a Inicio</option><option value="FF">Fin a Fin</option></select></td>
+                  <td style={{padding:"6px 7px"}}><input type="number" value={item.desfaseDias} onChange={(e) => upNumber(item.id, "desfaseDias", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:70,textAlign:"right"}}/></td>
+                  <td style={{padding:"6px 7px"}}><input type="number" min="0" max="100" value={item.avancePct} onChange={(e) => upNumber(item.id, "avancePct", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:74,textAlign:"right"}}/></td>
+                  <td style={{padding:"6px 7px",fontSize:9,textAlign:"right"}}>{row?.inicioPlan ? fDateShort(row.inicioPlan) : "—"}</td>
+                  <td style={{padding:"6px 7px",fontSize:9,textAlign:"right"}}>{row?.finPlan ? fDateShort(row.finPlan) : "—"}</td>
+                  <td style={{padding:"6px 7px",textAlign:"center"}}><span title={row?.depTexto} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:4,border:`1px solid ${ok?"#7BA862":"#D1B074"}`,background:ok?"#EAF6DF":"#F9F0DC",color:ok?"#3F6A28":"#8A6D3A",fontSize:10,fontWeight:800}}>{ok?"✓":"!"}</span></td>
+                  <td style={{padding:"6px 7px",textAlign:"center"}}><button onClick={() => removePartida(item.id)} style={{background:"none",border:"none",color:"#CCC",fontSize:13,cursor:"pointer",padding:0}}>×</button></td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={cardS}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+          <div style={{...lb,color:G,margin:0}}>Diagrama de Gantt detallado (color por categoría)</div>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{Object.entries(catColors).map(([cat, color]) => <span key={cat} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 7px",borderRadius:999,border:"1px solid #E5DDD0",fontSize:8,color:"#6A737D",background:"#FBF9F4"}}><span style={{width:8,height:8,borderRadius:"50%",background:color}}/>{cat}</span>)}</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+          {[["Inicio",fDate(plan.startProject)],["Cierre estimado",fDate(plan.maxDate)],["Duración",`${plan.totalDias} días`],["Conflictos",plan.conflictCount?`${plan.conflictCount} detectado(s)`:"0"]].map(([k,v])=><div key={k} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"8px 10px",background:"#FBF9F4"}}><div style={{fontSize:9,color:"#888",marginBottom:4}}>{k}</div><div style={{fontSize:11,fontWeight:800,color:k==="Conflictos"&&plan.conflictCount?"#A63B2A":DK}}>{v}</div></div>)}
+        </div>
+        <div style={{overflowX:"auto",paddingBottom:4}}>
+          <div style={{minWidth:labelWidth + timelineWidth + 20}}>
+            <div style={{display:"flex",alignItems:"center",paddingBottom:6}}><div style={{width:labelWidth,fontSize:9,color:"#8C97A5",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.7px"}}>Partidas</div><div style={{position:"relative",width:timelineWidth,height:20,border:"1px solid #E5DDD0",borderRadius:6,background:"#FBF9F4",overflow:"hidden"}}>{plan.workDays.map((d, idx) => <div key={d} style={{position:"absolute",left:idx*dayCell,top:0,width:dayCell,height:"100%",borderLeft:idx===0?"none":"1px solid #F0EBE0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:"#98A2AD"}}>{idx%5===0?fDateShort(d):""}</div>)}</div></div>
+            {plan.orderedRows.map((row) => {
+              const startIdx = plan.dayIndex.get(row.inicioPlan) ?? 0; const endIdx = plan.dayIndex.get(row.finPlan) ?? startIdx; const span = Math.max(1, endIdx - startIdx + 1); const color = catColors[row.categoria] || G; const progressW = Math.max(2, Math.round(span * dayCell * (row.avanceNorm / 100)));
+              return <div key={`g-${row.id}`} style={{display:"flex",alignItems:"center",marginBottom:6}}>
+                <div style={{width:labelWidth,paddingRight:10}}><div style={{fontSize:10,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.codPartida || `#${row.id}`} · {row.descripcion || "Partida"}</div><div style={{fontSize:8,color:"#8A93A0"}}>{row.depTexto}</div></div>
+                <div style={{position:"relative",width:timelineWidth,height:26,border:"1px solid #E5DDD0",borderRadius:6,background:"#F7F5F1",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px)`,backgroundSize:`${dayCell}px 100%`}}/><div style={{position:"absolute",left:startIdx*dayCell,top:3,width:span*dayCell,height:20,background:color,borderRadius:4,opacity:row.estado==="Bloqueada"?0.5:0.92,overflow:"hidden"}}><div style={{width:progressW,height:"100%",background:"rgba(17,24,39,0.22)"}}/><span style={{position:"absolute",left:6,right:6,top:5,fontSize:8,color:"#fff",fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fDateShort(row.inicioPlan)} → {fDateShort(row.finPlan)}</span></div></div>
+              </div>;
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div data-doc-id={toolId} style={{...cardS,padding:26}}>
+        <DocHeader title="Cronograma de Obra" cl={cl} pr={pr} fe={fe}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>{[["Código",cod||"—"],["Ubicación",ub||"—"],["Inicio de obra",fDate(plan.startProject)],["Cierre estimado",fDate(plan.maxDate)]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #F0EBE0"}}><span style={{fontSize:10,color:"#888"}}>{k}</span><span style={{fontSize:10,fontWeight:700}}>{v}</span></div>)}</div>
+        <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:7}}>Ruta crítica estimada</div>
+        <div style={{fontSize:9,color:"#5E6873",lineHeight:1.6,marginBottom:12,whiteSpace:"pre-line"}}>{plan.criticalIds.length ? plan.criticalIds.map((id) => { const row = plan.rowsById.get(id); return row ? `• ${row.codPartida || `#${row.id}`} · ${row.descripcion || "Partida"} (${fDateShort(row.inicioPlan)} → ${fDateShort(row.finPlan)})` : ""; }).filter(Boolean).join("\n") : "No hay ruta crítica calculable todavía."}</div>
+        {obs && <div style={{borderTop:"1px solid #E5DDD0",paddingTop:8,fontSize:9,color:"#7A7A7A",marginBottom:8}}><b>Observaciones:</b> {obs}</div>}
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}><span style={{fontSize:9,color:"#8A93A0"}}>Responsable: {resp || "—"}</span><Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn></div>
+      </div>
+    </div>
+  );
+}
+
+// ══ VALORIZACION DE AVANCE ════════════════════════════════════════════
+type ValPartida = {
+  id: number;
+  cod: string;
+  desc: string;
+  pre: number;
+  ant: number;
+  pct: number;
+};
+
+const newValPartida = (id: number): ValPartida => ({id,cod:"",desc:"",pre:0,ant:0,pct:0});
+
+function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
+  const today = new Date().toISOString().split("T")[0];
+  const [view, setView] = usePersistentState<"form" | "doc">("val.view", "form", (value): value is "form" | "doc" => value === "form" || value === "doc");
+  const [cl, scl] = useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY, PROJECT_CLIENT_LEGACY_KEYS);
+  const [pr, spr] = useSharedProjectTextField(SHARED_PROJECT_NAME_KEY, PROJECT_NAME_LEGACY_KEYS);
+  const [cod, scod] = useSharedProjectTextField(SHARED_PROJECT_CODE_KEY, PROJECT_CODE_LEGACY_KEYS);
+  const [nv, snv] = usePersistentState("val.nv", "1");
+  const [per, sper] = usePersistentState("val.per", "");
+  const [fe, sfe] = usePersistentState("val.fe", today);
+  const [est, sest] = usePersistentState("val.est", "Borrador");
+  const [el, sel] = usePersistentState("val.el", "");
+  const [mc, smc] = usePersistentState("val.mc", 0);
+  const [ad, sad] = usePersistentState("val.ad", 0);
+  const [de, sde] = usePersistentState("val.de", 0);
+  const [pa, spa] = usePersistentState("val.pa", 0);
+  const [nextId, setNextId] = usePersistentState("val.nextId", 2);
+  const [parts, setParts] = usePersistentState<ValPartida[]>("val.parts", () => [newValPartida(1)], Array.isArray);
+
+  useEffect(() => {
+    const maxId = parts.reduce((max, item) => Math.max(max, Number(item?.id) || 0), 0);
+    if (nextId <= maxId) setNextId(maxId + 1);
+  }, [nextId, parts, setNextId]);
+
+  const upPartString = (id: number, key: "cod" | "desc", value: string) => {
+    setParts((prev: ValPartida[]) => prev.map((item) => item.id === id ? {...item, [key]: value} : item));
+  };
+  const upPartNumber = (id: number, key: "pre" | "ant" | "pct", value: string) => {
+    const n = Number(value) || 0;
+    setParts((prev: ValPartida[]) => prev.map((item) => item.id === id ? {...item, [key]: n} : item));
+  };
+  const addPart = () => {
+    const id = nextId;
+    setParts((prev: ValPartida[]) => [...prev, newValPartida(id)]);
+    setNextId((n) => n + 1);
+  };
+  const delPart = (id: number) => setParts((prev: ValPartida[]) => prev.filter((item) => item.id !== id));
+
+  const calcPart = (item: ValPartida) => {
+    const va = (Number(item.pre) || 0) * (Number(item.pct) || 0) / 100;
+    const vp = va - (Number(item.ant) || 0);
+    const sl = (Number(item.pre) || 0) - va;
+    return {va, vp, sl};
+  };
+
+  const totals = useMemo(() => {
+    let tPre = 0;
+    let tAnt = 0;
+    let tAc = 0;
+    let tPer = 0;
+    let tSal = 0;
+    parts.forEach((item) => {
+      const calc = calcPart(item);
+      tPre += Number(item.pre) || 0;
+      tAnt += Number(item.ant) || 0;
+      tAc += calc.va;
+      tPer += calc.vp;
+      tSal += calc.sl;
+    });
+    const ca = (Number(mc) || 0) + (Number(ad) || 0) - (Number(de) || 0);
+    const sp = tAc - (Number(pa) || 0);
+    const pct = ca > 0 ? (tAc / ca) * 100 : 0;
+    return {tPre,tAnt,tAc,tPer,tSal,ca,sp,pct};
+  }, [ad, de, mc, pa, parts]);
+
+  const fmtWeek = (week: string) => {
+    if (!week) return "—";
+    const [yearRaw, weekRaw] = week.split("-W");
+    const year = Number(yearRaw);
+    const weekNum = Number(weekRaw);
+    if (!year || !weekNum) return "—";
+    const jan4 = new Date(year, 0, 4);
+    const startOfW1 = new Date(jan4);
+    startOfW1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+    const start = new Date(startOfW1);
+    start.setDate(startOfW1.getDate() + (weekNum - 1) * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const short = (d: Date) => d.toLocaleDateString("es-PE",{day:"numeric",month:"short"});
+    return `Semana ${weekNum} / ${year} (${short(start)} - ${short(end)})`;
+  };
+
+  const showValEmpty = !String(cl).trim() && !String(pr).trim() && parts.length <= 1 && !String(parts[0]?.desc || "").trim();
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div style={{fontSize:10,fontWeight:700,color:"#888"}}>Flujo de valorización</div>
+        <div style={{display:"flex",gap:6}}>
+          <Btn v={view==="form"?"dk":"ol"} sm onClick={() => setView("form")}>✎ Editar</Btn>
+          <Btn v={view==="doc"?"gd":"ol"} sm onClick={() => setView("doc")}>🖨 Documento</Btn>
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:6,marginBottom:14,borderBottom:"1px solid #E8E2D8",paddingBottom:10}}>
+        <button onClick={() => setView("form")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:600,cursor:"pointer",border:"none",background:view==="form"?DK:"transparent",color:view==="form"?"#fff":"#888"}}>Formulario</button>
+        <button onClick={() => setView("doc")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:600,cursor:"pointer",border:"none",background:view==="doc"?DK:"transparent",color:view==="doc"?"#fff":"#888"}}>Vista documento</button>
+      </div>
+
+      {view === "form" && (
+        <div>
+          {showValEmpty && (
+            <InlineEmptyStateCard
+              title="Inicia la valorización"
+              context="Carga datos de contrato y registra el avance acumulado por partida para calcular el período automáticamente."
+              build="Una valorización de avance con resumen económico y saldos claros."
+              first="Cliente, proyecto y al menos una partida con presupuesto y % acumulado."
+              unlock="Se habilita la hoja documento para impresión o envío."
+            />
+          )}
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{...lb,color:G,marginBottom:8}}>Datos generales</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+              <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
+              <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción del proyecto"/></Fld>
+              <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="VAL-001"/></Fld>
+              <Fld label="N.° valorización"><Inp value={nv} onChange={snv} placeholder="1"/></Fld>
+              <Fld label="Período (semana)"><Inp type="week" value={per} onChange={sper}/></Fld>
+              <Fld label="Fecha de corte"><Inp type="date" value={fe} onChange={sfe}/></Fld>
+              <Fld label="Estado"><Sel value={est} onChange={sest} options={["Borrador","Aprobado","Observado"]}/></Fld>
+              <Fld label="Elaborado por"><Inp value={el} onChange={sel} placeholder="Nombre del responsable"/></Fld>
+            </div>
+          </div>
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{...lb,color:G,marginBottom:8}}>Contrato</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+              <Fld label="Monto contratado (S/)"><input type="number" value={mc} onChange={(e) => smc(Number(e.target.value) || 0)} style={si}/></Fld>
+              <Fld label="Adicionales aprobados (S/)"><input type="number" value={ad} onChange={(e) => sad(Number(e.target.value) || 0)} style={si}/></Fld>
+              <Fld label="Deductivos aprobados (S/)"><input type="number" value={de} onChange={(e) => sde(Number(e.target.value) || 0)} style={si}/></Fld>
+              <Fld label="Pagado acumulado (S/)"><input type="number" value={pa} onChange={(e) => spa(Number(e.target.value) || 0)} style={si}/></Fld>
+            </div>
+          </div>
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{...lb,color:G,margin:0}}>Partidas valorizadas</div>
+              <Btn v="ol" sm onClick={addPart}>+ Partida</Btn>
+            </div>
+            <p style={{fontSize:9,color:"#999",marginBottom:8,lineHeight:1.5}}>
+              Val. acumulado = Presupuesto × % acumulado · Val. período = Val. acumulado − Val. acumulado anterior · Saldo = Presupuesto − Val. acumulado
+            </p>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead>
+                  <tr style={{background:"#F8F6F1"}}>
+                    {["Código","Descripción","Presupuesto (S/)","Val. acum. anterior (S/)","% acum. a la fecha","Val. acumulado (S/)","Val. período (S/)","Saldo x ejecutar (S/)",""].map((h) => (
+                      <th key={h} style={{padding:"6px 7px",fontSize:9,color:"#888",textAlign:h.includes("Descripción")?"left":"right",borderBottom:"1px solid #E5DDD0",whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {!parts.length && (
+                    <tr><td colSpan={9} style={{padding:"20px 0",textAlign:"center",fontSize:10,color:"#AAA"}}>Sin partidas. Usa "+ Partida" para agregar.</td></tr>
+                  )}
+                  {parts.map((item, index) => {
+                    const calc = calcPart(item);
+                    return (
+                      <tr key={item.id} style={{background:index%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
+                        <td style={{padding:"6px 7px"}}><input value={item.cod} onChange={(e) => upPartString(item.id, "cod", e.target.value)} placeholder="ARQ-01" style={{...si,padding:"5px 6px",fontSize:10,width:88}}/></td>
+                        <td style={{padding:"6px 7px"}}><input value={item.desc} onChange={(e) => upPartString(item.id, "desc", e.target.value)} placeholder="Descripción de la partida" style={{...si,padding:"5px 6px",fontSize:10,minWidth:160}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.pre} onChange={(e) => upPartNumber(item.id, "pre", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:98}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.ant} onChange={(e) => upPartNumber(item.id, "ant", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:110}}/></td>
+                        <td style={{padding:"6px 7px",textAlign:"right"}}>
+                          <div style={{display:"inline-flex",alignItems:"center",gap:2}}>
+                            <input type="number" min={0} max={100} step="0.1" value={item.pct} onChange={(e) => upPartNumber(item.id, "pct", e.target.value)} style={{...si,padding:"4px 5px",fontSize:10,textAlign:"right",width:68}}/>
+                            <span style={{fontSize:9,color:"#888"}}>%</span>
+                          </div>
+                        </td>
+                        <td style={{padding:"6px 7px",fontSize:10,textAlign:"right",fontWeight:800,color:calc.va>0?G:"#CCC"}}>{calc.va>0?fmtMoney2(calc.va):"—"}</td>
+                        <td style={{padding:"6px 7px",fontSize:10,textAlign:"right",fontWeight:600,color:calc.vp>0?DK:calc.vp<0?"#BA4A00":"#CCC"}}>{item.pre>0 ? (calc.vp >= 0 ? fmtMoney2(calc.vp) : `(${fmtMoney2(Math.abs(calc.vp))})`) : "—"}</td>
+                        <td style={{padding:"6px 7px",fontSize:10,textAlign:"right",color:calc.sl<0?"#BA4A00":"#888"}}>{item.pre>0?fmtMoney2(calc.sl):"—"}</td>
+                        <td style={{padding:"6px 7px",textAlign:"center"}}><button onClick={() => delPart(item.id)} style={{background:"none",border:"none",color:"#CCC",fontSize:13,cursor:"pointer",padding:0}}>×</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{background:"#F8F6F1",borderTop:"2px solid #E5DDD0"}}>
+                    <td colSpan={2} style={{padding:"7px 8px",fontSize:10,fontWeight:700}}>TOTAL</td>
+                    <td style={{padding:"7px 8px",fontSize:10,fontWeight:800,textAlign:"right",color:G}}>{parts.length?fmtMoney2(totals.tPre):"—"}</td>
+                    <td style={{padding:"7px 8px",fontSize:10,textAlign:"right"}}>{parts.length?fmtMoney2(totals.tAnt):"—"}</td>
+                    <td/>
+                    <td style={{padding:"7px 8px",fontSize:10,fontWeight:800,textAlign:"right",color:G}}>{parts.length?fmtMoney2(totals.tAc):"—"}</td>
+                    <td style={{padding:"7px 8px",fontSize:10,fontWeight:700,textAlign:"right",color:G}}>{parts.length?fmtMoney2(totals.tPer):"—"}</td>
+                    <td style={{padding:"7px 8px",fontSize:10,textAlign:"right"}}>{parts.length?fmtMoney2(totals.tSal):"—"}</td>
+                    <td/>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{...lb,color:G,marginBottom:9}}>Resumen económico</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+              {[
+                ["Contrato actualizado", fmtMoney2(totals.ca), DK],
+                ["Val. período", fmtMoney2(totals.tPer), G],
+                ["Val. acumulado", fmtMoney2(totals.tAc), G],
+                ["Pagado acum.", fmtMoney2(pa), "#1E8449"],
+                ["Saldo por pagar", fmtMoney2(totals.sp), "#BA4A00"],
+              ].map(([k,v,color]) => (
+                <div key={k} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"9px 11px",background:"#fff"}}>
+                  <span style={lb}>{k}</span>
+                  <div style={{fontSize:13,fontWeight:800,marginTop:3,color}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{...lb,margin:0}}>% avance económico acumulado</span>
+                <span style={{fontWeight:800,fontSize:13,color:G}}>{totals.pct.toFixed(1)}%</span>
+              </div>
+              <div style={{height:7,background:"#F0EDE8",borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",background:G,borderRadius:4,width:`${Math.min(totals.pct,100)}%`,transition:"width 0.2s"}}/>
+              </div>
+            </div>
+          </div>
+
+          <div style={{textAlign:"right"}}>
+            <Btn onClick={() => setView("doc")}>Siguiente →</Btn>
+          </div>
+        </div>
+      )}
+
+      {view === "doc" && (
+        <div>
+          <div data-doc-id={toolId} style={{...cardS,padding:26}}>
+            <DocHeader title="Valorización de Avance de Obra" cl={cl} pr={pr} fe={fe}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
+              {[
+                ["Código", cod || "—"],
+                ["N.° valorización", nv || "—"],
+                ["Período", fmtWeek(per)],
+                ["Estado", est || "—"],
+              ].map(([k,v]) => (
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
+                  <span style={{fontSize:10,color:"#888"}}>{k}</span>
+                  <span style={{fontSize:10,fontWeight:700}}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>Resumen económico</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+              {[
+                ["Monto contratado", fmtMoney2(mc)],
+                ["Adicionales aprobados", fmtMoney2(ad)],
+                ["Deductivos aprobados", fmtMoney2(de)],
+                ["Contrato actualizado", fmtMoney2(totals.ca)],
+                ["Valorizado del período", fmtMoney2(totals.tPer)],
+                ["Valorizado acumulado", fmtMoney2(totals.tAc)],
+                ["Pagado acumulado", fmtMoney2(pa)],
+                ["Saldo por pagar", fmtMoney2(totals.sp)],
+                ["Saldo por ejecutar", fmtMoney2(totals.tSal)],
+                ["% avance económico", `${totals.pct.toFixed(1)}%`],
+              ].map(([k,v]) => (
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
+                  <span style={{fontSize:10,color:"#888"}}>{k}</span>
+                  <span style={{fontSize:10,fontWeight:700}}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"9px 12px",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                <span style={{...lb,margin:0}}>% avance económico acumulado</span>
+                <span style={{fontSize:13,fontWeight:800,color:G}}>{totals.pct.toFixed(1)}%</span>
+              </div>
+              <div style={{height:7,background:"#F0EDE8",borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",background:G,borderRadius:4,width:`${Math.min(totals.pct,100)}%`}}/>
+              </div>
+            </div>
+
+            <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>Partidas valorizadas del período</div>
+            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",marginBottom:18}}>
+              <thead>
+                <tr style={{background:"#1A1A1A"}}>
+                  {["Código","Descripción","Presupuesto","Val. ant.","% acum.","Val. acumulado","Val. período","Saldo x ejec."].map((h, i) => (
+                    <th key={h} style={{padding:"5px 8px",fontSize:9,fontWeight:700,color:G,textAlign:i>=2?"right":"left"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {!parts.length && (
+                  <tr><td colSpan={8} style={{padding:14,textAlign:"center",fontSize:10,color:"#AAA"}}>Sin partidas registradas.</td></tr>
+                )}
+                {parts.map((item, i) => {
+                  const calc = calcPart(item);
+                  return (
+                    <tr key={item.id} style={{background:i%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
+                      <td style={{padding:"5px 8px",fontSize:10,fontWeight:600}}>{item.cod || "—"}</td>
+                      <td style={{padding:"5px 8px",fontSize:10}}>{item.desc || "—"}</td>
+                      <td style={{padding:"5px 8px",fontSize:10,textAlign:"right"}}>{fmtMoney2(item.pre)}</td>
+                      <td style={{padding:"5px 8px",fontSize:10,textAlign:"right",color:"#888"}}>{fmtMoney2(item.ant)}</td>
+                      <td style={{padding:"5px 8px",fontSize:10,textAlign:"right",color:G,fontWeight:700}}>{(Number(item.pct)||0).toFixed(1)}%</td>
+                      <td style={{padding:"5px 8px",fontSize:10,textAlign:"right",fontWeight:800,color:G}}>{fmtMoney2(calc.va)}</td>
+                      <td style={{padding:"5px 8px",fontSize:10,textAlign:"right",fontWeight:600}}>{fmtMoney2(calc.vp)}</td>
+                      <td style={{padding:"5px 8px",fontSize:10,textAlign:"right",color:"#888"}}>{fmtMoney2(calc.sl)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{background:"#F8F6F1",borderTop:"2px solid #E5DDD0"}}>
+                  <td colSpan={2} style={{padding:"6px 8px",fontSize:10,fontWeight:700}}>TOTAL</td>
+                  <td style={{padding:"6px 8px",fontSize:10,fontWeight:700,textAlign:"right",color:G}}>{fmtMoney2(totals.tPre)}</td>
+                  <td style={{padding:"6px 8px",fontSize:10,textAlign:"right"}}>{fmtMoney2(totals.tAnt)}</td>
+                  <td/>
+                  <td style={{padding:"6px 8px",fontSize:10,fontWeight:800,textAlign:"right",color:G}}>{fmtMoney2(totals.tAc)}</td>
+                  <td style={{padding:"6px 8px",fontSize:10,fontWeight:700,textAlign:"right",color:G}}>{fmtMoney2(totals.tPer)}</td>
+                  <td style={{padding:"6px 8px",fontSize:10,textAlign:"right"}}>{fmtMoney2(totals.tSal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginTop:14}}>
+              {[
+                ["Elaborado por", el || "___________________________"],
+                ["Revisado por", "___________________________"],
+                ["Aprobado por", "___________________________"],
+              ].map(([k,v]) => (
+                <div key={k} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"12px 14px"}}>
+                  <div style={{...lb,color:G,marginBottom:10}}>{k}</div>
+                  <div style={{borderTop:"1px solid #DDD",margin:"22px 0 8px"}}/>
+                  <div style={{fontSize:10,fontWeight:600,color:v.startsWith("_")?"#AAA":DK}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{borderTop:"1px solid #E5DDD0",paddingTop:8,color:"#AAA",fontSize:9,lineHeight:1.7,marginTop:14}}>
+              Documento referencial. Montos sujetos a verificación y aprobación por las partes.
+            </div>
+          </div>
+
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+            <Btn v="ol" onClick={() => setView("form")}>← Editar</Btn>
+            <Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ══ ICONS ══════════════════════════════════════════════════════════════
 const IconCalc=({c="#fff",s=16})=>(<svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5" y1="4.5" x2="11" y2="4.5"/><line x1="5" y1="7.5" x2="7" y2="7.5"/><line x1="9" y1="7.5" x2="11" y2="7.5"/><line x1="5" y1="10.5" x2="7" y2="10.5"/><line x1="9" y1="10.5" x2="11" y2="10.5"/><line x1="5" y1="13.5" x2="7" y2="13.5"/><line x1="9" y1="12" x2="11" y2="14"/><line x1="11" y1="12" x2="9" y2="14"/></svg>);
 const IconMatrix=({c="#fff",s=16})=>(<svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="1.5" width="13" height="13" rx="1"/><line x1="1.5" y1="5" x2="14.5" y2="5"/><line x1="1.5" y1="8.5" x2="14.5" y2="8.5"/><line x1="1.5" y1="12" x2="14.5" y2="12"/><line x1="5.5" y1="5" x2="5.5" y2="14.5"/><circle cx="10" cy="6.75" r="0.8" fill={c} stroke="none"/><circle cx="10" cy="10.25" r="0.8" fill={c} stroke="none"/><line x1="7" y1="6.75" x2="8.2" y2="6.75"/><line x1="7" y1="10.25" x2="8.2" y2="10.25"/><line x1="7" y1="13.25" x2="13" y2="13.25"/></svg>);
@@ -1821,31 +3239,494 @@ const IconBrief = ({c="#fff",s=16}:{c?:string,s?:number}) => (
     <line x1="12.1" y1="12.1" x2="13.5" y2="13.5"/>
   </svg>
 );
-const TOOL_ICONS: Record<string, React.ComponentType<{c?:string,s?:number}>> = {calc:IconCalc,matrix:IconMatrix,excl:IconExcl,cron:IconCron,oc:IconOC,brief:IconBrief};
+const IconCot = ({c="#fff",s=16}:{c?:string,s?:number}) => (
+  <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 1.5H3.5A1 1 0 0 0 2.5 2.5V13.5A1 1 0 0 0 3.5 14.5H12.5A1 1 0 0 0 13.5 13.5V6L9 1.5Z"/>
+    <polyline points="9 1.5 9 6 13.5 6"/>
+    <line x1="5" y1="8.5" x2="11" y2="8.5"/>
+    <line x1="5" y1="11" x2="8.2" y2="11"/>
+    <line x1="9.5" y1="11" x2="11.5" y2="11"/>
+    <line x1="10.5" y1="10" x2="10.5" y2="12"/>
+  </svg>
+);
+const IconCronObra = ({c="#fff",s=16}:{c?:string,s?:number}) => (
+  <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="2" y1="2" x2="2" y2="14"/>
+    <line x1="2" y1="14" x2="14" y2="14"/>
+    <rect x="3" y="4" width="4" height="2" rx="0.5" fill={c} stroke="none" opacity="0.9"/>
+    <rect x="7.5" y="7" width="5" height="2" rx="0.5" fill={c} stroke="none" opacity="0.9"/>
+    <rect x="5" y="10" width="7.5" height="2" rx="0.5" fill={c} stroke="none" opacity="0.9"/>
+    <polyline points="7 5 8.2 5 8.2 8" />
+    <polyline points="10 8 11.2 8 11.2 11" />
+  </svg>
+);
+const IconVal = ({c="#fff",s=16}:{c?:string,s?:number}) => (
+  <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/>
+    <line x1="4" y1="5" x2="9.5" y2="5"/>
+    <line x1="4" y1="8" x2="9.5" y2="8"/>
+    <line x1="4" y1="11" x2="9.5" y2="11"/>
+    <polyline points="10.5 4.8 11.3 5.7 12.8 4.2"/>
+    <polyline points="10.5 7.8 11.3 8.7 12.8 7.2"/>
+    <polyline points="10.5 10.8 11.3 11.7 12.8 10.2"/>
+  </svg>
+);
+const TOOL_ICONS: Record<string, React.ComponentType<{c?:string,s?:number}>> = {calc:IconCalc,matrix:IconMatrix,excl:IconExcl,cron:IconCron,oc:IconOC,brief:IconBrief,cot:IconCot,cronobra:IconCronObra,val:IconVal};
 
 const DEFAULT_TOOLS=[
   {id:"calc", label:"Calculadora de Honorarios",  component:ToolCalc,  checked:true},
   {id:"matrix",label:"Matriz de Entregables",      component:ToolMatrix,checked:true},
   {id:"excl", label:"Exclusiones y Supuestos",     component:ToolExcl,  checked:true},
   {id:"cron", label:"Cronograma por Etapas",       component:ToolCronograma,checked:true},
+  {id:"cot",  label:"Cotización de Obra",          component:ToolCotizacionObra, checked:true},
+  {id:"cronobra",label:"Cronograma de Obra",       component:ToolCronogramaObra, checked:true},
+  {id:"val",  label:"Valorización de Avance",      component:ToolValorizacionAvance, checked:true},
   {id:"brief",label:"Programa Arquitectónico",     component:ToolBrief, checked:true},
   {id:"oc",   label:"Orden de Cambio",             component:ToolOC,    checked:true},
+];
+const APP_TOUR_STEPS: TourStep[] = [
+  {id:"sidebar", title:"Navegación de herramientas", desc:"Aquí cambias de herramienta y eliges qué secciones incluir en propuesta.", target:"sidebar"},
+  {id:"selector", title:"Selecciona tu punto de partida", desc:"Empieza en Calculadora y avanza por el flujo del proyecto.", target:"tool-calc"},
+  {id:"workspace", title:"Área de trabajo", desc:"Completa primero campos mínimos para activar documento y métricas.", target:"workspace"},
+  {id:"status", title:"Estado guardado", desc:"Este badge confirma si los cambios se están guardando automáticamente.", target:"saved-state"},
+  {id:"export", title:"Exporta propuesta", desc:"Cuando tengas avances, exporta todo el paquete en PDF desde aquí.", target:"export"},
 ];
 type PersistedToolState = { id: string; checked: boolean };
 const DEFAULT_TOOL_STATES: PersistedToolState[] = DEFAULT_TOOLS.map((tool) => ({id: tool.id, checked: tool.checked}));
 const isValidToolStateArray = (value: unknown): value is PersistedToolState[] => Array.isArray(value);
+const TRACK_TOOLS: Record<TrackId, string[]> = {
+  diseno: ["calc", "matrix", "excl", "cron"],
+  construccion: ["cot", "cronobra", "brief"],
+  seguimiento: ["val", "oc"],
+};
+const TRACK_REQUIRED_TOOL: Record<TrackId, string> = {
+  diseno: "calc",
+  construccion: "cot",
+  seguimiento: "val",
+};
+const TRACK_DEFAULT_ORDER: TrackId[] = ["diseno", "construccion", "seguimiento"];
+
+const getTrackForTool = (toolId: string): TrackId => {
+  const found = TRACK_DEFAULT_ORDER.find((track) => TRACK_TOOLS[track].includes(toolId));
+  return found || "diseno";
+};
+
+const readScopedValue = <T,>(projectId: string, key: string, fallback: T | (() => T), validate?: (value: unknown) => value is T) => (
+  readStorage<T>(key, fallback, validate, projectId)
+);
+
+const calcDesignHonorario = (projectId: string) => {
+  const ti = readScopedValue<string>(projectId, "calc.ti", "Vivienda", isString);
+  const et = readScopedValue<string>(projectId, "calc.et", "Anteproyecto", isString);
+  const ar = Number(readScopedValue<string>(projectId, "calc.ar", "", isString)) || 0;
+  const co = readScopedValue<string>(projectId, "calc.co", "Media", isString);
+  const ur = readScopedValue<string>(projectId, "calc.ur", "Normal", isString);
+  const tc = readScopedValue<string>(projectId, "calc.tc", "Particular", isString);
+  const mo = readScopedValue<string>(projectId, "calc.mo", "Suma alzada", isString);
+  const mg = Number(readScopedValue<number | string>(projectId, "calc.mg", 0)) || 0;
+  const dc = Number(readScopedValue<number | string>(projectId, "calc.dc", 0)) || 0;
+  const rd = Number(readScopedValue<number | string>(projectId, "calc.rd", 50)) || 0;
+  const ig = Boolean(readScopedValue<boolean>(projectId, "calc.ig", true, (value): value is boolean => typeof value === "boolean"));
+  const rx = Number(readScopedValue<number | string>(projectId, "calc.rx", 0)) || 0;
+  const vx = Number(readScopedValue<number | string>(projectId, "calc.vx", 0)) || 0;
+  const nx = Number(readScopedValue<number | string>(projectId, "calc.nx", 0)) || 0;
+  const t = (TAR[ti] || {})[et] || 0;
+  const b = t * ar;
+  const adj = b * (CF[co] || 1) * (UF[ur] || 1) * (KF[tc] || 1) * (MF[mo] || 1) * (1 + mg / 100) * (1 - dc / 100);
+  const ext = rx * 240 + vx * 180 + nx * 250;
+  const sub = adj + ext;
+  const igv = ig ? sub * 0.18 : 0;
+  return rnd(sub + igv, rd);
+};
+
+const normalizeCronHitos = (value: unknown): CronHitoCobro[] => {
+  if (!Array.isArray(value)) return CRON_HITOS_BASE.map((item) => ({...item}));
+  const incoming = value.filter((item) => isPlainObject(item));
+  return CRON_HITOS_BASE.map((base) => {
+    const found = incoming.find((item) => item.id === base.id);
+    return {
+      ...base,
+      checked: found && typeof found.checked === "boolean" ? found.checked : base.checked,
+    };
+  });
+};
+
+const calcDesignCobrado = (projectId: string, honorario: number) => {
+  const hitos = normalizeCronHitos(readScopedValue(projectId, "cron.hitosCobro", CRON_HITOS_BASE, Array.isArray));
+  const pct = hitos.reduce((sum, item) => sum + (item.checked ? item.pct : 0), 0);
+  const cobrado = honorario * (pct / 100);
+  return {
+    cobrado,
+    pctCobrado: honorario > 0 ? Math.max(0, Math.min(100, (cobrado / honorario) * 100)) : 0,
+  };
+};
+
+const calcDesignMiniGantt = (projectId: string) => {
+  const etapas = readScopedValue<any[]>(projectId, "cron.etapas", ETAPAS_CRON, Array.isArray)
+    .filter((item) => isPlainObject(item) && typeof item.activa === "boolean" && item.activa);
+  const inicio = readScopedValue<string>(projectId, "cron.inicio", new Date().toISOString().split("T")[0], isString);
+  const total = etapas.reduce((sum, item) => sum + Math.max(1, Number(item.semanas) || 1), 0);
+  let cursor = inicio;
+  return etapas.map((item) => {
+    const semanas = Math.max(1, Number(item.semanas) || 1);
+    const start = cursor;
+    const end = addWeeks(start, semanas);
+    cursor = end;
+    return {
+      id: String(item.id || ""),
+      label: String(item.label || "Etapa"),
+      color: String(item.color || G),
+      pct: total > 0 ? (semanas / total) * 100 : 0,
+      start,
+      end,
+    };
+  });
+};
+
+const calcConstruccionMetrics = (projectId: string) => {
+  const ggPct = Number(readScopedValue<number | string>(projectId, "cot.ggPct", 0)) || 0;
+  const supPct = Number(readScopedValue<number | string>(projectId, "cot.supPct", 0)) || 0;
+  const igvPct = Number(readScopedValue<number | string>(projectId, "cot.igvPct", 18)) || 0;
+  const partidas = readScopedValue<CotPartida[]>(projectId, "cot.partidas", [], Array.isArray).filter((item) => isPlainObject(item));
+  const subtotalPartidas = partidas.reduce((acc, item) => {
+    const costoBase = (Number((item as CotPartida).manoObra) || 0) + (Number((item as CotPartida).materiales) || 0);
+    const precioUnitario = costoBase * (1 + (Number((item as CotPartida).utilidadPct) || 0) / 100) * (1 + (Number((item as CotPartida).riesgoPct) || 0) / 100);
+    return acc + precioUnitario * (Number((item as CotPartida).cant) || 0);
+  }, 0);
+  const ggMonto = subtotalPartidas * (ggPct / 100);
+  const supMonto = subtotalPartidas * (supPct / 100);
+  const baseImponible = subtotalPartidas + ggMonto + supMonto;
+  const cotizado = baseImponible + baseImponible * (igvPct / 100);
+
+  const obraSummary = computeObraPlanSummary(projectId);
+  return {
+    cotizado,
+    cronTotalDias: obraSummary.totalDias,
+    cronConflictos: obraSummary.conflictCount,
+    cronPct: obraSummary.avgPct,
+  };
+};
+
+const computeObraPlanSummary = (projectId: string) => {
+  const today = new Date().toISOString().split("T")[0];
+  const inicio = readScopedValue<string>(projectId, "obra.inicio", today, isString);
+  const startProject = normalizeWorkDate(inicio || today);
+  const partidas = readScopedValue<ObraPartida[]>(projectId, "obra.partidas", [], Array.isArray).filter((item) => isPlainObject(item));
+  const byId = new Map<number, ObraPartida>();
+  partidas.forEach((item) => byId.set(Number(item.id) || 0, item as ObraPartida));
+  const memo = new Map<number, {inicioPlan: string; finPlan: string; ciclo: boolean}>();
+  const visiting = new Set<number>();
+  const range = (id: number): {inicioPlan: string; finPlan: string; ciclo: boolean} => {
+    const cached = memo.get(id);
+    if (cached) return cached;
+    const row = byId.get(id);
+    if (!row) return {inicioPlan: startProject, finPlan: startProject, ciclo: false};
+    if (visiting.has(id)) return {inicioPlan: startProject, finPlan: startProject, ciclo: true};
+    visiting.add(id);
+    const dur = Math.max(1, Math.round(Number(row.duracionDias) || 1));
+    let inicioPlan = startProject;
+    let ciclo = false;
+    const predId = row.predecesoraId;
+    if (predId && predId !== id && byId.has(predId)) {
+      const pred = range(predId);
+      if (pred.ciclo) ciclo = true;
+      else {
+        const lag = Math.round(Number(row.desfaseDias) || 0);
+        if (row.tipoDep === "FS") inicioPlan = addWorkDaysMonSat(pred.finPlan, 1 + lag);
+        else if (row.tipoDep === "SS") inicioPlan = addWorkDaysMonSat(pred.inicioPlan, lag);
+        else inicioPlan = addWorkDaysMonSat(addWorkDaysMonSat(pred.finPlan, lag), -(dur - 1));
+      }
+    } else if (predId === id) {
+      ciclo = true;
+    }
+    if (cmpDateISO(inicioPlan, startProject) < 0) inicioPlan = startProject;
+    const finPlan = addWorkDaysMonSat(inicioPlan, dur - 1);
+    const result = {inicioPlan, finPlan, ciclo};
+    memo.set(id, result);
+    visiting.delete(id);
+    return result;
+  };
+
+  const rows = partidas.map((item) => {
+    const plan = range(item.id);
+    const avanceNorm = Math.max(0, Math.min(100, Number(item.avancePct) || 0));
+    return {
+      id: item.id,
+      categoria: item.categoria,
+      codPartida: item.codPartida,
+      descripcion: item.descripcion,
+      inicioPlan: plan.inicioPlan,
+      finPlan: plan.finPlan,
+      ciclo: plan.ciclo,
+      avanceNorm,
+    };
+  });
+  if (!rows.length) {
+    return {rows: [], totalDias: 0, conflictCount: 0, avgPct: 0, startProject, maxDate: startProject};
+  }
+  const minDate = rows.reduce((min, row) => cmpDateISO(row.inicioPlan, min) < 0 ? row.inicioPlan : min, rows[0].inicioPlan);
+  const maxDate = rows.reduce((max, row) => cmpDateISO(row.finPlan, max) > 0 ? row.finPlan : max, rows[0].finPlan);
+  const avgPct = rows.reduce((sum, row) => sum + row.avanceNorm, 0) / rows.length;
+  return {
+    rows: [...rows].sort((a, b) => cmpDateISO(a.inicioPlan, b.inicioPlan) || a.id - b.id),
+    totalDias: diffDateDays(minDate, maxDate) + 1,
+    conflictCount: rows.filter((row) => row.ciclo).length,
+    avgPct,
+    startProject: minDate,
+    maxDate,
+  };
+};
+
+const calcObraMiniGantt = (projectId: string) => {
+  const summary = computeObraPlanSummary(projectId);
+  const total = Math.max(1, summary.totalDias);
+  return summary.rows.slice(0, 6).map((row) => ({
+    id: row.id,
+    label: row.codPartida || row.descripcion || `#${row.id}`,
+    color: row.ciclo ? "#A63B2A" : "#4C7EA8",
+    pct: ((diffDateDays(summary.startProject, row.inicioPlan) + 1) / total) * 100,
+    span: ((diffDateDays(row.inicioPlan, row.finPlan) + 1) / total) * 100,
+  }));
+};
+
+const calcSeguimientoMetrics = (projectId: string) => {
+  const valParts = readScopedValue<ValPartida[]>(projectId, "val.parts", [], Array.isArray);
+  const mc = Number(readScopedValue<number | string>(projectId, "val.mc", 0)) || 0;
+  const ad = Number(readScopedValue<number | string>(projectId, "val.ad", 0)) || 0;
+  const de = Number(readScopedValue<number | string>(projectId, "val.de", 0)) || 0;
+  let tAc = 0;
+  valParts.forEach((item) => {
+    const pre = Number(item?.pre) || 0;
+    const pct = Number(item?.pct) || 0;
+    tAc += pre * pct / 100;
+  });
+  const ca = mc + ad - de;
+  const pctAvance = ca > 0 ? Math.max(0, Math.min(100, (tAc / ca) * 100)) : 0;
+  const ocHasContent = [
+    readScopedValue<string>(projectId, "oc.desc", "", isString),
+    readScopedValue<string>(projectId, "oc.docsAfect", "", isString),
+    readScopedValue<string>(projectId, "oc.honorAd", "", isString),
+  ].some((value) => value.trim().length > 0);
+  const estado = readScopedValue<OcResolutionStatus>(projectId, "oc.estadoResolucion", "Pendiente", isValidOcResolutionStatus);
+  return {
+    pctAvance,
+    valorizadoAc: tAc,
+    ocPendiente: ocHasContent && estado === "Pendiente",
+  };
+};
+
+const getTrackState = (track: TrackId, projectId: string, metrics: DashboardMetrics): TrackState => {
+  if (track === "diseno") {
+    const baseHasData = [
+      readScopedValue<string>(projectId, SHARED_PROJECT_CLIENT_KEY, "", isString),
+      readScopedValue<string>(projectId, SHARED_PROJECT_NAME_KEY, "", isString),
+      readScopedValue<string>(projectId, "calc.ar", "", isString),
+    ].some((value) => value.trim().length > 0);
+    if (!baseHasData) return "No iniciado";
+    return metrics.diseno.pctCobrado >= 100 ? "Completado" : "En curso";
+  }
+  if (track === "construccion") {
+    const hasCotData = hasSavedProjectData(projectId) && readScopedValue<CotPartida[]>(projectId, "cot.partidas", [], Array.isArray).length > 0;
+    if (!hasCotData) return "No iniciado";
+    const done = metrics.construccion.cotizado > 0 && metrics.construccion.cronConflictos === 0 && metrics.construccion.cronPct >= 100;
+    return done ? "Completado" : "En curso";
+  }
+  const hasValData = readScopedValue<ValPartida[]>(projectId, "val.parts", [], Array.isArray).some((item) => {
+    if (!isPlainObject(item)) return false;
+    return String(item.desc || "").trim().length > 0 || Number(item.pre || 0) > 0;
+  });
+  if (!hasValData) return "No iniciado";
+  return metrics.seguimiento.pctAvance >= 100 && !metrics.seguimiento.ocPendiente ? "Completado" : "En curso";
+};
+
+const computeDashboardMetrics = (project: ProjectRecord): DashboardMetrics => {
+  const honorario = calcDesignHonorario(project.id);
+  const diseno = calcDesignCobrado(project.id, honorario);
+  const construccion = calcConstruccionMetrics(project.id);
+  const seguimiento = calcSeguimientoMetrics(project.id);
+  const metrics: DashboardMetrics = {
+    states: {diseno: "No iniciado", construccion: "No iniciado", seguimiento: "No iniciado"},
+    diseno: {honorario, cobrado: diseno.cobrado, pctCobrado: diseno.pctCobrado},
+    construccion,
+    seguimiento,
+  };
+  metrics.states = {
+    diseno: getTrackState("diseno", project.id, metrics),
+    construccion: getTrackState("construccion", project.id, metrics),
+    seguimiento: getTrackState("seguimiento", project.id, metrics),
+  };
+  return metrics;
+};
+
+const migrateLegacyStorageToProject = (projectId: string) => {
+  if (typeof window === "undefined") return;
+  const toDelete: string[] = [];
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const fullKey = window.localStorage.key(i);
+    if (!fullKey?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) continue;
+    const rawKey = extractRawStorageKey(fullKey);
+    if (isGlobalStorageKey(rawKey) || isScopedStorageRawKey(rawKey)) continue;
+    const value = window.localStorage.getItem(fullKey);
+    if (value === null) continue;
+    const scopedKey = storageKey(rawKey, projectId);
+    if (window.localStorage.getItem(scopedKey) === null) {
+      window.localStorage.setItem(scopedKey, value);
+    }
+    toDelete.push(fullKey);
+  }
+  toDelete.forEach((key) => window.localStorage.removeItem(key));
+};
 
 // ══ MAIN APP ══════════════════════════════════════════════════════════
 export default function App() {
-  const [storedTools,setStoredTools]=usePersistentState<PersistedToolState[]>("app.tools",DEFAULT_TOOL_STATES,isValidToolStateArray);
-  const [active,setActive]=usePersistentState("app.active","calc",(value): value is string => (
+  const [projects,setProjects]=usePersistentState<ProjectRecord[]>("app.projects",[],isProjectRecordArray);
+  const [activeProjectId,setActiveProjectId]=usePersistentState("app.activeProjectId","",isString);
+  const [route,setRoute]=usePersistentState<"home"|"workspace">("app.route","home",(value): value is "home" | "workspace" => value==="home" || value==="workspace");
+  const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
+  const [onboardingSeen,setOnboardingSeen]=usePersistentState("app.onboardingSeen",false);
+  setActiveStorageProjectId(activeProjectId);
+  const projectScopeKey = activeProjectId || "none";
+  const [storedTools,setStoredTools]=usePersistentState<PersistedToolState[]>(`app.tools.${projectScopeKey}`,DEFAULT_TOOL_STATES,isValidToolStateArray);
+  const [active,setActive]=usePersistentState(`app.active.${projectScopeKey}`,"calc",(value): value is string => (
     typeof value === "string" && DEFAULT_TOOLS.some((tool) => tool.id === value)
   ));
+  const [workspaceTrack,setWorkspaceTrack]=usePersistentState<TrackId>(`app.track.${projectScopeKey}`,"diseno",isValidTrackId);
+  const [tourOpen,setTourOpen]=useState(false);
+  const [tourStepIndex,setTourStepIndex]=useState(0);
+  const [tourTargetRect,setTourTargetRect]=useState<DOMRect | null>(null);
   const [projectResetToken,setProjectResetToken]=useState(0);
-  const [hasSavedData,setHasSavedData]=useState(() => hasSavedProjectData());
+  const [hasSavedData,setHasSavedData]=useState(() => (activeProjectId ? hasSavedProjectData(activeProjectId) : false));
+  const [storageTick,setStorageTick]=useState(0);
+  const [newProjectName,setNewProjectName]=useState("");
+  const [newProjectType,setNewProjectType]=useState("");
+  const [newProjectLocation,setNewProjectLocation]=useState("");
+  const [newProjectStatus,setNewProjectStatus]=useState<CommercialStatus>("Lead");
+  const [newProjectTracks,setNewProjectTracks]=useState<Record<TrackId,boolean>>({...DEFAULT_TRACKS});
+  const themeVars: React.CSSProperties = darkMode ? {
+    "--ui-accent": "#C9A96E",
+    "--ui-accent-soft": "#2A2318",
+    "--ui-text": "#E6EDF3",
+    "--ui-text-muted": "#9DA7B3",
+    "--ui-bg": "#0D1117",
+    "--ui-card": "#161B22",
+    "--ui-border": "#30363D",
+    "--ui-border-soft": "#21262D",
+    "--ui-dark": "#0D1117",
+    "--ui-input-bg": "#0F141B",
+    "--ui-input-text": "#E6EDF3",
+    "--ui-btn-dk-bg": "#0F141A",
+    "--ui-btn-dk-text": "#F0F6FC",
+    "--ui-btn-dk-border": "#30363D",
+    "--ui-btn-ol-bg": "#161B22",
+    "--ui-btn-ol-text": "#E6EDF3",
+    "--ui-btn-ol-border": "#30363D",
+    "--ui-btn-gd-text": "#111827",
+    "--ui-chip-bg": "#111924",
+    "--ui-chip-border": "#2B3645",
+    "--ui-chip-text": "#C3CDD8",
+    "--ui-muted-dot": "#6B7683",
+    "--ui-saved-bg": "#1B2330",
+    "--ui-saved-border": "#3C4B61",
+    "--ui-saved-dot": "#7FB069",
+    "--ui-saved-text": "#D2DEC5",
+    "--ui-empty-bg": "#121A24",
+    "--ui-empty-border": "#35506D",
+    "--ui-empty-title": "#E3EAF2",
+    "--ui-empty-text": "#AAB5C1",
+    "--ui-empty-label": "#D3BE93",
+  } as React.CSSProperties : {
+    "--ui-accent": "#C9A96E",
+    "--ui-accent-soft": "#F4EEE4",
+    "--ui-text": "#1A1A1A",
+    "--ui-text-muted": "#57606A",
+    "--ui-bg": "#F5F3EF",
+    "--ui-card": "#FFFFFF",
+    "--ui-border": "#D0D7DE",
+    "--ui-border-soft": "#E7EBF0",
+    "--ui-dark": "#161B22",
+    "--ui-input-bg": "#FFFFFF",
+    "--ui-input-text": "#1A1A1A",
+    "--ui-btn-dk-bg": "#161B22",
+    "--ui-btn-dk-text": "#FFFFFF",
+    "--ui-btn-dk-border": "#0F141A",
+    "--ui-btn-ol-bg": "#FFFFFF",
+    "--ui-btn-ol-text": "#1A1A1A",
+    "--ui-btn-ol-border": "#D0D7DE",
+    "--ui-btn-gd-text": "#FFFFFF",
+    "--ui-chip-bg": "#FFFFFF",
+    "--ui-chip-border": "#D0D7DE",
+    "--ui-chip-text": "#57606A",
+    "--ui-muted-dot": "#9AA3AE",
+    "--ui-saved-bg": "#FBF7EF",
+    "--ui-saved-border": "#D6C299",
+    "--ui-saved-dot": "#5A8F22",
+    "--ui-saved-text": "#70562A",
+    "--ui-empty-bg": "#FCFAF5",
+    "--ui-empty-border": "#DCCBAA",
+    "--ui-empty-title": "#1A1A1A",
+    "--ui-empty-text": "#6A737D",
+    "--ui-empty-label": "#8A6D3A",
+  } as React.CSSProperties;
+  const normalizedProjects = useMemo(
+    () => normalizeProjectRecords(projects).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)),
+    [projects]
+  );
+  const activeProject = useMemo(
+    () => normalizedProjects.find((project) => project.id === activeProjectId) || null,
+    [activeProjectId, normalizedProjects]
+  );
+  const enabledTrackOrder = useMemo(() => {
+    const tracks = activeProject?.tracks || DEFAULT_TRACKS;
+    const enabled = TRACK_DEFAULT_ORDER.filter((track) => tracks[track]);
+    return (enabled.length ? enabled : ["diseno"]) as TrackId[];
+  }, [activeProject]);
+  const bootstrappedRef = React.useRef(false);
 
   useEffect(() => {
-    const syncSavedFlag = () => setHasSavedData(hasSavedProjectData());
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
+    const existing = normalizeProjectRecords(readStorage<ProjectRecord[]>("app.projects", [], isProjectRecordArray));
+    if (existing.length) {
+      if (!activeProjectId || !existing.some((project) => project.id === activeProjectId)) {
+        setActiveProjectId(existing[0].id);
+      }
+      return;
+    }
+    if (readStorage<boolean>(LEGACY_MIGRATION_FLAG_KEY, false, (value): value is boolean => typeof value === "boolean")) return;
+    if (!hasSavedProjectData()) {
+      writeStorage(LEGACY_MIGRATION_FLAG_KEY, true);
+      return;
+    }
+    const migratedName = readStorage<string>(SHARED_PROJECT_NAME_KEY, "", isString).trim() || "Proyecto migrado";
+    const migratedType = readStorage<string>("calc.ti", "", isString).trim();
+    const migratedLocation = readStorage<string>(SHARED_PROJECT_LOCATION_KEY, "", isString).trim();
+    const migrated = createProjectRecord({
+      name: migratedName,
+      type: migratedType,
+      location: migratedLocation,
+      tracks: {...DEFAULT_TRACKS},
+      commercialStatus: "Propuesta",
+    });
+    migrateLegacyStorageToProject(migrated.id);
+    setProjects([migrated]);
+    setActiveProjectId(migrated.id);
+    setRoute("workspace");
+    writeStorage(LEGACY_MIGRATION_FLAG_KEY, true);
+  }, [activeProjectId, setActiveProjectId, setProjects, setRoute]);
+
+  useEffect(() => {
+    if (!activeProject && route === "workspace") setRoute("home");
+  }, [activeProject, route, setRoute]);
+
+  useEffect(() => {
+    if (!enabledTrackOrder.includes(workspaceTrack)) setWorkspaceTrack(enabledTrackOrder[0] || "diseno");
+  }, [enabledTrackOrder, setWorkspaceTrack, workspaceTrack]);
+
+  useEffect(() => {
+    const syncSavedFlag = () => {
+      setHasSavedData(activeProjectId ? hasSavedProjectData(activeProjectId) : false);
+      setStorageTick((n) => n + 1);
+    };
     syncSavedFlag();
     window.addEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
     window.addEventListener("storage", syncSavedFlag);
@@ -1853,7 +3734,12 @@ export default function App() {
       window.removeEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
       window.removeEventListener("storage", syncSavedFlag);
     };
-  }, []);
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    document.body.style.background = darkMode ? "#0D1117" : "#F5F3EF";
+    document.body.style.color = darkMode ? "#E6EDF3" : "#1A1A1A";
+  }, [darkMode]);
 
   const tools = useMemo(() => {
     const checkedMap = new Map<string, boolean>();
@@ -1869,6 +3755,33 @@ export default function App() {
       checked: checkedMap.get(tool.id) ?? tool.checked,
     }));
   }, [storedTools]);
+  const activeTrackTools = useMemo(
+    () => tools.filter((tool) => TRACK_TOOLS[workspaceTrack].includes(tool.id) && (activeProject?.tracks?.[getTrackForTool(tool.id)] ?? true)),
+    [activeProject, tools, workspaceTrack]
+  );
+  const projectsWithMetrics = useMemo(
+    () => normalizedProjects.map((project) => ({
+      project,
+      metrics: computeDashboardMetrics(project),
+      disenoGantt: calcDesignMiniGantt(project.id),
+      obraGantt: calcObraMiniGantt(project.id),
+    })),
+    [normalizedProjects, storageTick]
+  );
+  const totalsByTrack = useMemo(() => {
+    const seed: Record<TrackId, Record<TrackState, number>> = {
+      diseno: {"No iniciado": 0, "En curso": 0, "Completado": 0},
+      construccion: {"No iniciado": 0, "En curso": 0, "Completado": 0},
+      seguimiento: {"No iniciado": 0, "En curso": 0, "Completado": 0},
+    };
+    projectsWithMetrics.forEach(({project, metrics}) => {
+      TRACK_DEFAULT_ORDER.forEach((track) => {
+        if (!project.tracks[track]) return;
+        seed[track][metrics.states[track]] += 1;
+      });
+    });
+    return seed;
+  }, [projectsWithMetrics]);
 
   const toggleCheck=(id: string)=>setStoredTools((prev)=>{
     const base = Array.isArray(prev) ? prev : DEFAULT_TOOL_STATES;
@@ -1879,15 +3792,145 @@ export default function App() {
     });
   });
 
-  const handleNewProject = () => {
+  useEffect(() => {
+    if (!activeTrackTools.length) return;
+    if (activeTrackTools.some((tool) => tool.id === active)) return;
+    setActive(activeTrackTools[0].id);
+  }, [active, activeTrackTools, setActive]);
+
+  const createProject = () => {
+    const name = newProjectName.trim();
+    if (!name) {
+      window.alert("Ingresa al menos un nombre de proyecto.");
+      return;
+    }
+    const tracks = {...newProjectTracks};
+    if (!tracks.diseno && !tracks.construccion && !tracks.seguimiento) tracks.diseno = true;
+    const created = createProjectRecord({
+      name,
+      type: newProjectType.trim(),
+      location: newProjectLocation.trim(),
+      tracks,
+      commercialStatus: newProjectStatus,
+    });
+    setProjects((prev) => [created, ...normalizeProjectRecords(prev)]);
+    setActiveProjectId(created.id);
+    setRoute("workspace");
+    setNewProjectName("");
+    setNewProjectType("");
+    setNewProjectLocation("");
+    setNewProjectStatus("Lead");
+    setNewProjectTracks({...DEFAULT_TRACKS});
+  };
+
+  const updateProject = (projectId: string, patch: Partial<ProjectRecord>) => {
+    setProjects((prev) => normalizeProjectRecords(prev).map((project) => {
+      if (project.id !== projectId) return project;
+      const updated: ProjectRecord = {
+        ...project,
+        ...patch,
+        tracks: patch.tracks ? normalizeTracks(patch.tracks) : project.tracks,
+        updatedAt: nowIso(),
+      };
+      return updated;
+    }));
+  };
+
+  const handleEditProject = (project: ProjectRecord) => {
+    const name = window.prompt("Nombre del proyecto", project.name);
+    if (name === null) return;
+    const type = window.prompt("Tipo de proyecto", project.type);
+    if (type === null) return;
+    const location = window.prompt("Ubicación", project.location);
+    if (location === null) return;
+    const status = window.prompt("Estado comercial (Lead, Propuesta, Negociacion, Ganado, Perdido)", project.commercialStatus);
+    if (status === null) return;
+    const commercialStatus = isValidCommercialStatus(status.trim()) ? status.trim() as CommercialStatus : project.commercialStatus;
+    updateProject(project.id, {name: name.trim() || project.name, type: type.trim(), location: location.trim(), commercialStatus});
+  };
+
+  const toggleArchiveProject = (project: ProjectRecord) => {
+    updateProject(project.id, {archived: !project.archived});
+  };
+
+  const openProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+    setRoute("workspace");
+  };
+
+  const handleResetActiveProject = () => {
+    if (!activeProjectId) return;
     const shouldReset = window.confirm("Se limpiará todo el proyecto activo y se eliminarán los datos guardados. ¿Deseas continuar?");
     if (!shouldReset) return;
-    clearProjectStorage();
+    clearProjectStorage(activeProjectId);
     setStoredTools(DEFAULT_TOOL_STATES);
-    setActive("calc");
+    setActive(TRACK_REQUIRED_TOOL[workspaceTrack]);
+    setTourOpen(false);
+    setTourStepIndex(0);
+    setTourTargetRect(null);
     setProjectResetToken((n) => n + 1);
     setHasSavedData(false);
   };
+  const shouldShowAutoTour = route==="workspace" && !!activeProject && !hasSavedData && !onboardingSeen;
+  useEffect(() => {
+    if (!shouldShowAutoTour) return;
+    setTourOpen(true);
+    setTourStepIndex(0);
+  }, [shouldShowAutoTour]);
+  useEffect(() => {
+    if (route === "workspace") return;
+    setTourOpen(false);
+    setTourTargetRect(null);
+  }, [route]);
+  const closeTour = () => {
+    setOnboardingSeen(true);
+    setTourOpen(false);
+    setTourStepIndex(0);
+    setTourTargetRect(null);
+  };
+  const openOnboarding = () => {
+    setTourOpen(true);
+    setTourStepIndex(0);
+  };
+  const goToCalcFromTour = () => {
+    setWorkspaceTrack("diseno");
+    setActive("calc");
+  };
+  const goNextTourStep = () => {
+    if (tourStepIndex >= APP_TOUR_STEPS.length - 1) {
+      closeTour();
+      return;
+    }
+    setTourStepIndex((n) => Math.min(n + 1, APP_TOUR_STEPS.length - 1));
+  };
+  const goPrevTourStep = () => {
+    setTourStepIndex((n) => Math.max(n - 1, 0));
+  };
+  useEffect(() => {
+    if (!tourOpen) return;
+    const update = () => {
+      const target = APP_TOUR_STEPS[tourStepIndex];
+      if (!target) {
+        setTourTargetRect(null);
+        return;
+      }
+      const el = document.querySelector(`[data-tour-id="${target.target}"]`) as HTMLElement | null;
+      if (!el) {
+        setTourTargetRect(null);
+        return;
+      }
+      if (target.target === "tool-calc") goToCalcFromTour();
+      setTourTargetRect(el.getBoundingClientRect());
+    };
+    const raf = window.requestAnimationFrame(update);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [tourOpen, tourStepIndex]);
 
   const printTool=(id: string)=>{
     const el=document.querySelector(`[data-doc-id="${id}"]`);
@@ -1916,22 +3959,303 @@ export default function App() {
     openPrint(html);
   };
 
-  const current=tools.find(t=>t.id===active);
+  const current=activeTrackTools.find(t=>t.id===active) || activeTrackTools[0];
   const nChecked=tools.filter(t=>t.checked).length;
 
+  if (route === "home" || !activeProject) {
+    return (
+      <div data-theme={darkMode?"dark":"light"} style={{...themeVars,minHeight:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:UI.bg,color:DK,padding:"22px 24px 30px"}}>
+        <div style={{maxWidth:1120,margin:"0 auto"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:10,flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <Brand dark/>
+              <span style={{fontSize:12,color:UI.textMuted}}>Workflow comercial unificado</span>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <Btn v="ol" onClick={()=>setDarkMode((v)=>!v)}>{darkMode ? "Modo claro" : "Modo oscuro"}</Btn>
+            </div>
+          </div>
+
+          <div style={{...cardS,padding:18,marginBottom:14}}>
+            <div style={{...lb,color:G,marginBottom:8}}>Nuevo proyecto</div>
+            <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr 1fr 1fr",gap:10,marginBottom:10}}>
+              <Fld label="Nombre del proyecto"><Inp value={newProjectName} onChange={setNewProjectName} placeholder="Ej. Casa Pradera"/></Fld>
+              <Fld label="Tipo"><Inp value={newProjectType} onChange={setNewProjectType} placeholder="Vivienda / Comercial"/></Fld>
+              <Fld label="Ubicación"><Inp value={newProjectLocation} onChange={setNewProjectLocation} placeholder="Ciudad / distrito"/></Fld>
+              <Fld label="Estado comercial"><Sel value={newProjectStatus} onChange={(value)=>setNewProjectStatus(value as CommercialStatus)} options={COMMERCIAL_STATUS_OPTIONS}/></Fld>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {TRACK_DEFAULT_ORDER.map((track)=>(
+                  <button
+                    key={track}
+                    onClick={()=>setNewProjectTracks((prev)=>({...prev,[track]:!prev[track]}))}
+                    style={{border:"1px solid #E5DDD0",borderRadius:999,padding:"4px 10px",fontSize:10,fontWeight:700,background:newProjectTracks[track]?"#FBF7EF":"#fff",color:newProjectTracks[track]?G:"#8A93A0",cursor:"pointer"}}
+                  >
+                    {newProjectTracks[track] ? "✓ " : ""}{TRACK_LABELS[track]}
+                  </button>
+                ))}
+              </div>
+              <Btn onClick={createProject}>Crear proyecto</Btn>
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+            <div style={{...cardS,padding:18,marginBottom:0}}>
+              <div style={{...lb,color:G,marginBottom:8}}>Volumen y estado</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                <div style={{border:"1px solid #E5DDD0",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#8A93A0"}}>Total proyectos</div>
+                  <div style={{fontSize:18,fontWeight:800}}>{normalizedProjects.length}</div>
+                </div>
+                <div style={{border:"1px solid #E5DDD0",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#8A93A0"}}>Archivados</div>
+                  <div style={{fontSize:18,fontWeight:800}}>{normalizedProjects.filter((item)=>item.archived).length}</div>
+                </div>
+              </div>
+              {TRACK_DEFAULT_ORDER.map((track)=>(
+                <div key={track} style={{borderTop:"1px solid #EEF1F4",paddingTop:7,marginTop:7}}>
+                  <div style={{fontSize:10,fontWeight:800,color:DK,marginBottom:4}}>{TRACK_LABELS[track]}</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {(["No iniciado","En curso","Completado"] as TrackState[]).map((state)=>(
+                      <span key={state} style={{fontSize:9,border:"1px solid #E5DDD0",borderRadius:999,padding:"3px 8px",color:TRACK_STATUS_COLORS[state],fontWeight:700}}>
+                        {state}: {totalsByTrack[track][state]}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{...cardS,padding:18,marginBottom:0}}>
+              <div style={{...lb,color:G,marginBottom:8}}>Valor por track</div>
+              {(() => {
+                const disenoTotal = projectsWithMetrics.reduce((sum, item) => sum + item.metrics.diseno.cobrado, 0);
+                const disenoHonorario = projectsWithMetrics.reduce((sum, item) => sum + item.metrics.diseno.honorario, 0);
+                const construccionTotal = projectsWithMetrics.reduce((sum, item) => sum + item.metrics.construccion.cotizado, 0);
+                const seguimientoVal = projectsWithMetrics.reduce((sum, item) => sum + item.metrics.seguimiento.valorizadoAc, 0);
+                const seguimientoPct = projectsWithMetrics.length ? projectsWithMetrics.reduce((sum, item) => sum + item.metrics.seguimiento.pctAvance, 0) / projectsWithMetrics.length : 0;
+                const ocPendientes = projectsWithMetrics.filter((item) => item.metrics.seguimiento.ocPendiente).length;
+                return (
+                  <div style={{display:"grid",gap:8}}>
+                    <div style={{border:"1px solid #E5DDD0",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:10,fontWeight:800,marginBottom:4}}>Diseño</div>
+                      <div style={{fontSize:9,color:"#8A93A0"}}>Cobrado: {fmtMoney2(disenoTotal)}</div>
+                      <div style={{fontSize:9,color:"#8A93A0"}}>% Cobrado: {disenoHonorario>0?((disenoTotal/disenoHonorario)*100).toFixed(1):"0.0"}%</div>
+                    </div>
+                    <div style={{border:"1px solid #E5DDD0",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:10,fontWeight:800,marginBottom:4}}>Construcción</div>
+                      <div style={{fontSize:9,color:"#8A93A0"}}>Cotizado: {fmtMoney2(construccionTotal)}</div>
+                    </div>
+                    <div style={{border:"1px solid #E5DDD0",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:10,fontWeight:800,marginBottom:4}}>Seguimiento</div>
+                      <div style={{fontSize:9,color:"#8A93A0"}}>% Avance promedio: {seguimientoPct.toFixed(1)}%</div>
+                      <div style={{fontSize:9,color:"#8A93A0"}}>Valorizado acumulado: {fmtMoney2(seguimientoVal)}</div>
+                      <div style={{fontSize:9,color:ocPendientes?"#A63B2A":"#8A93A0"}}>OC pendiente: {ocPendientes}</div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          <div style={{...cardS,padding:18}}>
+            <div style={{...lb,color:G,marginBottom:8}}>Proyectos</div>
+            {!projectsWithMetrics.length && (
+              <div style={{fontSize:11,color:"#8A93A0",padding:"8px 0"}}>No hay proyectos aún. Crea el primero para empezar el workflow.</div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:10}}>
+              {projectsWithMetrics.map(({project, metrics, disenoGantt, obraGantt}) => (
+                <div key={project.id} style={{border:"1px solid #E5DDD0",borderRadius:10,padding:"10px 11px",background:UI.card}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,gap:8}}>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:800}}>{project.name}</div>
+                      <div style={{fontSize:9,color:"#8A93A0"}}>{project.type || "Tipo no definido"} · {project.location || "Ubicación no definida"}</div>
+                    </div>
+                    {project.archived && <span style={{fontSize:8,border:"1px solid #D0D7DE",padding:"3px 6px",borderRadius:999,color:"#8A93A0",fontWeight:700}}>Archivado</span>}
+                  </div>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
+                    {TRACK_DEFAULT_ORDER.map((track)=>project.tracks[track] ? (
+                      <span key={track} style={{fontSize:8,border:"1px solid #E5DDD0",borderRadius:999,padding:"2px 6px",color:TRACK_STATUS_COLORS[metrics.states[track]],fontWeight:700}}>
+                        {TRACK_LABELS[track]}: {metrics.states[track]}
+                      </span>
+                    ) : null)}
+                  </div>
+                  <div style={{fontSize:9,color:"#6A737D",lineHeight:1.5,marginBottom:6}}>
+                    Diseño: {metrics.diseno.pctCobrado.toFixed(1)}% cobrado · Construcción: {fmtMoney2(metrics.construccion.cotizado)} · Seguimiento: {metrics.seguimiento.pctAvance.toFixed(1)}%
+                  </div>
+                  <div style={{marginBottom:6}}>
+                    <div style={{fontSize:8,fontWeight:700,color:"#8A93A0",marginBottom:3}}>Mini Gantt Diseño</div>
+                    <div style={{display:"flex",height:8,borderRadius:4,overflow:"hidden",border:"1px solid #E5DDD0"}}>
+                      {disenoGantt.length ? disenoGantt.map((item)=>(
+                        <div key={item.id} title={`${item.label}: ${fDateShort(item.start)}-${fDateShort(item.end)}`} style={{width:`${item.pct}%`,background:item.color}}/>
+                      )) : <div style={{width:"100%",background:"#EEF1F4"}}/>}
+                    </div>
+                  </div>
+                  <div style={{marginBottom:9}}>
+                    <div style={{fontSize:8,fontWeight:700,color:"#8A93A0",marginBottom:3}}>Mini Gantt Construcción</div>
+                    <div style={{position:"relative",height:10,borderRadius:4,overflow:"hidden",border:"1px solid #E5DDD0",background:"#EEF1F4"}}>
+                      {obraGantt.map((item)=>(
+                        <div key={item.id} title={item.label} style={{position:"absolute",left:`${Math.max(0,item.pct-1)}%`,width:`${Math.max(2,item.span)}%`,top:0,bottom:0,background:item.color}}/>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <Btn sm onClick={()=>openProject(project.id)}>Abrir</Btn>
+                    <Btn sm v="ol" onClick={()=>handleEditProject(project)}>Editar</Btn>
+                    <Btn sm v="ol" onClick={()=>toggleArchiveProject(project)}>{project.archived?"Desarchivar":"Archivar"}</Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{display:"flex",height:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:BG,color:DK,overflow:"hidden"}}>
+    <div data-theme={darkMode?"dark":"light"} style={{...themeVars,display:"flex",height:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:UI.bg,color:DK,overflow:"hidden"}}>
+      <style>{`
+        [data-theme="dark"] {
+          color-scheme: dark;
+        }
+        [data-theme="dark"] input,
+        [data-theme="dark"] select,
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] option {
+          background: #0d1117 !important;
+          color: #e6edf3 !important;
+          border-color: #30363d !important;
+        }
+        [data-theme="dark"] ::placeholder {
+          color: #8b98a7 !important;
+          opacity: 1;
+        }
+        [data-theme="dark"] table th {
+          background: #111720 !important;
+          color: #9da7b3 !important;
+          border-color: #30363d !important;
+        }
+        [data-theme="dark"] table td {
+          color: #d0d7de !important;
+          border-color: #2b313a !important;
+        }
+        [data-theme="dark"] table tbody td {
+          background: #111821 !important;
+        }
+        [data-theme="dark"] table tbody tr:nth-child(even) td {
+          background: #0f151d !important;
+        }
+        [data-theme="dark"] table tfoot td {
+          background: #131b24 !important;
+        }
+        [data-theme="dark"] table tr[style*="rgb(255, 255, 255)"],
+        [data-theme="dark"] table tr[style*="rgb(248, 248, 248)"],
+        [data-theme="dark"] table tr[style*="rgb(247, 247, 247)"],
+        [data-theme="dark"] table tr[style*="rgb(245, 243, 239)"],
+        [data-theme="dark"] table tr[style*="rgb(250, 250, 247)"],
+        [data-theme="dark"] table tr[style*="rgb(251, 249, 244)"],
+        [data-theme="dark"] table tr[style*="rgb(247, 245, 241)"],
+        [data-theme="dark"] table td[style*="rgb(255, 255, 255)"],
+        [data-theme="dark"] table td[style*="rgb(248, 248, 248)"],
+        [data-theme="dark"] table td[style*="rgb(247, 247, 247)"],
+        [data-theme="dark"] table td[style*="rgb(245, 243, 239)"],
+        [data-theme="dark"] table td[style*="rgb(250, 250, 247)"],
+        [data-theme="dark"] table td[style*="rgb(251, 249, 244)"],
+        [data-theme="dark"] table td[style*="rgb(247, 245, 241)"] {
+          background: #121821 !important;
+          color: #d0d7de !important;
+          border-color: #30363d !important;
+        }
+        [data-theme="dark"] [style*="background:#fff"],
+        [data-theme="dark"] [style*="background: #fff"],
+        [data-theme="dark"] [style*="background:#ffffff"],
+        [data-theme="dark"] [style*="background: #ffffff"] {
+          background: #161b22 !important;
+          border-color: #30363d !important;
+          color: #d0d7de !important;
+        }
+        [data-theme="dark"] [style*="background: rgb(255, 255, 255)"],
+        [data-theme="dark"] [style*="background:rgb(255,255,255)"],
+        [data-theme="dark"] [style*="background: rgb(248, 246, 241)"],
+        [data-theme="dark"] [style*="background:rgb(248,246,241)"],
+        [data-theme="dark"] [style*="background: rgb(245, 243, 239)"],
+        [data-theme="dark"] [style*="background:rgb(245,243,239)"],
+        [data-theme="dark"] [style*="background: rgb(250, 250, 247)"],
+        [data-theme="dark"] [style*="background:rgb(250,250,247)"],
+        [data-theme="dark"] [style*="background: rgb(251, 249, 244)"],
+        [data-theme="dark"] [style*="background:rgb(251,249,244)"],
+        [data-theme="dark"] [style*="background: rgb(247, 245, 241)"],
+        [data-theme="dark"] [style*="background:rgb(247,245,241)"],
+        [data-theme="dark"] [style*="background: rgb(240, 237, 232)"],
+        [data-theme="dark"] [style*="background:rgb(240,237,232)"],
+        [data-theme="dark"] [style*="background: rgb(253, 252, 249)"],
+        [data-theme="dark"] [style*="background:rgb(253,252,249)"] {
+          background: #161b22 !important;
+          border-color: #30363d !important;
+          color: #d0d7de !important;
+        }
+        [data-theme="dark"] [style*="rgb(229, 221, 208)"],
+        [data-theme="dark"] [style*="rgb(240, 235, 224)"],
+        [data-theme="dark"] [style*="rgb(221, 216, 204)"] {
+          border-color: #30363d !important;
+        }
+        [data-theme="dark"] [style*="color:#888"],
+        [data-theme="dark"] [style*="color: #888"],
+        [data-theme="dark"] [style*="color:#aaa"],
+        [data-theme="dark"] [style*="color: #aaa"],
+        [data-theme="dark"] [style*="color:#999"],
+        [data-theme="dark"] [style*="color: #999"],
+        [data-theme="dark"] [style*="color:#666"],
+        [data-theme="dark"] [style*="color: #666"],
+        [data-theme="dark"] [style*="color: rgb(170, 170, 170)"],
+        [data-theme="dark"] [style*="color:rgb(170,170,170)"],
+        [data-theme="dark"] [style*="color: rgb(153, 153, 153)"],
+        [data-theme="dark"] [style*="color:rgb(153,153,153)"],
+        [data-theme="dark"] [style*="color: rgb(136, 136, 136)"],
+        [data-theme="dark"] [style*="color:rgb(136,136,136)"],
+        [data-theme="dark"] [style*="color: rgb(102, 102, 102)"],
+        [data-theme="dark"] [style*="color:rgb(102,102,102)"] {
+          color: #9da7b3 !important;
+        }
+        [data-theme="dark"] button {
+          box-shadow: none !important;
+        }
+      `}</style>
       {/* ── SIDEBAR ── */}
-      <div style={{width:218,background:DK,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",overflowY:"auto"}}>
-        <div style={{padding:"18px 14px 14px",borderBottom:"1px solid #222"}}>
+      <div data-tour-id="sidebar" style={{width:226,background:UI.dark,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",overflowY:"auto",borderRight:"1px solid #0F141A"}}>
+        <div style={{padding:"18px 14px 14px",borderBottom:"1px solid #1F2733"}}>
           <Brand/>
+          <button
+            onClick={()=>setRoute("home")}
+            style={{marginTop:10,width:"100%",padding:"7px 10px",background:"#111923",border:"1px solid #2B3645",borderRadius:6,color:"#C3CDD8",fontSize:10,fontWeight:700,cursor:"pointer"}}
+          >
+            ← Volver al Home
+          </button>
+          <div style={{marginTop:8,fontSize:9,color:"#8A949F",lineHeight:1.45}}>
+            <div style={{fontWeight:700,color:"#D0D7DE"}}>{activeProject?.name}</div>
+            <div>{activeProject?.type || "Tipo no definido"}</div>
+            <div>{activeProject?.location || "Ubicación no definida"}</div>
+          </div>
+          <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+            {enabledTrackOrder.map((track)=>(
+              <button
+                key={track}
+                onClick={()=>setWorkspaceTrack(track)}
+                style={{padding:"4px 8px",borderRadius:999,border:`1px solid ${workspaceTrack===track?G:"#2B3645"}`,background:workspaceTrack===track?G:"#111923",color:workspaceTrack===track?"#111827":"#C3CDD8",fontSize:8,fontWeight:800,cursor:"pointer"}}
+              >
+                {TRACK_LABELS[track]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <nav style={{flex:1,padding:"8px 0"}}>
-          <div style={{padding:"8px 14px 6px",fontSize:8,fontWeight:700,color:"#444",textTransform:"uppercase",letterSpacing:"1px"}}>
-            Incluir en propuesta
+          <div style={{padding:"8px 14px 6px",fontSize:8,fontWeight:700,color:"#6F7B88",textTransform:"uppercase",letterSpacing:"1px"}}>
+            {TRACK_LABELS[workspaceTrack]} · Incluir en propuesta
           </div>
-          {tools.map(t=>{
+          {activeTrackTools.map(t=>{
             const Icon=TOOL_ICONS[t.id]||IconCalc;
             const isActive=active===t.id;
             return (
@@ -1948,10 +4272,11 @@ export default function App() {
                 </div>
                 {/* Nav button */}
                 <button
+                  data-tour-id={t.id==="calc"?"tool-calc":undefined}
                   onClick={()=>setActive(t.id)}
-                  style={{flex:1,padding:"10px 12px 10px 4px",background:"transparent",border:"none",color:isActive?"#fff":"#666",fontSize:11,fontWeight:isActive?600:400,textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
+                  style={{flex:1,padding:"10px 12px 10px 4px",background:"transparent",border:"none",color:isActive?"#fff":"#AAB3BE",fontSize:11,fontWeight:isActive?600:400,textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
                 >
-                  <Icon c={isActive?G:"#555"} s={15}/>
+                  <Icon c={isActive?G:"#8A949F"} s={15}/>
                   <span style={{lineHeight:1.3}}>{t.label}</span>
                 </button>
               </div>
@@ -1962,6 +4287,7 @@ export default function App() {
         {/* Export button */}
         <div style={{padding:"12px",borderTop:"1px solid #1E1E1E"}}>
           <button
+            data-tour-id="export"
             onClick={exportProposal}
             style={{width:"100%",padding:"10px 0",background:G,color:"#fff",border:"none",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.4px",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}
           >
@@ -1970,35 +4296,48 @@ export default function App() {
             </svg>
             Exportar Propuesta
           </button>
-          <div style={{fontSize:9,color:"#444",textAlign:"center",marginTop:7,lineHeight:1.4}}>
+          <div style={{fontSize:9,color:"#7E8794",textAlign:"center",marginTop:7,lineHeight:1.4}}>
             <span style={{color:nChecked>0?G:"#3A3A3A",fontWeight:700}}>{nChecked}</span>
             <span> de {tools.length} secciones seleccionadas</span>
           </div>
           <button
-            onClick={handleNewProject}
+            onClick={handleResetActiveProject}
             style={{width:"100%",padding:"9px 0",marginTop:10,background:"transparent",color:"#A7A7A7",border:"1px solid #3A3A3A",borderRadius:4,fontSize:10,fontWeight:700,cursor:"pointer",letterSpacing:"0.4px"}}
           >
-            Nuevo proyecto
+            Limpiar proyecto
           </button>
         </div>
       </div>
 
       {/* ── MAIN ── */}
       <div style={{flex:1,overflowY:"auto",padding:"20px 24px"}}>
-        <div style={{maxWidth:820,margin:"0 auto"}}>
+        <div data-tour-id="workspace" style={{maxWidth:860,margin:"0 auto"}}>
           <div style={{marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <h1 style={{margin:0,fontSize:16,fontWeight:800,display:"flex",alignItems:"center",gap:10}}>
               {(()=>{const Icon=TOOL_ICONS[current?.id ?? "calc"]||IconCalc;return <Icon c={DK} s={18}/>;})()}
               {current?.label}
             </h1>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button
+                onClick={()=>setDarkMode(v=>!v)}
+                style={{padding:"5px 10px",borderRadius:999,border:`1px solid ${UI.border}`,background:UI.card,color:UI.textMuted,fontSize:9,fontWeight:700,cursor:"pointer",letterSpacing:"0.3px"}}
+                title="Cambiar tema"
+              >
+                {darkMode ? "☀ Claro" : "🌙 Oscuro"}
+              </button>
+              <button
+                onClick={openOnboarding}
+                style={{padding:"5px 10px",borderRadius:999,border:`1px solid ${UI.border}`,background:UI.card,color:UI.textMuted,fontSize:9,fontWeight:700,cursor:"pointer",letterSpacing:"0.3px"}}
+              >
+                Ver guia
+              </button>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:tools.find(t=>t.id===active)?.checked?G:"#333"}}/>
-                <span style={{fontSize:9,color:"#AAA"}}>{tools.find(t=>t.id===active)?.checked?"Incluida en propuesta":"No incluida"}</span>
+                <div style={{width:8,height:8,borderRadius:"50%",background:tools.find(t=>t.id===active)?.checked?G:"var(--ui-muted-dot,#9AA3AE)"}}/>
+                <span style={{fontSize:9,color:"var(--ui-chip-text,#8A93A0)"}}>{tools.find(t=>t.id===active)?.checked?"Incluida en propuesta":"No incluida"}</span>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:999,border:`1px solid ${hasSavedData ? "#D6C299" : "#DDD8CC"}`,background:hasSavedData ? "#FBF7EF" : "#F6F4EF"}}>
-                <div style={{width:7,height:7,borderRadius:"50%",background:hasSavedData ? "#5A8F22" : "#9D9D9D"}}/>
-                <span style={{fontSize:9,color:hasSavedData ? "#70562A" : "#8A8A8A",fontWeight:700}}>
+              <div data-tour-id="saved-state" style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:999,border:`1px solid var(--ui-saved-border,#D6C299)`,background:"var(--ui-saved-bg,#FBF7EF)"}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:hasSavedData ? "var(--ui-saved-dot,#5A8F22)" : "var(--ui-muted-dot,#9AA3AE)"}}/>
+                <span style={{fontSize:9,color:hasSavedData ? "var(--ui-saved-text,#70562A)" : "var(--ui-chip-text,#8A8A8A)",fontWeight:700}}>
                   {hasSavedData ? "Datos guardados" : "Sin datos guardados"}
                 </span>
               </div>
@@ -2006,10 +4345,10 @@ export default function App() {
           </div>
 
           {/* All tools always mounted — hidden when not active */}
-          {tools.map(t=>{
+          {activeTrackTools.map(t=>{
             const C=t.component;
             return (
-              <div key={`${projectResetToken}-${t.id}`} style={{display:active===t.id?"block":"none"}}>
+              <div key={`${activeProjectId}-${projectResetToken}-${t.id}`} style={{display:active===t.id?"block":"none"}}>
                 <C toolId={t.id} onPrint={()=>printTool(t.id)}/>
               </div>
             );
@@ -2018,6 +4357,36 @@ export default function App() {
           <InfoBubble toolId={active}/>
         </div>
       </div>
+      {tourOpen && (
+        <>
+          <div onClick={closeTour} style={{position:"fixed",inset:0,background:"rgba(11,15,20,0.48)",zIndex:120}}/>
+          {tourTargetRect && (
+            <div style={{position:"fixed",top:Math.max(0,tourTargetRect.top-6),left:Math.max(0,tourTargetRect.left-6),width:Math.max(20,tourTargetRect.width+12),height:Math.max(20,tourTargetRect.height+12),borderRadius:10,border:`2px solid ${UI.accent}`,boxShadow:"0 0 0 9999px rgba(0,0,0,0)",pointerEvents:"none",zIndex:121}}/>
+          )}
+          <div style={{position:"fixed",right:24,bottom:24,width:340,maxWidth:"calc(100vw - 32px)",background:UI.card,border:`1px solid ${UI.border}`,borderRadius:10,boxShadow:"0 10px 26px rgba(16,24,40,0.18)",zIndex:122,padding:"14px 14px 12px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
+              <div>
+                <div style={{fontSize:10,fontWeight:800,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>
+                  Guía rápida · Paso {tourStepIndex+1}/{APP_TOUR_STEPS.length}
+                </div>
+                <div style={{fontSize:13,fontWeight:800,color:DK}}>{APP_TOUR_STEPS[tourStepIndex]?.title}</div>
+              </div>
+              <button onClick={closeTour} title="Cerrar guía" style={{background:"transparent",border:"none",fontSize:14,color:UI.textMuted,cursor:"pointer",lineHeight:1,padding:2}}>×</button>
+            </div>
+            <div style={{fontSize:11,color:UI.textMuted,lineHeight:1.55,marginBottom:12}}>
+              {APP_TOUR_STEPS[tourStepIndex]?.desc}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <button onClick={goPrevTourStep} disabled={tourStepIndex===0} style={{background:"transparent",border:`1px solid ${UI.border}`,borderRadius:6,color:tourStepIndex===0?"#AAB3BE":UI.textMuted,fontSize:10,fontWeight:700,padding:"6px 10px",cursor:tourStepIndex===0?"not-allowed":"pointer"}}>
+                ← Anterior
+              </button>
+              <button onClick={goNextTourStep} style={{background:UI.dark,border:"1px solid #0F141A",borderRadius:6,color:"#fff",fontSize:10,fontWeight:700,padding:"6px 12px",cursor:"pointer"}}>
+                {tourStepIndex===APP_TOUR_STEPS.length-1 ? "Finalizar" : "Siguiente →"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

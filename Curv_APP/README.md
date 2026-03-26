@@ -1,73 +1,49 @@
-# React + TypeScript + Vite
+# Curv App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación de propuesta técnica/comercial para CURVA: honorarios, entregables, exclusiones, cronograma, cotización, valorización, brief y orden de cambio.
 
-Currently, two official plugins are available:
+## Desarrollo local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Build
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+## Standalone HTML (1 archivo)
+
+Genera un `standalone.html` usable con doble click (`file://`) y sin depender de `dist/assets`.
+
+```bash
+npm run build:standalone
+```
+
+También puedes generar solo desde `dist` ya existente:
+
+```bash
+npm run build:standalone:only
+```
+
+## Publicación en GitHub Pages (costo 0)
+
+### Opción recomendada (simple)
+1. Ejecuta `npm run build:standalone`.
+2. Copia `standalone.html` y renómbralo a `index.html`.
+3. Súbelo a una rama para Pages (por ejemplo `gh-pages`) en la raíz.
+4. En GitHub: `Settings > Pages`.
+5. Source: `Deploy from a branch`.
+6. Branch: `gh-pages` + folder `/ (root)`.
+7. Guarda y espera la URL pública.
+
+### Checklist post deploy
+1. La app carga sin errores en la URL pública.
+2. Navegación entre tools funciona.
+3. Persistencia (`localStorage`) funciona tras recargar.
+4. Impresión/export de documentos funciona.
+5. Botón `Nuevo proyecto` limpia estado correctamente.
+
