@@ -21,6 +21,7 @@ type WorkspaceSidebarProps = {
   workspaceTrack: TrackId;
   setWorkspaceTrack: (track: TrackId) => void;
   setRoute: (route: "home" | "workspace") => void;
+  onLogout: () => void;
   activeTrackTools: SidebarTool[];
   active: string;
   toggleCheck: (id: string) => void;
@@ -37,6 +38,7 @@ export default function WorkspaceSidebar({
   workspaceTrack,
   setWorkspaceTrack,
   setRoute,
+  onLogout,
   activeTrackTools,
   active,
   toggleCheck,
@@ -55,6 +57,12 @@ export default function WorkspaceSidebar({
           style={{marginTop: 10, width: "100%", padding: "7px 10px", background: "#111923", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 700, cursor: "pointer"}}
         >
           ← Volver al Home
+        </button>
+        <button
+          onClick={onLogout}
+          style={{marginTop: 7, width: "100%", padding: "7px 10px", background: "transparent", border: "1px solid #3A3A3A", borderRadius: 6, color: "#AAB3BE", fontSize: 10, fontWeight: 700, cursor: "pointer"}}
+        >
+          Cerrar sesión
         </button>
         <div style={{marginTop: 8, fontSize: 9, color: "#8A949F", lineHeight: 1.45}}>
           <div style={{fontWeight: 700, color: "#D0D7DE"}}>{activeProject?.name}</div>
