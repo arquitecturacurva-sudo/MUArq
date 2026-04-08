@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import type { CommercialStatus, PersistedToolState, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
+import LandingView from "./features/layout/LandingView";
 import HomeView from "./features/layout/HomeView";
 import OnboardingTour from "./features/layout/OnboardingTour";
 import WorkspaceMain from "./features/layout/WorkspaceMain";
@@ -26,6 +27,7 @@ import {
   getTrackForTool,
   hasSavedProjectData,
   isProjectRecordArray,
+  isProjectCurrency,
   isString,
   isValidCommercialStatus,
   isValidTrackId,
@@ -36,15 +38,29 @@ import {
   nowIso,
   openPrint,
   readStorage,
+  readProjectBaseMetadata,
   setActiveStorageProjectId,
   usePersistentState,
+  writeProjectBaseMetadata,
   writeStorage,
 } from "./features/runtime/runtime";
+import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
+
+const FIRESTORE_SMOKE_ENABLED = (
+  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID !== "xxx" &&
+  import.meta.env.VITE_FIREBASE_API_KEY &&
+  import.meta.env.VITE_FIREBASE_API_KEY !== "xxx"
+);
 
 export default function App() {
   const [projects,setProjects]=usePersistentState<ProjectRecord[]>("app.projects",[],isProjectRecordArray);
   const [activeProjectId,setActiveProjectId]=usePersistentState("app.activeProjectId","",isString);
-  const [route,setRoute]=usePersistentState<"home"|"workspace">("app.route","home",(value): value is "home" | "workspace" => value==="home" || value==="workspace");
+  const [route,setRoute]=usePersistentState<"landing"|"home"|"workspace">(
+    "app.route",
+    "landing",
+    (value): value is "landing" | "home" | "workspace" => value === "landing" || value === "home" || value === "workspace"
+  );
   const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
   const [onboardingSeen,setOnboardingSeen]=usePersistentState("app.onboardingSeen",false);
   setActiveStorageProjectId(activeProjectId);
@@ -63,6 +79,7 @@ export default function App() {
   const [newProjectName,setNewProjectName]=useState("");
   const [newProjectType,setNewProjectType]=useState("");
   const [newProjectLocation,setNewProjectLocation]=useState("");
+  const [newProjectCurrency,setNewProjectCurrency]=useState<ProjectCurrency>("PEN");
   const [newProjectStatus,setNewProjectStatus]=useState<CommercialStatus>("Lead");
   const [newProjectTracks,setNewProjectTracks]=useState<Record<TrackId,boolean>>({...DEFAULT_TRACKS});
   const themeVars: React.CSSProperties = darkMode ? {
@@ -146,6 +163,17 @@ export default function App() {
   const bootstrappedRef = React.useRef(false);
 
   useEffect(() => {
+    if (!activeProject) return;
+    const baseMeta = readProjectBaseMetadata(activeProject.id);
+    const patch: Partial<ProjectBaseMetadata> = {};
+    if (!baseMeta.projectName.trim() && activeProject.name.trim()) patch.projectName = activeProject.name.trim();
+    if (!baseMeta.location.trim() && activeProject.location.trim()) patch.location = activeProject.location.trim();
+    if (!baseMeta.currency) patch.currency = "PEN";
+    if (!Object.keys(patch).length) return;
+    writeProjectBaseMetadata(patch, activeProject.id);
+  }, [activeProject]);
+
+  useEffect(() => {
     if (bootstrappedRef.current) return;
     bootstrappedRef.current = true;
     const existing = normalizeProjectRecords(readStorage<ProjectRecord[]>("app.projects", [], isProjectRecordArray));
@@ -200,6 +228,43 @@ export default function App() {
   }, [activeProjectId]);
 
   useEffect(() => {
+    if (!activeProjectId) return;
+    const baseMeta = readProjectBaseMetadata(activeProjectId);
+    const nextName = baseMeta.projectName.trim();
+    const nextLocation = baseMeta.location.trim();
+    if (!nextName && !nextLocation) return;
+    setProjects((prev) => {
+      const base = normalizeProjectRecords(prev);
+      let changed = false;
+      const next = base.map((project) => {
+        if (project.id !== activeProjectId) return project;
+        const resolvedName = nextName || project.name;
+        const resolvedLocation = nextLocation || project.location;
+        if (resolvedName === project.name && resolvedLocation === project.location) return project;
+        changed = true;
+        return {...project, name: resolvedName, location: resolvedLocation, updatedAt: nowIso()};
+      });
+      return changed ? next : prev;
+    });
+  }, [activeProjectId, setProjects, storageTick]);
+
+  useEffect(() => {
+    if (!FIRESTORE_SMOKE_ENABLED) return;
+    if (!activeProjectId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snapshot = await readSmokeSnapshot(activeProjectId);
+        if (cancelled || !snapshot) return;
+        console.info("[firestore-smoke] read", snapshot.projectId, snapshot.updatedAt);
+      } catch (error) {
+        console.warn("[firestore-smoke] read failed", error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeProjectId]);
+
+  useEffect(() => {
     document.body.style.background = darkMode ? "#0D1117" : "#F5F3EF";
     document.body.style.color = darkMode ? "#E6EDF3" : "#1A1A1A";
   }, [darkMode]);
@@ -223,12 +288,16 @@ export default function App() {
     [activeProject, tools, workspaceTrack]
   );
   const projectsWithMetrics = useMemo(
-    () => normalizedProjects.map((project) => ({
-      project,
-      metrics: computeDashboardMetrics(project),
-      disenoGantt: calcDesignMiniGantt(project.id),
-      obraGantt: calcObraMiniGantt(project.id),
-    })),
+    () => {
+      void storageTick;
+      return normalizedProjects.map((project) => ({
+        project,
+        baseMeta: readProjectBaseMetadata(project.id),
+        metrics: computeDashboardMetrics(project),
+        disenoGantt: calcDesignMiniGantt(project.id),
+        obraGantt: calcObraMiniGantt(project.id),
+      }));
+    },
     [normalizedProjects, storageTick]
   );
   const totalsByTrack = useMemo(() => {
@@ -276,12 +345,21 @@ export default function App() {
       tracks,
       commercialStatus: newProjectStatus,
     });
+    writeProjectBaseMetadata(
+      {
+        projectName: created.name,
+        location: created.location,
+        currency: newProjectCurrency,
+      },
+      created.id
+    );
     setProjects((prev) => [created, ...normalizeProjectRecords(prev)]);
     setActiveProjectId(created.id);
     setRoute("workspace");
     setNewProjectName("");
     setNewProjectType("");
     setNewProjectLocation("");
+    setNewProjectCurrency("PEN");
     setNewProjectStatus("Lead");
     setNewProjectTracks({...DEFAULT_TRACKS});
   };
@@ -297,19 +375,29 @@ export default function App() {
       };
       return updated;
     }));
+    const basePatch: Partial<ProjectBaseMetadata> = {};
+    if (typeof patch.name === "string") basePatch.projectName = patch.name.trim();
+    if (typeof patch.location === "string") basePatch.location = patch.location.trim();
+    if (Object.keys(basePatch).length) writeProjectBaseMetadata(basePatch, projectId);
   };
 
   const handleEditProject = (project: ProjectRecord) => {
-    const name = window.prompt("Nombre del proyecto", project.name);
+    const baseMeta = readProjectBaseMetadata(project.id);
+    const name = window.prompt("Nombre del proyecto", baseMeta.projectName.trim() || project.name);
     if (name === null) return;
     const type = window.prompt("Tipo de proyecto", project.type);
     if (type === null) return;
-    const location = window.prompt("Ubicación", project.location);
+    const location = window.prompt("Ubicación", baseMeta.location.trim() || project.location);
     if (location === null) return;
+    const currency = window.prompt("Moneda (PEN o USD)", baseMeta.currency);
+    if (currency === null) return;
     const status = window.prompt("Estado comercial (Lead, Propuesta, Negociacion, Ganado, Perdido)", project.commercialStatus);
     if (status === null) return;
     const commercialStatus = isValidCommercialStatus(status.trim()) ? status.trim() as CommercialStatus : project.commercialStatus;
+    const normalizedCurrencyRaw = currency.trim().toUpperCase();
+    const normalizedCurrency = isProjectCurrency(normalizedCurrencyRaw) ? normalizedCurrencyRaw : baseMeta.currency;
     updateProject(project.id, {name: name.trim() || project.name, type: type.trim(), location: location.trim(), commercialStatus});
+    writeProjectBaseMetadata({currency: normalizedCurrency}, project.id);
   };
 
   const toggleArchiveProject = (project: ProjectRecord) => {
@@ -337,13 +425,19 @@ export default function App() {
   const shouldShowAutoTour = route==="workspace" && !!activeProject && !hasSavedData && !onboardingSeen;
   useEffect(() => {
     if (!shouldShowAutoTour) return;
-    setTourOpen(true);
-    setTourStepIndex(0);
+    const raf = window.requestAnimationFrame(() => {
+      setTourOpen(true);
+      setTourStepIndex(0);
+    });
+    return () => window.cancelAnimationFrame(raf);
   }, [shouldShowAutoTour]);
   useEffect(() => {
     if (route === "workspace") return;
-    setTourOpen(false);
-    setTourTargetRect(null);
+    const raf = window.requestAnimationFrame(() => {
+      setTourOpen(false);
+      setTourTargetRect(null);
+    });
+    return () => window.cancelAnimationFrame(raf);
   }, [route]);
   const closeTour = () => {
     setOnboardingSeen(true);
@@ -355,10 +449,10 @@ export default function App() {
     setTourOpen(true);
     setTourStepIndex(0);
   };
-  const goToCalcFromTour = () => {
+  const goToCalcFromTour = useCallback(() => {
     setWorkspaceTrack("diseno");
     setActive("calc");
-  };
+  }, [setActive, setWorkspaceTrack]);
   const goNextTourStep = () => {
     if (tourStepIndex >= APP_TOUR_STEPS.length - 1) {
       closeTour();
@@ -393,7 +487,7 @@ export default function App() {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [tourOpen, tourStepIndex]);
+  }, [goToCalcFromTour, tourOpen, tourStepIndex]);
 
   const printTool=(id: string)=>{
     const el=document.querySelector(`[data-doc-id="${id}"]`);
@@ -425,6 +519,43 @@ export default function App() {
   const current=activeTrackTools.find(t=>t.id===active) || activeTrackTools[0];
   const nChecked=tools.filter(t=>t.checked).length;
 
+  useEffect(() => {
+    if (!FIRESTORE_SMOKE_ENABLED) return;
+    if (!activeProjectId) return;
+    const timer = window.setTimeout(() => {
+      const baseMeta = readProjectBaseMetadata(activeProjectId);
+      const checkedToolIds = tools.filter((tool) => tool.checked).map((tool) => tool.id);
+      writeSmokeSnapshot(activeProjectId, {
+        baseMeta,
+        stateVersion: 1,
+        sampleState: {
+          route: route === "landing" ? "home" : route,
+          activeToolId: active,
+          checkedToolIds,
+        },
+      }).then((snapshot) => {
+        console.info("[firestore-smoke] write", snapshot.projectId, snapshot.updatedAt);
+      }).catch((error) => {
+        console.warn("[firestore-smoke] write failed", error);
+      });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [active, activeProjectId, route, storageTick, tools]);
+
+  if (route === "landing") {
+    return (
+      <LandingView
+        darkMode={darkMode}
+        themeVars={themeVars}
+        setDarkMode={setDarkMode}
+        hasProjects={normalizedProjects.length > 0}
+        canContinueWorkspace={!!activeProject}
+        openHome={() => setRoute("home")}
+        continueWorkspace={() => setRoute("workspace")}
+      />
+    );
+  }
+
   if (route === "home" || !activeProject) {
     return (
       <HomeView
@@ -437,6 +568,8 @@ export default function App() {
         setNewProjectType={setNewProjectType}
         newProjectLocation={newProjectLocation}
         setNewProjectLocation={setNewProjectLocation}
+        newProjectCurrency={newProjectCurrency}
+        setNewProjectCurrency={setNewProjectCurrency}
         newProjectStatus={newProjectStatus}
         setNewProjectStatus={setNewProjectStatus}
         newProjectTracks={newProjectTracks}
@@ -566,7 +699,7 @@ export default function App() {
         enabledTrackOrder={enabledTrackOrder}
         workspaceTrack={workspaceTrack}
         setWorkspaceTrack={setWorkspaceTrack}
-        setRoute={setRoute}
+        setRoute={(nextRoute: "home" | "workspace") => setRoute(nextRoute)}
         activeTrackTools={activeTrackTools}
         active={active}
         toggleCheck={toggleCheck}

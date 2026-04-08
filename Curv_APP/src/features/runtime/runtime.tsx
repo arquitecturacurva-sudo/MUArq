@@ -56,7 +56,16 @@ export const UI = {
   borderSoft: "var(--ui-border-soft)",
   dark: "var(--ui-dark)",
 };
-export const fmt = (n: any) => "S/ " + Math.round(Number(n) || 0).toLocaleString("es-PE");
+export const currencySymbol = (currency?: "PEN" | "USD") => (currency === "USD" ? "$" : "S/");
+export const formatMoneyByCurrency = (n: any, currency: "PEN" | "USD" = "PEN") => (
+  `${currencySymbol(currency)} ${Number(n || 0).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2})}`
+);
+export const formatMoneyByProject = (n: any, projectId?: string) => (
+  formatMoneyByCurrency(n, readProjectBaseMetadata(projectId).currency)
+);
+export const fmt = (n: any, projectId?: string) => (
+  `${currencySymbol(readProjectBaseMetadata(projectId).currency)} ${Math.round(Number(n) || 0).toLocaleString("es-PE")}`
+);
 export const rnd = (n: number, s: any) => {
   const step = Number(s) || 0;
   return step > 0 ? Math.round(n/step)*step : Math.round(n);
@@ -96,7 +105,7 @@ export const alignToWorkDay = (date: Date, direction: 1 | -1 = 1) => {
 };
 export const normalizeWorkDate = (value: string) => toISODate(alignToWorkDay(parseDateISO(value), 1));
 export const addWorkDaysMonSat = (value: string, delta: number) => {
-  let cursor = alignToWorkDay(parseDateISO(value), delta >= 0 ? 1 : -1);
+  const cursor = alignToWorkDay(parseDateISO(value), delta >= 0 ? 1 : -1);
   if (delta === 0) return toISODate(cursor);
   const step = delta > 0 ? 1 : -1;
   let remaining = Math.abs(delta);
@@ -301,11 +310,38 @@ export const SHARED_PROJECT_CLIENT_KEY = "project.client";
 export const SHARED_PROJECT_NAME_KEY = "project.name";
 export const SHARED_PROJECT_LOCATION_KEY = "project.location";
 export const SHARED_PROJECT_CODE_KEY = "project.code";
+export const SHARED_PROJECT_CURRENCY_KEY = "project.currency";
 
 export const PROJECT_CLIENT_LEGACY_KEYS = ["calc.cl", "matrix.cl", "excl.cl", "cron.cl", "oc.cl", "brief.cl"];
 export const PROJECT_NAME_LEGACY_KEYS = ["calc.pr", "matrix.pr", "excl.pr", "cron.pr", "oc.pr", "brief.pr"];
 export const PROJECT_LOCATION_LEGACY_KEYS = ["matrix.ub", "brief.ub"];
 export const PROJECT_CODE_LEGACY_KEYS = ["excl.cod", "brief.cod"];
+export const PROJECT_CURRENCY_OPTIONS = ["PEN", "USD"] as const;
+export type ProjectCurrency = (typeof PROJECT_CURRENCY_OPTIONS)[number];
+export type ProjectBaseMetadata = {
+  client: string;
+  projectName: string;
+  location: string;
+  code: string;
+  currency: ProjectCurrency;
+};
+export const isProjectCurrency = (value: unknown): value is ProjectCurrency => (
+  value === "PEN" || value === "USD"
+);
+export const readProjectBaseMetadata = (scopeProjectId?: string): ProjectBaseMetadata => ({
+  client: readStorage<string>(SHARED_PROJECT_CLIENT_KEY, "", isString, scopeProjectId),
+  projectName: readStorage<string>(SHARED_PROJECT_NAME_KEY, "", isString, scopeProjectId),
+  location: readStorage<string>(SHARED_PROJECT_LOCATION_KEY, "", isString, scopeProjectId),
+  code: readStorage<string>(SHARED_PROJECT_CODE_KEY, "", isString, scopeProjectId),
+  currency: readStorage<ProjectCurrency>(SHARED_PROJECT_CURRENCY_KEY, "PEN", isProjectCurrency, scopeProjectId),
+});
+export const writeProjectBaseMetadata = (meta: Partial<ProjectBaseMetadata>, scopeProjectId?: string) => {
+  if (typeof meta.client === "string") writeStorage(SHARED_PROJECT_CLIENT_KEY, meta.client, scopeProjectId);
+  if (typeof meta.projectName === "string") writeStorage(SHARED_PROJECT_NAME_KEY, meta.projectName, scopeProjectId);
+  if (typeof meta.location === "string") writeStorage(SHARED_PROJECT_LOCATION_KEY, meta.location, scopeProjectId);
+  if (typeof meta.code === "string") writeStorage(SHARED_PROJECT_CODE_KEY, meta.code, scopeProjectId);
+  if (isProjectCurrency(meta.currency)) writeStorage(SHARED_PROJECT_CURRENCY_KEY, meta.currency, scopeProjectId);
+};
 
 export const firstStoredNonEmptyString = (keys: readonly string[]) => {
   for (const key of keys) {
@@ -648,6 +684,8 @@ export const MF: Record<string, number> = {"Suma alzada":1,"Precios unitarios":1
 
 export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
+  const curr = readProjectBaseMetadata().currency;
+  const moneySym = currencySymbol(curr);
   const [step,ss]=usePersistentState("calc.step",1);
   const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [fe,sfe]=usePersistentState("calc.fe",today);
   const [ti,sti]=usePersistentState("calc.ti","Vivienda"); const [et,set_]=usePersistentState("calc.et","Anteproyecto");
@@ -723,9 +761,9 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
           </div>
           <p style={{...lb,color:G,margin:"10px 0"}}>Adicionales</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
-            <Fld label="Reuniones extra (S/ 240 c/u)"><Inp type="number" value={rx} onChange={srx} min="0"/></Fld>
-            <Fld label="Visitas extra (S/ 180 c/u)"><Inp type="number" value={vx} onChange={svx} min="0"/></Fld>
-            <Fld label="Renders extra (S/ 250 c/u)"><Inp type="number" value={nx} onChange={snx} min="0"/></Fld>
+            <Fld label={`Reuniones extra (${moneySym} 240 c/u)`}><Inp type="number" value={rx} onChange={srx} min="0"/></Fld>
+            <Fld label={`Visitas extra (${moneySym} 180 c/u)`}><Inp type="number" value={vx} onChange={svx} min="0"/></Fld>
+            <Fld label={`Renders extra (${moneySym} 250 c/u)`}><Inp type="number" value={nx} onChange={snx} min="0"/></Fld>
           </div>
           <div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"9px 12px",display:"flex",flexWrap:"wrap",gap:"8px 20px",alignItems:"center"}}>
             <div><div style={lb}>Ajustado</div><div style={{fontWeight:600,fontSize:12}}>{fmt(c.adj)}</div></div>
@@ -755,7 +793,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
             <div style={{color:"#888",fontSize:9}}>Total {ig?"con IGV":"sin IGV"}</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px",marginBottom:14}}>
-            {[["Cliente",cl||"—"],["Total",fmt(c.tot)],["Proyecto",pr||"—"],["Tarifa",`S/ ${c.t}/m²`],["Fecha",fDate(fe)],["Complejidad",co],["Tipo",ti],["Urgencia",ur],["Etapa",et],["Cliente tipo",tc],["Modelo",mo],["Área",`${ar||0} m²`]].map(([k,v])=>(
+            {[["Cliente",cl||"—"],["Total",fmt(c.tot)],["Proyecto",pr||"—"],["Tarifa",`${moneySym} ${c.t}/m²`],["Fecha",fDate(fe)],["Complejidad",co],["Tipo",ti],["Urgencia",ur],["Etapa",et],["Cliente tipo",tc],["Modelo",mo],["Área",`${ar||0} m²`]].map(([k,v])=>(
               <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
                 <span style={{color:"#888",fontSize:10}}>{k}</span><span style={{fontWeight:600,fontSize:10}}>{v}</span>
               </div>
@@ -1194,6 +1232,8 @@ export const ETAPAS_CRON=[
 
 export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
+  const curr = readProjectBaseMetadata().currency;
+  const moneySym = currencySymbol(curr);
   const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [fe,sfe]=usePersistentState("cron.fe",today);
   const [inicio,sInicio]=usePersistentState("cron.inicio",today);
   const [etapas,setEtapas]=usePersistentState("cron.etapas",ETAPAS_CRON,Array.isArray);
@@ -1260,7 +1300,7 @@ export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () =
           <Fld label="Inicio estimado"><input type="date" value={inicio} onChange={e=>sInicio(e.target.value)} style={si}/></Fld>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:"0 14px"}}>
-          <Fld label="Honorario total (S/) — opcional"><input value={honorario} onChange={e=>setHonorario(e.target.value)} placeholder="Ej. 99500" style={si}/></Fld>
+          <Fld label={`Honorario total (${moneySym}) — opcional`}><input value={honorario} onChange={e=>setHonorario(e.target.value)} placeholder="Ej. 99500" style={si}/></Fld>
           <Fld label="Nota / condición de plazo"><input value={nota} onChange={e=>setNota(e.target.value)} placeholder="Los plazos están condicionados a aprobaciones oportunas del cliente." style={si}/></Fld>
         </div>
       </div>
@@ -1419,6 +1459,8 @@ export const SOLICITANTES=["Cliente","Arquitecto","Obra","Contratista"];
 
 export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
+  const curr = readProjectBaseMetadata().currency;
+  const moneySym = currencySymbol(curr);
   const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [cod,scod]=usePersistentState("oc.cod","OC-01");
   const [fe,sfe]=usePersistentState("oc.fe",today); const [cot,scot]=usePersistentState("oc.cot",""); const [sol,ssol]=usePersistentState("oc.sol","Cliente");
   const [desc,sdesc]=usePersistentState("oc.desc",""); const [motivo,smotivo]=usePersistentState("oc.motivo","Pedido del cliente"); const [impacto,simpacto]=usePersistentState("oc.impacto","Alcance + Honorarios");
@@ -1567,8 +1609,8 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
         </Sec>
         <Sec n="4" title="Impacto del cambio">
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
-            {row("Honorario adicional",honorAd?`S/ ${honorAd}`:"S/ 0.00")}{row("Extensión de plazo",extPlazo||"—")}
-            {row("Nuevo total",nuevoTotal?`S/ ${nuevoTotal}`:"—")}{row("Hito de pago",hitoPago)}
+            {row("Honorario adicional",honorAd?`${moneySym} ${honorAd}`:`${moneySym} 0.00`)}{row("Extensión de plazo",extPlazo||"—")}
+            {row("Nuevo total",nuevoTotal?`${moneySym} ${nuevoTotal}`:"—")}{row("Hito de pago",hitoPago)}
             {row("Ajuste de cronograma",ajusteCron+(notaCron?" — "+notaCron:""))}{row("Observación clave",obsKey)}
           </div>
         </Sec>
@@ -2214,7 +2256,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
 // ══ COTIZACION DE OBRA ═════════════════════════════════════════════════
 export const COT_CATEGORIES_BASE = ["Trabajos preliminares","Estructuras","Arquitectura","Carpinteria","Instalaciones"];
 export const COT_UNITS = ["UND","M2","M3","ML","GLB","DIA","KG"];
-export const fmtMoney2 = (n: any) => "S/ " + Number(n || 0).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2});
+export const fmtMoney2 = (n: any, projectId?: string) => formatMoneyByProject(n, projectId);
 export const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
 
 export type CotPartida = {

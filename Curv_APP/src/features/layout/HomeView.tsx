@@ -1,5 +1,13 @@
 import React from "react";
-import type { CommercialStatus } from "../runtime/runtime";
+import type {
+  CommercialStatus,
+  DashboardMetrics,
+  ProjectBaseMetadata,
+  ProjectCurrency,
+  ProjectRecord,
+  TrackId,
+  TrackState,
+} from "../runtime/runtime";
 import {
   Brand,
   Btn,
@@ -8,6 +16,7 @@ import {
   Fld,
   G,
   Inp,
+  PROJECT_CURRENCY_OPTIONS,
   Sel,
   TRACK_DEFAULT_ORDER,
   TRACK_LABELS,
@@ -15,9 +24,34 @@ import {
   UI,
   cardS,
   fDateShort,
-  fmtMoney2,
+  formatMoneyByCurrency,
   lb,
 } from "../runtime/runtime";
+
+type DesignMiniGanttItem = {
+  id: string;
+  label: string;
+  color: string;
+  pct: number;
+  start: string;
+  end: string;
+};
+
+type ObraMiniGanttItem = {
+  id: number;
+  label: string;
+  color: string;
+  pct: number;
+  span: number;
+};
+
+type ProjectWithMetrics = {
+  project: ProjectRecord;
+  baseMeta: ProjectBaseMetadata;
+  metrics: DashboardMetrics;
+  disenoGantt: DesignMiniGanttItem[];
+  obraGantt: ObraMiniGanttItem[];
+};
 
 type HomeViewProps = {
   darkMode: boolean;
@@ -29,17 +63,19 @@ type HomeViewProps = {
   setNewProjectType: (value: string) => void;
   newProjectLocation: string;
   setNewProjectLocation: (value: string) => void;
+  newProjectCurrency: ProjectCurrency;
+  setNewProjectCurrency: (value: ProjectCurrency) => void;
   newProjectStatus: CommercialStatus;
   setNewProjectStatus: (value: CommercialStatus) => void;
-  newProjectTracks: Record<string, boolean>;
-  setNewProjectTracks: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  newProjectTracks: Record<TrackId, boolean>;
+  setNewProjectTracks: React.Dispatch<React.SetStateAction<Record<TrackId, boolean>>>;
   createProject: () => void;
-  normalizedProjects: any[];
-  totalsByTrack: Record<string, Record<string, number>>;
-  projectsWithMetrics: any[];
+  normalizedProjects: ProjectRecord[];
+  totalsByTrack: Record<TrackId, Record<TrackState, number>>;
+  projectsWithMetrics: ProjectWithMetrics[];
   openProject: (projectId: string) => void;
-  handleEditProject: (project: any) => void;
-  toggleArchiveProject: (project: any) => void;
+  handleEditProject: (project: ProjectRecord) => void;
+  toggleArchiveProject: (project: ProjectRecord) => void;
 };
 
 export default function HomeView({
@@ -52,6 +88,8 @@ export default function HomeView({
   setNewProjectType,
   newProjectLocation,
   setNewProjectLocation,
+  newProjectCurrency,
+  setNewProjectCurrency,
   newProjectStatus,
   setNewProjectStatus,
   newProjectTracks,
@@ -79,11 +117,12 @@ export default function HomeView({
 
         <div style={{...cardS, padding: 18, marginBottom: 14}}>
           <div style={{...lb, color: G, marginBottom: 8}}>Nuevo proyecto</div>
-          <div style={{display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: 10, marginBottom: 10}}>
+          <div style={{display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.8fr", gap: 10, marginBottom: 10}}>
             <Fld label="Nombre del proyecto"><Inp value={newProjectName} onChange={setNewProjectName} placeholder="Ej. Casa Pradera" /></Fld>
             <Fld label="Tipo"><Inp value={newProjectType} onChange={setNewProjectType} placeholder="Vivienda / Comercial" /></Fld>
             <Fld label="Ubicación"><Inp value={newProjectLocation} onChange={setNewProjectLocation} placeholder="Ciudad / distrito" /></Fld>
             <Fld label="Estado comercial"><Sel value={newProjectStatus} onChange={(value) => setNewProjectStatus(value as CommercialStatus)} options={COMMERCIAL_STATUS_OPTIONS} /></Fld>
+            <Fld label="Moneda"><Sel value={newProjectCurrency} onChange={(value) => setNewProjectCurrency(value as ProjectCurrency)} options={[...PROJECT_CURRENCY_OPTIONS]} /></Fld>
           </div>
           <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap"}}>
             <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
@@ -118,7 +157,7 @@ export default function HomeView({
               <div key={track} style={{borderTop: "1px solid #EEF1F4", paddingTop: 7, marginTop: 7}}>
                 <div style={{fontSize: 10, fontWeight: 800, color: DK, marginBottom: 4}}>{TRACK_LABELS[track]}</div>
                 <div style={{display: "flex", gap: 6, flexWrap: "wrap"}}>
-                  {(["No iniciado", "En curso", "Completado"] as string[]).map((state) => (
+                  {(["No iniciado", "En curso", "Completado"] as TrackState[]).map((state) => (
                     <span key={state} style={{fontSize: 9, border: "1px solid #E5DDD0", borderRadius: 999, padding: "3px 8px", color: TRACK_STATUS_COLORS[state as keyof typeof TRACK_STATUS_COLORS], fontWeight: 700}}>
                       {state}: {totalsByTrack[track][state]}
                     </span>
@@ -141,17 +180,17 @@ export default function HomeView({
                 <div style={{display: "grid", gap: 8}}>
                   <div style={{border: "1px solid #E5DDD0", borderRadius: 8, padding: "8px 10px"}}>
                     <div style={{fontSize: 10, fontWeight: 800, marginBottom: 4}}>Diseño</div>
-                    <div style={{fontSize: 9, color: "#8A93A0"}}>Cobrado: {fmtMoney2(disenoTotal)}</div>
+                    <div style={{fontSize: 9, color: "#8A93A0"}}>Cobrado: {formatMoneyByCurrency(disenoTotal, "PEN")}</div>
                     <div style={{fontSize: 9, color: "#8A93A0"}}>% Cobrado: {disenoHonorario > 0 ? ((disenoTotal / disenoHonorario) * 100).toFixed(1) : "0.0"}%</div>
                   </div>
                   <div style={{border: "1px solid #E5DDD0", borderRadius: 8, padding: "8px 10px"}}>
                     <div style={{fontSize: 10, fontWeight: 800, marginBottom: 4}}>Construcción</div>
-                    <div style={{fontSize: 9, color: "#8A93A0"}}>Cotizado: {fmtMoney2(construccionTotal)}</div>
+                    <div style={{fontSize: 9, color: "#8A93A0"}}>Cotizado: {formatMoneyByCurrency(construccionTotal, "PEN")}</div>
                   </div>
                   <div style={{border: "1px solid #E5DDD0", borderRadius: 8, padding: "8px 10px"}}>
                     <div style={{fontSize: 10, fontWeight: 800, marginBottom: 4}}>Seguimiento</div>
                     <div style={{fontSize: 9, color: "#8A93A0"}}>% Avance promedio: {seguimientoPct.toFixed(1)}%</div>
-                    <div style={{fontSize: 9, color: "#8A93A0"}}>Valorizado acumulado: {fmtMoney2(seguimientoVal)}</div>
+                    <div style={{fontSize: 9, color: "#8A93A0"}}>Valorizado acumulado: {formatMoneyByCurrency(seguimientoVal, "PEN")}</div>
                     <div style={{fontSize: 9, color: ocPendientes ? "#A63B2A" : "#8A93A0"}}>OC pendiente: {ocPendientes}</div>
                   </div>
                 </div>
@@ -166,12 +205,13 @@ export default function HomeView({
             <div style={{fontSize: 11, color: "#8A93A0", padding: "8px 0"}}>No hay proyectos aún. Crea el primero para empezar el workflow.</div>
           )}
           <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 10}}>
-            {projectsWithMetrics.map(({project, metrics, disenoGantt, obraGantt}) => (
+            {projectsWithMetrics.map(({project, baseMeta, metrics, disenoGantt, obraGantt}) => (
               <div key={project.id} style={{border: "1px solid #E5DDD0", borderRadius: 10, padding: "10px 11px", background: UI.card}}>
                 <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8}}>
                   <div>
-                    <div style={{fontSize: 12, fontWeight: 800}}>{project.name}</div>
-                    <div style={{fontSize: 9, color: "#8A93A0"}}>{project.type || "Tipo no definido"} · {project.location || "Ubicación no definida"}</div>
+                    <div style={{fontSize: 12, fontWeight: 800}}>{baseMeta.projectName.trim() || project.name}</div>
+                    <div style={{fontSize: 9, color: "#8A93A0"}}>{project.type || "Tipo no definido"} · {baseMeta.location.trim() || project.location || "Ubicación no definida"}</div>
+                    <div style={{fontSize: 8, color: "#8A93A0"}}>Cliente: {baseMeta.client.trim() || "No definido"} · Moneda: {baseMeta.currency}</div>
                   </div>
                   {project.archived && <span style={{fontSize: 8, border: "1px solid #D0D7DE", padding: "3px 6px", borderRadius: 999, color: "#8A93A0", fontWeight: 700}}>Archivado</span>}
                 </div>
@@ -183,12 +223,12 @@ export default function HomeView({
                   ) : null)}
                 </div>
                 <div style={{fontSize: 9, color: "#6A737D", lineHeight: 1.5, marginBottom: 6}}>
-                  Diseño: {metrics.diseno.pctCobrado.toFixed(1)}% cobrado · Construcción: {fmtMoney2(metrics.construccion.cotizado)} · Seguimiento: {metrics.seguimiento.pctAvance.toFixed(1)}%
+                  Diseño: {metrics.diseno.pctCobrado.toFixed(1)}% cobrado · Construcción: {formatMoneyByCurrency(metrics.construccion.cotizado, baseMeta.currency)} · Seguimiento: {metrics.seguimiento.pctAvance.toFixed(1)}%
                 </div>
                 <div style={{marginBottom: 6}}>
                   <div style={{fontSize: 8, fontWeight: 700, color: "#8A93A0", marginBottom: 3}}>Mini Gantt Diseño</div>
                   <div style={{display: "flex", height: 8, borderRadius: 4, overflow: "hidden", border: "1px solid #E5DDD0"}}>
-                    {disenoGantt.length ? disenoGantt.map((item: any) => (
+                    {disenoGantt.length ? disenoGantt.map((item) => (
                       <div key={item.id} title={`${item.label}: ${fDateShort(item.start)}-${fDateShort(item.end)}`} style={{width: `${item.pct}%`, background: item.color}} />
                     )) : <div style={{width: "100%", background: "#EEF1F4"}} />}
                   </div>
@@ -196,7 +236,7 @@ export default function HomeView({
                 <div style={{marginBottom: 9}}>
                   <div style={{fontSize: 8, fontWeight: 700, color: "#8A93A0", marginBottom: 3}}>Mini Gantt Construcción</div>
                   <div style={{position: "relative", height: 10, borderRadius: 4, overflow: "hidden", border: "1px solid #E5DDD0", background: "#EEF1F4"}}>
-                    {obraGantt.map((item: any) => (
+                    {obraGantt.map((item) => (
                       <div key={item.id} title={item.label} style={{position: "absolute", left: `${Math.max(0, item.pct - 1)}%`, width: `${Math.max(2, item.span)}%`, top: 0, bottom: 0, background: item.color}} />
                     ))}
                   </div>
