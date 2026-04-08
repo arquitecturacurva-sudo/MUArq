@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
+    "typecheck": "tsc -b",
     "build:standalone:only": "node scripts/build-standalone.mjs",
     "build:standalone": "npm run build && npm run build:standalone:only",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.11.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
