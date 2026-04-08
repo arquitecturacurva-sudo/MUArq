@@ -2,18 +2,25 @@ import React from "react";
 import InfoBubble from "../ui/InfoBubble";
 import { DK, G, IconCalc, TOOL_ICONS, UI } from "../runtime/runtime";
 
+type WorkspaceTool = {
+  id: string;
+  label: string;
+  checked: boolean;
+  component: React.ComponentType<{ toolId: string; onPrint: () => void }>;
+};
+
 type WorkspaceMainProps = {
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   openOnboarding: () => void;
-  tools: any[];
+  tools: WorkspaceTool[];
   active: string;
   hasSavedData: boolean;
-  activeTrackTools: any[];
+  activeTrackTools: WorkspaceTool[];
   activeProjectId: string;
   projectResetToken: number;
   printTool: (id: string) => void;
-  current: any;
+  current?: WorkspaceTool;
 };
 
 export default function WorkspaceMain({

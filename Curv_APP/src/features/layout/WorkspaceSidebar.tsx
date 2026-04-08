@@ -2,24 +2,32 @@ import {
   Brand,
   G,
   IconCalc,
+  type ProjectRecord,
+  type TrackId,
   TOOL_ICONS,
   TRACK_LABELS,
   UI,
 } from "../runtime/runtime";
 
+type SidebarTool = {
+  id: string;
+  label: string;
+  checked: boolean;
+};
+
 type WorkspaceSidebarProps = {
-  activeProject: any;
-  enabledTrackOrder: string[];
-  workspaceTrack: string;
-  setWorkspaceTrack: (track: any) => void;
+  activeProject: ProjectRecord;
+  enabledTrackOrder: TrackId[];
+  workspaceTrack: TrackId;
+  setWorkspaceTrack: (track: TrackId) => void;
   setRoute: (route: "home" | "workspace") => void;
-  activeTrackTools: any[];
+  activeTrackTools: SidebarTool[];
   active: string;
   toggleCheck: (id: string) => void;
   setActive: (id: string) => void;
   exportProposal: () => void;
   nChecked: number;
-  tools: any[];
+  tools: SidebarTool[];
   handleResetActiveProject: () => void;
 };
 
@@ -60,7 +68,7 @@ export default function WorkspaceSidebar({
               onClick={() => setWorkspaceTrack(track)}
               style={{padding: "4px 8px", borderRadius: 999, border: `1px solid ${workspaceTrack === track ? G : "#2B3645"}`, background: workspaceTrack === track ? G : "#111923", color: workspaceTrack === track ? "#111827" : "#C3CDD8", fontSize: 8, fontWeight: 800, cursor: "pointer"}}
             >
-              {TRACK_LABELS[track as keyof typeof TRACK_LABELS]}
+              {TRACK_LABELS[track]}
             </button>
           ))}
         </div>
@@ -68,7 +76,7 @@ export default function WorkspaceSidebar({
 
       <nav style={{flex: 1, padding: "8px 0"}}>
         <div style={{padding: "8px 14px 6px", fontSize: 8, fontWeight: 700, color: "#6F7B88", textTransform: "uppercase", letterSpacing: "1px"}}>
-          {TRACK_LABELS[workspaceTrack as keyof typeof TRACK_LABELS]} · Incluir en propuesta
+          {TRACK_LABELS[workspaceTrack]} · Incluir en propuesta
         </div>
         {activeTrackTools.map((t) => {
           const Icon = TOOL_ICONS[t.id] || IconCalc;
