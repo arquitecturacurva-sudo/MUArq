@@ -1,4 +1,6 @@
 import React from "react";
+import type { ClientAccess } from "../../lib/billing";
+import type { ClientPlan } from "../../lib/tenant/clientService";
 import type {
   CommercialStatus,
   DashboardMetrics,
@@ -57,6 +59,10 @@ type HomeViewProps = {
   darkMode: boolean;
   themeVars: React.CSSProperties;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
+  onLogout?: () => void;
+  paywallAccess?: ClientAccess;
+  paywallPlan?: ClientPlan;
+  onRefreshBilling?: () => void;
   newProjectName: string;
   setNewProjectName: (value: string) => void;
   newProjectType: string;
@@ -82,6 +88,10 @@ export default function HomeView({
   darkMode,
   themeVars,
   setDarkMode,
+  onLogout,
+  paywallAccess,
+  paywallPlan = "BASE",
+  onRefreshBilling,
   newProjectName,
   setNewProjectName,
   newProjectType,
@@ -102,6 +112,15 @@ export default function HomeView({
   handleEditProject,
   toggleArchiveProject,
 }: HomeViewProps) {
+  const showPaywall = !!paywallAccess && paywallAccess.reason !== "active";
+  const paywallTitle = !paywallAccess
+    ? ""
+    : paywallAccess.reason === "trial_active"
+      ? `Trial activo · ${paywallAccess.daysLeft || 0} días restantes`
+      : paywallAccess.reason === "trial_expired"
+        ? "Trial vencido · Activa tu suscripción"
+        : "Cuenta inactiva · Activa tu suscripción";
+
   return (
     <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", fontFamily: "'Inter','Helvetica Neue',sans-serif", background: UI.bg, color: DK, padding: "22px 24px 30px"}}>
       <div style={{maxWidth: 1120, margin: "0 auto"}}>
@@ -111,9 +130,33 @@ export default function HomeView({
             <span style={{fontSize: 12, color: UI.textMuted}}>Workflow comercial unificado</span>
           </div>
           <div style={{display: "flex", gap: 8}}>
+            {onLogout && <Btn v="ol" onClick={onLogout}>Cerrar sesión</Btn>}
             <Btn v="ol" onClick={() => setDarkMode((v) => !v)}>{darkMode ? "Modo claro" : "Modo oscuro"}</Btn>
           </div>
         </div>
+
+        {showPaywall && (
+          <div style={{...cardS, padding: 14, marginBottom: 14, border: "1px solid #D6C299", background: "#FFF9ED"}}>
+            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap"}}>
+              <div>
+                <div style={{fontSize: 11, fontWeight: 800, color: "#8A6D3A", marginBottom: 3}}>
+                  {paywallTitle}
+                </div>
+                <div style={{fontSize: 10, color: "#6A737D"}}>
+                  Plan actual: {paywallPlan}. Home permanece accesible; Workspace se habilita con estado activo.
+                </div>
+              </div>
+              {onRefreshBilling && (
+                <button
+                  onClick={onRefreshBilling}
+                  style={{padding: "8px 11px", borderRadius: 8, border: "1px solid #D6C299", background: "#fff", color: "#8A6D3A", fontSize: 10, fontWeight: 800, cursor: "pointer"}}
+                >
+                  Ya pagué
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div style={{...cardS, padding: 18, marginBottom: 14}}>
           <div style={{...lb, color: G, marginBottom: 8}}>Nuevo proyecto</div>

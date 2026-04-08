@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { User } from "firebase/auth";
 import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
+import AuthView from "./features/layout/AuthView";
 import LandingView from "./features/layout/LandingView";
 import HomeView from "./features/layout/HomeView";
 import OnboardingTour from "./features/layout/OnboardingTour";
@@ -44,7 +46,17 @@ import {
   writeProjectBaseMetadata,
   writeStorage,
 } from "./features/runtime/runtime";
+import {
+  loginWithEmail,
+  loginWithGoogle,
+  logout,
+  registerWithEmail,
+  watchAuth,
+} from "./lib/auth/authService";
+import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
+import { importLocalProjectsOnce, listProjectsByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
+import { ensureUserHasClient, getClientById } from "./lib/tenant/clientService";
 
 const FIRESTORE_SMOKE_ENABLED = (
   import.meta.env.VITE_FIREBASE_PROJECT_ID &&
@@ -54,13 +66,23 @@ const FIRESTORE_SMOKE_ENABLED = (
 );
 
 export default function App() {
+  const [authUser,setAuthUser]=useState<User | null>(null);
+  const [authReady,setAuthReady]=useState(false);
+  const [authBusy,setAuthBusy]=useState(false);
+  const [authError,setAuthError]=useState("");
+  const [authIntent,setAuthIntent]=useState(false);
+  const [activeClientId,setActiveClientId]=useState("");
+  const [clientBilling,setClientBilling]=useState<ClientBilling | null>(null);
+  const [clientAccess,setClientAccess]=useState<ClientAccess>(() => resolveClientAccess(null));
+  const [billingRefreshTick,setBillingRefreshTick]=useState(0);
   const [projects,setProjects]=usePersistentState<ProjectRecord[]>("app.projects",[],isProjectRecordArray);
   const [activeProjectId,setActiveProjectId]=usePersistentState("app.activeProjectId","",isString);
-  const [route,setRoute]=usePersistentState<"landing"|"home"|"workspace">(
+  const [route,setRoute]=usePersistentState<"landing"|"auth"|"home"|"workspace">(
     "app.route",
     "landing",
-    (value): value is "landing" | "home" | "workspace" => value === "landing" || value === "home" || value === "workspace"
+    (value): value is "landing" | "auth" | "home" | "workspace" => value === "landing" || value === "auth" || value === "home" || value === "workspace"
   );
+  const [,setLandingSeen]=usePersistentState("app.landingSeen", false, (value): value is boolean => typeof value === "boolean");
   const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
   const [onboardingSeen,setOnboardingSeen]=usePersistentState("app.onboardingSeen",false);
   setActiveStorageProjectId(activeProjectId);
@@ -161,6 +183,52 @@ export default function App() {
     return (enabled.length ? enabled : ["diseno"]) as TrackId[];
   }, [activeProject]);
   const bootstrappedRef = React.useRef(false);
+  const cloudHydratedRef = React.useRef(false);
+  const forceLandingOnBootRef = React.useRef(false);
+
+  const mapFirebaseError = (error: unknown) => {
+    const raw = error instanceof Error ? error.message : String(error || "Error inesperado");
+    if (raw.includes("auth/invalid-credential")) return "Credenciales inválidas.";
+    if (raw.includes("auth/invalid-email")) return "Correo inválido.";
+    if (raw.includes("auth/email-already-in-use")) return "Este correo ya está en uso.";
+    if (raw.includes("auth/weak-password")) return "La contraseña es demasiado débil.";
+    return raw;
+  };
+
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = watchAuth(async (user) => {
+      if (!active) return;
+      setAuthUser(user);
+      cloudHydratedRef.current = false;
+      if (!user) {
+        setActiveClientId("");
+        setClientBilling(null);
+        setClientAccess(resolveClientAccess(null));
+        setAuthReady(true);
+        return;
+      }
+      try {
+        const clientId = await ensureUserHasClient({
+          uid: user.uid,
+          email: user.email || "",
+          displayName: user.displayName || "",
+        });
+        if (!active) return;
+        setActiveClientId(clientId);
+        setAuthError("");
+      } catch (error) {
+        if (!active) return;
+        setAuthError(mapFirebaseError(error));
+      } finally {
+        if (active) setAuthReady(true);
+      }
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (!activeProject) return;
@@ -206,8 +274,37 @@ export default function App() {
   }, [activeProjectId, setActiveProjectId, setProjects, setRoute]);
 
   useEffect(() => {
+    if (!authUser) return;
     if (!activeProject && route === "workspace") setRoute("home");
-  }, [activeProject, route, setRoute]);
+  }, [activeProject, authUser, route, setRoute]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    if (route !== "workspace") return;
+    if (clientAccess.canUseWorkspace) return;
+    setRoute("home");
+  }, [authUser, clientAccess.canUseWorkspace, route, setRoute]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    if (!forceLandingOnBootRef.current) {
+      forceLandingOnBootRef.current = true;
+      setAuthIntent(false);
+      if (route !== "landing") setRoute("landing");
+      return;
+    }
+
+    if (!authUser) {
+      if (route === "home" || route === "workspace") {
+        setRoute("landing");
+        setAuthIntent(false);
+        return;
+      }
+      if (!authIntent && route !== "landing") setRoute("landing");
+      return;
+    }
+    if (route === "auth") setRoute("home");
+  }, [authIntent, authReady, authUser, route, setRoute]);
 
   useEffect(() => {
     if (!enabledTrackOrder.includes(workspaceTrack)) setWorkspaceTrack(enabledTrackOrder[0] || "diseno");
@@ -247,6 +344,76 @@ export default function App() {
       return changed ? next : prev;
     });
   }, [activeProjectId, setProjects, storageTick]);
+
+  useEffect(() => {
+    if (!authUser || !activeClientId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const localProjects = normalizeProjectRecords(
+          readStorage<ProjectRecord[]>("app.projects", [], isProjectRecordArray)
+        );
+        await importLocalProjectsOnce({
+          uid: authUser.uid,
+          clientId: activeClientId,
+          projects: localProjects,
+          readBaseMetaByProjectId: (projectId) => readProjectBaseMetadata(projectId),
+        });
+        const cloudProjects = normalizeProjectRecords(await listProjectsByClient(activeClientId));
+        if (cancelled) return;
+        setProjects(cloudProjects);
+        if (!cloudProjects.length) {
+          setActiveProjectId("");
+        } else if (!cloudProjects.some((project) => project.id === activeProjectId)) {
+          setActiveProjectId(cloudProjects[0].id);
+        }
+        cloudHydratedRef.current = true;
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("[client-projects] hydrate failed", error);
+        cloudHydratedRef.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClientId, activeProjectId, authUser, setActiveProjectId, setProjects]);
+
+  useEffect(() => {
+    if (!authUser || !activeClientId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const client = await getClientById(activeClientId);
+        if (cancelled) return;
+        const billing = client?.billing || null;
+        setClientBilling(billing);
+        setClientAccess(resolveClientAccess(billing));
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("[billing] refresh failed", error);
+        setClientBilling(null);
+        setClientAccess(resolveClientAccess(null));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClientId, authUser, billingRefreshTick]);
+
+  useEffect(() => {
+    if (!authUser || !activeClientId || !cloudHydratedRef.current) return;
+    const timer = window.setTimeout(() => {
+      Promise.all(
+        normalizedProjects.map((project) =>
+          upsertProjectByClient(activeClientId, project, readProjectBaseMetadata(project.id))
+        )
+      ).catch((error) => {
+        console.warn("[client-projects] sync failed", error);
+      });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [activeClientId, authUser, normalizedProjects, storageTick]);
 
   useEffect(() => {
     if (!FIRESTORE_SMOKE_ENABLED) return;
@@ -323,6 +490,56 @@ export default function App() {
       return {id: tool.id, checked: tool.id === id ? !checked : checked};
     });
   });
+
+  const runAuthAction = async (action: () => Promise<void>) => {
+    setAuthBusy(true);
+    setAuthError("");
+    try {
+      await action();
+      setAuthIntent(false);
+      setLandingSeen(true);
+      setRoute("home");
+    } catch (error) {
+      setAuthError(mapFirebaseError(error));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleLoginWithEmail = async (email: string, password: string) => {
+    await runAuthAction(async () => {
+      await loginWithEmail(email, password);
+    });
+  };
+
+  const handleRegisterWithEmail = async (input: { displayName: string; email: string; password: string }) => {
+    await runAuthAction(async () => {
+      await registerWithEmail(input);
+    });
+  };
+
+  const handleLoginWithGoogle = async () => {
+    await runAuthAction(async () => {
+      await loginWithGoogle();
+    });
+  };
+
+  const handleLogout = async () => {
+    setAuthBusy(true);
+    try {
+      await logout();
+      setAuthIntent(false);
+      setRoute("landing");
+      setLandingSeen(false);
+      setProjects([]);
+      setActiveProjectId("");
+      setAuthError("");
+    } catch (error) {
+      setAuthError(mapFirebaseError(error));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!activeTrackTools.length) return;
@@ -529,7 +746,7 @@ export default function App() {
         baseMeta,
         stateVersion: 1,
         sampleState: {
-          route: route === "landing" ? "home" : route,
+          route: route === "workspace" ? "workspace" : "home",
           activeToolId: active,
           checkedToolIds,
         },
@@ -542,16 +759,50 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [active, activeProjectId, route, storageTick, tools]);
 
-  if (route === "landing") {
+  if (!authReady) {
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+        <div style={{fontSize: 13, color: UI.textMuted}}>Cargando sesión...</div>
+      </div>
+    );
+  }
+
+  if (!authUser && route === "auth") {
+    return (
+      <AuthView
+        darkMode={darkMode}
+        themeVars={themeVars}
+        setDarkMode={setDarkMode}
+        busy={authBusy}
+        error={authError}
+        onBackLanding={() => {
+          setAuthIntent(false);
+          setRoute("landing");
+        }}
+        onLoginWithEmail={handleLoginWithEmail}
+        onRegisterWithEmail={handleRegisterWithEmail}
+        onLoginWithGoogle={handleLoginWithGoogle}
+      />
+    );
+  }
+
+  if (!authUser || route === "landing") {
     return (
       <LandingView
         darkMode={darkMode}
         themeVars={themeVars}
         setDarkMode={setDarkMode}
         hasProjects={normalizedProjects.length > 0}
-        canContinueWorkspace={!!activeProject}
-        openHome={() => setRoute("home")}
-        continueWorkspace={() => setRoute("workspace")}
+        canContinueWorkspace={!!authUser && !!activeProject}
+        openAuth={() => {
+          setAuthIntent(true);
+          setLandingSeen(true);
+          setRoute("auth");
+        }}
+        continueWorkspace={() => {
+          setLandingSeen(true);
+          setRoute("workspace");
+        }}
       />
     );
   }
@@ -562,6 +813,10 @@ export default function App() {
         darkMode={darkMode}
         themeVars={themeVars}
         setDarkMode={setDarkMode}
+        onLogout={handleLogout}
+        paywallAccess={clientAccess}
+        paywallPlan={clientBilling?.plan || "BASE"}
+        onRefreshBilling={() => setBillingRefreshTick((n) => n + 1)}
         newProjectName={newProjectName}
         setNewProjectName={setNewProjectName}
         newProjectType={newProjectType}
@@ -700,6 +955,7 @@ export default function App() {
         workspaceTrack={workspaceTrack}
         setWorkspaceTrack={setWorkspaceTrack}
         setRoute={(nextRoute: "home" | "workspace") => setRoute(nextRoute)}
+        onLogout={handleLogout}
         activeTrackTools={activeTrackTools}
         active={active}
         toggleCheck={toggleCheck}

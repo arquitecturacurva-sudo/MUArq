@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --configLoader native",
+    "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "build:standalone:only": "node scripts/build-standalone.mjs",
     "build:standalone": "npm run build && npm run build:standalone:only",

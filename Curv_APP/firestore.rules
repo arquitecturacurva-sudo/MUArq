@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isClientMember(clientId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid));
+    }
+
+    function isClientOwner(clientId) {
+      return isClientMember(clientId) &&
+        get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "owner";
+    }
+
+    function isValidPlan(plan) {
+      return plan == "BASE" || plan == "PRO";
+    }
+
+    function isBillingUnchanged(clientId) {
+      return request.resource.data.billing == resource.data.billing;
+    }
+
+    function isBillingInitializationAllowed() {
+      return !("billing" in resource.data)
+        && ("billing" in request.resource.data)
+        && request.resource.data.billing.status == "trialing";
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSelf(userId);
+    }
+
+    match /clients/{clientId} {
+      allow read: if isClientMember(clientId);
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.ownerUid
+        && isValidPlan(request.resource.data.plan)
+        && request.resource.data.status == "active";
+      allow update: if isClientOwner(clientId)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.plan == resource.data.plan
+        && request.resource.data.limits == resource.data.limits
+        && request.resource.data.status == resource.data.status
+        && (isBillingUnchanged(clientId) || isBillingInitializationAllowed());
+      allow delete: if false;
+    }
+
+    match /clients/{clientId}/members/{memberId} {
+      allow read: if isClientMember(clientId);
+      allow create: if signedIn() && (
+        isClientOwner(clientId)
+        || (
+          request.auth.uid == memberId
+          && request.resource.data.role == "owner"
+          && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+        )
+      );
+      allow update, delete: if isClientOwner(clientId);
+    }
+
+    match /clients/{clientId}/projects/{projectId} {
+      allow read, write: if isClientMember(clientId)
+        && (!("project" in request.resource.data)
+            || request.resource.data.project.id == projectId);
+    }
+  }
+}
