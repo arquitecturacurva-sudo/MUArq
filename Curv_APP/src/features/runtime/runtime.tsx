@@ -2342,6 +2342,55 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
   };
   const delPartida = (id: number) => setPartidas((prev: CotPartida[]) => prev.filter((item) => item.id !== id));
 
+  const importPartidasFromExcel = async () => {
+    if (!window.curvDesktop?.importCotizacionXlsx) {
+      window.alert("La importación desde Excel está disponible en la versión desktop (.exe).");
+      return;
+    }
+    try {
+      const result = await window.curvDesktop.importCotizacionXlsx();
+      if (!result.ok) {
+        if (result.code !== "cancelled") window.alert(result.message || "No se pudo importar el archivo.");
+        return;
+      }
+
+      const maxExistingId = partidas.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+      const startId = Math.max(nextId, maxExistingId + 1);
+      const categoriaDefault = categoriasSafe[0] || "General";
+
+      const importedPartidas: CotPartida[] = result.rows.map((row, index) => ({
+        id: startId + index,
+        categoria: row.categoria.trim() || categoriaDefault,
+        codPartida: row.codPartida.trim(),
+        descripcion: row.descripcion.trim(),
+        und: row.und.trim() || "UND",
+        cant: Number.isFinite(row.cant) ? row.cant : 0,
+        manoObra: Number.isFinite(row.manoObra) ? row.manoObra : 0,
+        materiales: Number.isFinite(row.materiales) ? row.materiales : 0,
+        utilidadPct: Number.isFinite(row.utilidadPct) ? row.utilidadPct : 0,
+        riesgoPct: Number.isFinite(row.riesgoPct) ? row.riesgoPct : 0,
+      }));
+
+      if (!importedPartidas.length) {
+        window.alert("El archivo no contiene filas válidas para importar.");
+        return;
+      }
+
+      setPartidas((prev: CotPartida[]) => [...prev, ...importedPartidas]);
+      setNextId(startId + importedPartidas.length);
+      setCategorias((prev) => {
+        const merged = new Set(prev.length ? prev : COT_CATEGORIES_BASE);
+        importedPartidas.forEach((item) => {
+          if (item.categoria.trim()) merged.add(item.categoria.trim());
+        });
+        return [...merged];
+      });
+      window.alert(`Importación completada: ${importedPartidas.length} partida(s) agregada(s) desde ${result.fileName}.`);
+    } catch {
+      window.alert("No se pudo completar la importación del Excel.");
+    }
+  };
+
   const calcPartida = (item: CotPartida) => {
     const costoBase = (Number(item.manoObra) || 0) + (Number(item.materiales) || 0);
     const precioUnitario = costoBase * (1 + (Number(item.utilidadPct) || 0) / 100) * (1 + (Number(item.riesgoPct) || 0) / 100);
@@ -2437,7 +2486,10 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                   Precio cliente = (MO + Materiales) × (1 + Utilidad%) × (1 + Riesgo%)
                 </span>
               </div>
-              <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <Btn v="ol" sm onClick={importPartidasFromExcel}>Importar</Btn>
+                <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
+              </div>
             </div>
             <div style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>

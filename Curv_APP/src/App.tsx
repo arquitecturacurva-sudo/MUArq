@@ -54,9 +54,11 @@ import {
   watchAuth,
 } from "./lib/auth/authService";
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
+import { createCheckoutSession } from "./lib/billing/checkoutService";
+import { isDesktopRuntime, openExternalUrl } from "./lib/desktop";
 import { importLocalProjectsOnce, listProjectsByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
-import { ensureUserHasClient, getClientById } from "./lib/tenant/clientService";
+import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
 const FIRESTORE_SMOKE_ENABLED = (
   import.meta.env.VITE_FIREBASE_PROJECT_ID &&
@@ -64,8 +66,10 @@ const FIRESTORE_SMOKE_ENABLED = (
   import.meta.env.VITE_FIREBASE_API_KEY &&
   import.meta.env.VITE_FIREBASE_API_KEY !== "xxx"
 );
+const BILLING_PORTAL_URL = (import.meta.env.VITE_BILLING_PORTAL_URL || "").trim();
 
 export default function App() {
+  const isDesktopApp = isDesktopRuntime();
   const [authUser,setAuthUser]=useState<User | null>(null);
   const [authReady,setAuthReady]=useState(false);
   const [authBusy,setAuthBusy]=useState(false);
@@ -75,6 +79,7 @@ export default function App() {
   const [clientBilling,setClientBilling]=useState<ClientBilling | null>(null);
   const [clientAccess,setClientAccess]=useState<ClientAccess>(() => resolveClientAccess(null));
   const [billingRefreshTick,setBillingRefreshTick]=useState(0);
+  const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<ClientPlan | null>(null);
   const [projects,setProjects]=usePersistentState<ProjectRecord[]>("app.projects",[],isProjectRecordArray);
   const [activeProjectId,setActiveProjectId]=usePersistentState("app.activeProjectId","",isString);
   const [route,setRoute]=usePersistentState<"landing"|"auth"|"home"|"workspace">(
@@ -406,7 +411,12 @@ export default function App() {
     const timer = window.setTimeout(() => {
       Promise.all(
         normalizedProjects.map((project) =>
-          upsertProjectByClient(activeClientId, project, readProjectBaseMetadata(project.id))
+          upsertProjectByClient(
+            activeClientId,
+            project,
+            readProjectBaseMetadata(project.id),
+            authUser.uid
+          )
         )
       ).catch((error) => {
         console.warn("[client-projects] sync failed", error);
@@ -538,6 +548,47 @@ export default function App() {
       setAuthError(mapFirebaseError(error));
     } finally {
       setAuthBusy(false);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    if (!BILLING_PORTAL_URL) {
+      window.alert("Falta configurar VITE_BILLING_PORTAL_URL para abrir el portal de suscripcion.");
+      return;
+    }
+    const opened = await openExternalUrl(BILLING_PORTAL_URL);
+    if (!opened) {
+      window.alert("No se pudo abrir el portal de pagos en el navegador.");
+    }
+  };
+
+  const handleStartCheckout = async (plan: ClientPlan) => {
+    if (isDesktopApp) {
+      await handleOpenBillingPortal();
+      return;
+    }
+    if (!authUser || !activeClientId) {
+      window.alert("Inicia sesión para continuar con la suscripción.");
+      return;
+    }
+    setCheckoutBusyPlan(plan);
+    try {
+      const baseUrl = window.location.origin;
+      const successUrl = `${baseUrl}/?checkout=success`;
+      const cancelUrl = `${baseUrl}/?checkout=cancel`;
+      const session = await createCheckoutSession({
+        clientId: activeClientId,
+        plan,
+        email: authUser.email || undefined,
+        successUrl,
+        cancelUrl,
+      });
+      window.location.assign(session.url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo iniciar el checkout.";
+      window.alert(message);
+    } finally {
+      setCheckoutBusyPlan(null);
     }
   };
 
@@ -817,6 +868,9 @@ export default function App() {
         paywallAccess={clientAccess}
         paywallPlan={clientBilling?.plan || "BASE"}
         onRefreshBilling={() => setBillingRefreshTick((n) => n + 1)}
+        onStartCheckout={!isDesktopApp ? handleStartCheckout : undefined}
+        onOpenBillingPortal={isDesktopApp ? handleOpenBillingPortal : undefined}
+        checkoutBusyPlan={checkoutBusyPlan}
         newProjectName={newProjectName}
         setNewProjectName={setNewProjectName}
         newProjectType={newProjectType}

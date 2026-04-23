@@ -10,66 +10,87 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
-    function isClientMember(clientId) {
-      return signedIn() &&
-        exists(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid));
+    function isMember(clientId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid));
     }
 
-    function isClientOwner(clientId) {
-      return isClientMember(clientId) &&
-        get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "owner";
+    function isAdmin(clientId) {
+      return isMember(clientId)
+        && (
+          get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "admin"
+          || get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "owner"
+        );
     }
 
-    function isValidPlan(plan) {
-      return plan == "BASE" || plan == "PRO";
+    function isEditor(clientId) {
+      return isAdmin(clientId)
+        || (
+          isMember(clientId)
+          && get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "editor"
+        );
     }
 
-    function isBillingUnchanged(clientId) {
-      return request.resource.data.billing == resource.data.billing;
+    function isMemberNowOrAfter(clientId, userId) {
+      return exists(/databases/$(database)/documents/clients/$(clientId)/members/$(userId))
+        || existsAfter(/databases/$(database)/documents/clients/$(clientId)/members/$(userId));
     }
 
-    function isBillingInitializationAllowed() {
-      return !("billing" in resource.data)
-        && ("billing" in request.resource.data)
-        && request.resource.data.billing.status == "trialing";
+    function hasValidActiveClientOnWrite(userId) {
+      return !("activeClientId" in request.resource.data)
+        || (
+          request.resource.data.activeClientId is string
+          && isMemberNowOrAfter(request.resource.data.activeClientId, userId)
+        );
     }
 
     match /users/{userId} {
-      allow read, write: if isSelf(userId);
+      allow read: if isSelf(userId);
+      allow create, update: if isSelf(userId)
+        && request.resource.data.uid == userId
+        && hasValidActiveClientOnWrite(userId);
+      allow delete: if false;
     }
 
     match /clients/{clientId} {
-      allow read: if isClientMember(clientId);
+      allow read: if isMember(clientId);
       allow create: if signedIn()
-        && request.auth.uid == request.resource.data.ownerUid
-        && isValidPlan(request.resource.data.plan)
-        && request.resource.data.status == "active";
-      allow update: if isClientOwner(clientId)
-        && request.resource.data.ownerUid == resource.data.ownerUid
-        && request.resource.data.plan == resource.data.plan
-        && request.resource.data.limits == resource.data.limits
-        && request.resource.data.status == resource.data.status
-        && (isBillingUnchanged(clientId) || isBillingInitializationAllowed());
+        && request.resource.data.id == clientId
+        && request.resource.data.name is string
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAdmin(clientId)
+        && request.resource.data.id == resource.data.id;
       allow delete: if false;
     }
 
     match /clients/{clientId}/members/{memberId} {
-      allow read: if isClientMember(clientId);
-      allow create: if signedIn() && (
-        isClientOwner(clientId)
+      allow read: if isMember(clientId);
+      allow create: if isAdmin(clientId)
         || (
-          request.auth.uid == memberId
-          && request.resource.data.role == "owner"
-          && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
-        )
-      );
-      allow update, delete: if isClientOwner(clientId);
+          signedIn()
+          && request.auth.uid == memberId
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == "admin"
+          && (
+            (
+              exists(/databases/$(database)/documents/clients/$(clientId))
+              && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+            || (
+              existsAfter(/databases/$(database)/documents/clients/$(clientId))
+              && getAfter(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+          )
+        );
+      allow update, delete: if isAdmin(clientId);
     }
 
     match /clients/{clientId}/projects/{projectId} {
-      allow read, write: if isClientMember(clientId)
-        && (!("project" in request.resource.data)
-            || request.resource.data.project.id == projectId);
+      allow read: if isMember(clientId);
+      allow create, update: if isEditor(clientId)
+        && request.resource.data.id == projectId
+        && request.resource.data.clientId == clientId;
+      allow delete: if isAdmin(clientId);
     }
   }
 }

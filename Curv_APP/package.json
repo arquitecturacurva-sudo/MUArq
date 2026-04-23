@@ -2,31 +2,86 @@
   "name": "curv-app",
   "private": true,
   "version": "0.0.0",
+  "description": "Curv App web and desktop distribution",
+  "author": "CURVA",
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite --configLoader native",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "build:standalone:only": "node scripts/build-standalone.mjs",
     "build:standalone": "npm run build && npm run build:standalone:only",
+    "build:icon": "node scripts/prepare-desktop-assets.mjs",
+    "desktop:dev": "node scripts/dev-electron.mjs",
+    "desktop:build": "npm run build && npm run build:icon",
+    "desktop:dist": "node scripts/ensure-signing-env.mjs && npm run desktop:build && node scripts/run-electron-builder.mjs --win nsis portable --x64",
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "build": {
+    "appId": "com.curv.app",
+    "productName": "Curv App",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "CurvApp-Setup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "portable": {
+      "artifactName": "CurvApp-Portable-${version}-${arch}.${ext}"
+    }
+  },
   "dependencies": {
     "firebase": "^12.11.0",
+    "firebase-admin": "^13.7.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "stripe": "^22.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.0",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "png-to-ico": "^2.1.8",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.0"

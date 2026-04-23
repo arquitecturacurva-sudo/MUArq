@@ -8,7 +8,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { auth } from "../firebase";
+import { ensureAuth, firebaseConfigured } from "../firebase";
 
 type RegisterWithEmailInput = {
   email: string;
@@ -19,14 +19,19 @@ type RegisterWithEmailInput = {
 const googleProvider = new GoogleAuthProvider();
 
 export const watchAuth = (callback: (user: User | null) => void) =>
-  onAuthStateChanged(auth, callback);
+  firebaseConfigured
+    ? onAuthStateChanged(ensureAuth(), callback)
+    : (() => {
+        callback(null);
+        return () => {};
+      })();
 
 export const registerWithEmail = async ({
   email,
   password,
   displayName,
 }: RegisterWithEmailInput) => {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const credential = await createUserWithEmailAndPassword(ensureAuth(), email, password);
   const resolvedName = (displayName || "").trim();
   if (resolvedName) {
     await updateProfile(credential.user, { displayName: resolvedName });
@@ -35,15 +40,15 @@ export const registerWithEmail = async ({
 };
 
 export const loginWithEmail = async (email: string, password: string) => {
-  const credential = await signInWithEmailAndPassword(auth, email, password);
+  const credential = await signInWithEmailAndPassword(ensureAuth(), email, password);
   return credential.user;
 };
 
 export const loginWithGoogle = async () => {
-  const credential = await signInWithPopup(auth, googleProvider);
+  const credential = await signInWithPopup(ensureAuth(), googleProvider);
   return credential.user;
 };
 
 export const logout = async () => {
-  await signOut(auth);
+  await signOut(ensureAuth());
 };

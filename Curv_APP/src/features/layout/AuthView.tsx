@@ -178,9 +178,9 @@ export default function AuthView({
               4. Si tienes datos locales, se importan una sola vez.
             </div>
             <div style={{marginTop: 12, fontSize: 10, color: mutedColor, lineHeight: 1.55}}>
-              BASE: 3 editores + 25 observadores.
+              BASE: 3 editores + 25 viewers.
               <br />
-              PRO: 10 editores + 100 observadores.
+              PRO: 10 editores + 100 viewers.
             </div>
           </aside>
         </div>

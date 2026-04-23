@@ -1,0 +1,45 @@
+name: release-desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: Curv_APP
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Curv_APP/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build signed desktop artifacts
+        env:
+          REQUIRE_SIGNING: "true"
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: npm run desktop:dist -- --config.win.signAndEditExecutable=true
+
+      - name: Upload artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Curv_APP/release/*.exe
+            Curv_APP/release/*.yml
+            Curv_APP/release/*.blockmap

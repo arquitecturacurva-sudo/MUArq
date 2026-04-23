@@ -63,6 +63,9 @@ type HomeViewProps = {
   paywallAccess?: ClientAccess;
   paywallPlan?: ClientPlan;
   onRefreshBilling?: () => void;
+  onStartCheckout?: (plan: ClientPlan) => Promise<void>;
+  onOpenBillingPortal?: () => Promise<void> | void;
+  checkoutBusyPlan?: ClientPlan | null;
   newProjectName: string;
   setNewProjectName: (value: string) => void;
   newProjectType: string;
@@ -92,6 +95,9 @@ export default function HomeView({
   paywallAccess,
   paywallPlan = "BASE",
   onRefreshBilling,
+  onStartCheckout,
+  onOpenBillingPortal,
+  checkoutBusyPlan,
   newProjectName,
   setNewProjectName,
   newProjectType,
@@ -146,14 +152,42 @@ export default function HomeView({
                   Plan actual: {paywallPlan}. Home permanece accesible; Workspace se habilita con estado activo.
                 </div>
               </div>
-              {onRefreshBilling && (
-                <button
-                  onClick={onRefreshBilling}
-                  style={{padding: "8px 11px", borderRadius: 8, border: "1px solid #D6C299", background: "#fff", color: "#8A6D3A", fontSize: 10, fontWeight: 800, cursor: "pointer"}}
-                >
-                  Ya pagué
-                </button>
-              )}
+              <div style={{display: "flex", gap: 6, flexWrap: "wrap"}}>
+                {onOpenBillingPortal && (
+                  <button
+                    onClick={() => void onOpenBillingPortal()}
+                    style={{padding: "8px 11px", borderRadius: 8, border: "1px solid #C9A96E", background: "#C9A96E", color: "#fff", fontSize: 10, fontWeight: 800, cursor: "pointer"}}
+                  >
+                    Gestionar plan en web
+                  </button>
+                )}
+                {!onOpenBillingPortal && onStartCheckout && (
+                  <>
+                    <button
+                      onClick={() => void onStartCheckout("BASE")}
+                      disabled={!!checkoutBusyPlan}
+                      style={{padding: "8px 11px", borderRadius: 8, border: "1px solid #D6C299", background: "#fff", color: "#8A6D3A", fontSize: 10, fontWeight: 800, cursor: checkoutBusyPlan ? "not-allowed" : "pointer"}}
+                    >
+                      {checkoutBusyPlan === "BASE" ? "Redirigiendo..." : "Activar BASE"}
+                    </button>
+                    <button
+                      onClick={() => void onStartCheckout("PRO")}
+                      disabled={!!checkoutBusyPlan}
+                      style={{padding: "8px 11px", borderRadius: 8, border: "1px solid #C9A96E", background: "#C9A96E", color: "#fff", fontSize: 10, fontWeight: 800, cursor: checkoutBusyPlan ? "not-allowed" : "pointer"}}
+                    >
+                      {checkoutBusyPlan === "PRO" ? "Redirigiendo..." : "Elegir PRO"}
+                    </button>
+                  </>
+                )}
+                {onRefreshBilling && (
+                  <button
+                    onClick={onRefreshBilling}
+                    style={{padding: "8px 11px", borderRadius: 8, border: "1px solid #D6C299", background: "#fff", color: "#8A6D3A", fontSize: 10, fontWeight: 800, cursor: "pointer"}}
+                  >
+                    Ya pagué
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
