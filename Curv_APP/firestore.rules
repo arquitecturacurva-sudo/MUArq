@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isMember(clientId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid));
+    }
+
+    function isAdmin(clientId) {
+      return isMember(clientId)
+        && (
+          get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "admin"
+          || get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "owner"
+        );
+    }
+
+    function isEditor(clientId) {
+      return isAdmin(clientId)
+        || (
+          isMember(clientId)
+          && get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "editor"
+        );
+    }
+
+    function isMemberNowOrAfter(clientId, userId) {
+      return exists(/databases/$(database)/documents/clients/$(clientId)/members/$(userId))
+        || existsAfter(/databases/$(database)/documents/clients/$(clientId)/members/$(userId));
+    }
+
+    function hasValidActiveClientOnWrite(userId) {
+      return !("activeClientId" in request.resource.data)
+        || (
+          request.resource.data.activeClientId is string
+          && isMemberNowOrAfter(request.resource.data.activeClientId, userId)
+        );
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+      allow create, update: if isSelf(userId)
+        && request.resource.data.uid == userId
+        && hasValidActiveClientOnWrite(userId);
+      allow delete: if false;
+    }
+
+    match /clients/{clientId} {
+      allow read: if isMember(clientId);
+      allow create: if signedIn()
+        && request.resource.data.id == clientId
+        && request.resource.data.name is string
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAdmin(clientId)
+        && request.resource.data.id == resource.data.id;
+      allow delete: if false;
+    }
+
+    match /clients/{clientId}/members/{memberId} {
+      allow read: if isMember(clientId);
+      allow create: if isAdmin(clientId)
+        || (
+          signedIn()
+          && request.auth.uid == memberId
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == "admin"
+          && (
+            (
+              exists(/databases/$(database)/documents/clients/$(clientId))
+              && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+            || (
+              existsAfter(/databases/$(database)/documents/clients/$(clientId))
+              && getAfter(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+          )
+        );
+      allow update, delete: if isAdmin(clientId);
+    }
+
+    match /clients/{clientId}/projects/{projectId} {
+      allow read: if isMember(clientId);
+      allow create, update: if isEditor(clientId)
+        && request.resource.data.id == projectId
+        && request.resource.data.clientId == clientId;
+      allow delete: if isAdmin(clientId);
+    }
+  }
+}
