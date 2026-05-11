@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import type { User } from "firebase/auth";
 import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
 import AuthView from "./features/layout/AuthView";
@@ -657,7 +659,7 @@ export default function App() {
     if (type === null) return;
     const location = window.prompt("Ubicación", baseMeta.location.trim() || project.location);
     if (location === null) return;
-    const currency = window.prompt("Moneda (PEN o USD)", baseMeta.currency);
+    const currency = window.prompt("Moneda (PEN, USD o MXN)", baseMeta.currency);
     if (currency === null) return;
     const status = window.prompt("Estado comercial (Lead, Propuesta, Negociacion, Ganado, Perdido)", project.commercialStatus);
     if (status === null) return;
@@ -766,22 +768,87 @@ export default function App() {
     openPrint(el.outerHTML);
   };
 
-  const exportProposal=()=>{
+  const exportProposal=async ()=>{
     const checked=tools.filter(t=>t.checked);
     if(!checked.length){alert('Selecciona al menos una sección en el checklist del panel izquierdo.');return;}
-    const parts: string[]=[]; const missing: string[]=[];
+    const docNodes: HTMLElement[]=[]; const missing: string[]=[];
     checked.forEach(t=>{
       const el=document.querySelector(`[data-doc-id="${t.id}"]`);
-      if(el) parts.push(el.outerHTML);
+      if(el instanceof HTMLElement) docNodes.push(el);
       else missing.push(t.label);
     });
     if(missing.length){
       const go=window.confirm(`Las siguientes secciones aún no tienen documento generado:\n• ${missing.join('\n• ')}\n\n¿Exportar igual con las secciones disponibles?`);
       if(!go) return;
     }
-    if(!parts.length){alert('No hay secciones disponibles para exportar.');return;}
-    const html=parts.join('<div class="page-break"></div>');
-    openPrint(html);
+    if(!docNodes.length){alert('No hay secciones disponibles para exportar.');return;}
+
+    const exportRoot = document.createElement("div");
+    exportRoot.setAttribute("data-export-proposal-root", "true");
+    exportRoot.style.position = "fixed";
+    exportRoot.style.left = "-100000px";
+    exportRoot.style.top = "0";
+    exportRoot.style.width = "210mm";
+    exportRoot.style.padding = "0";
+    exportRoot.style.margin = "0";
+    exportRoot.style.background = "#fff";
+    exportRoot.style.zIndex = "-1";
+
+    const exportStyle = document.createElement("style");
+    exportStyle.textContent = `
+      [data-export-proposal-root="true"],
+      [data-export-proposal-root="true"] * {
+        box-sizing: border-box;
+      }
+      [data-export-proposal-root="true"] .__export_section__ {
+        width: 100%;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      [data-export-proposal-root="true"] .__export_section__ + .__export_section__ {
+        margin-top: 12px;
+      }
+    `;
+    exportRoot.appendChild(exportStyle);
+    docNodes.forEach((node) => {
+      const section = document.createElement("section");
+      section.className = "__export_section__";
+      section.innerHTML = node.outerHTML;
+      exportRoot.appendChild(section);
+    });
+    document.body.appendChild(exportRoot);
+
+    try {
+      if (document.fonts?.ready) await document.fonts.ready;
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+      const canvas = await html2canvas(exportRoot, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: exportRoot.scrollWidth,
+        windowHeight: exportRoot.scrollHeight,
+      });
+      const pageWidthMm = 210;
+      const pageHeightMm = Math.max(10, (canvas.height * pageWidthMm) / canvas.width);
+      const pdf = new jsPDF({
+        unit: "mm",
+        format: [pageWidthMm, pageHeightMm],
+      });
+      const img = canvas.toDataURL("image/png");
+      pdf.addImage(img, "PNG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
+
+      const fallbackName = activeProject?.name?.trim() || "propuesta";
+      const explicitName = activeProject ? readProjectBaseMetadata(activeProject.id).projectName.trim() : "";
+      const rawName = explicitName || fallbackName;
+      const safeName = rawName.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "propuesta";
+      pdf.save(`${safeName}.pdf`);
+    } catch (error) {
+      console.error(error);
+      alert("No se pudo exportar la propuesta en PDF.");
+    } finally {
+      exportRoot.remove();
+    }
   };
 
   const current=activeTrackTools.find(t=>t.id===active) || activeTrackTools[0];

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -56,8 +56,10 @@ export const UI = {
   borderSoft: "var(--ui-border-soft)",
   dark: "var(--ui-dark)",
 };
-export const currencySymbol = (currency?: "PEN" | "USD") => (currency === "USD" ? "$" : "S/");
-export const formatMoneyByCurrency = (n: any, currency: "PEN" | "USD" = "PEN") => (
+export const currencySymbol = (currency?: "PEN" | "USD" | "MXN") => (
+  currency === "USD" ? "$" : currency === "MXN" ? "MX$" : "S/"
+);
+export const formatMoneyByCurrency = (n: any, currency: ProjectCurrency = "PEN") => (
   `${currencySymbol(currency)} ${Number(n || 0).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2})}`
 );
 export const formatMoneyByProject = (n: any, projectId?: string) => (
@@ -316,7 +318,7 @@ export const PROJECT_CLIENT_LEGACY_KEYS = ["calc.cl", "matrix.cl", "excl.cl", "c
 export const PROJECT_NAME_LEGACY_KEYS = ["calc.pr", "matrix.pr", "excl.pr", "cron.pr", "oc.pr", "brief.pr"];
 export const PROJECT_LOCATION_LEGACY_KEYS = ["matrix.ub", "brief.ub"];
 export const PROJECT_CODE_LEGACY_KEYS = ["excl.cod", "brief.cod"];
-export const PROJECT_CURRENCY_OPTIONS = ["PEN", "USD"] as const;
+export const PROJECT_CURRENCY_OPTIONS = ["PEN", "USD", "MXN"] as const;
 export type ProjectCurrency = (typeof PROJECT_CURRENCY_OPTIONS)[number];
 export type ProjectBaseMetadata = {
   client: string;
@@ -326,7 +328,7 @@ export type ProjectBaseMetadata = {
   currency: ProjectCurrency;
 };
 export const isProjectCurrency = (value: unknown): value is ProjectCurrency => (
-  value === "PEN" || value === "USD"
+  value === "PEN" || value === "USD" || value === "MXN"
 );
 export const readProjectBaseMetadata = (scopeProjectId?: string): ProjectBaseMetadata => ({
   client: readStorage<string>(SHARED_PROJECT_CLIENT_KEY, "", isString, scopeProjectId),
@@ -880,7 +882,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
   const [items,setItems]=usePersistentState("matrix.items",()=>ITEMS_BASE.map(it=>({...it,on:true})),Array.isArray);
   const [newEnt,setNewEnt]=usePersistentState("matrix.newEnt","__custom__"); const [newCustom,setNewCustom]=usePersistentState("matrix.newCustom","");
   const [newEtapa,setNewEtapa]=usePersistentState("matrix.newEtapa","Levantamiento"); const [newFmt,setNewFmt]=usePersistentState("matrix.newFmt","PDF");
-  const [newCant,setNewCant]=usePersistentState("matrix.newCant","1"); const [showAdd,setShowAdd]=usePersistentState("matrix.showAdd",false);
+  const [newCant,setNewCant]=usePersistentState("matrix.newCant","1"); const [newNota,setNewNota]=usePersistentState("matrix.newNota",""); const [showAdd,setShowAdd]=usePersistentState("matrix.showAdd",false);
 
   const otherItems=ITEMS_BASE.filter(it=>it.paquete!==paq);
   const uniqueOthers=otherItems.filter((it,i,arr)=>arr.findIndex(x=>x.entregable===it.entregable)===i);
@@ -891,17 +893,32 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
     return acc;
   }, {} as Record<string, any[]>);
   const activeItems=filtered.filter(it=>it.on);
+  const getNotaPersonalizada = (it: any) => String(it?.notaPersonalizada || "").trim();
+  const getNotasForExport = (it: any) => {
+    const base = String(it?.notas || "").trim();
+    const custom = getNotaPersonalizada(it);
+    if (base && custom) return `${base}\nNota personalizada: ${custom}`;
+    return custom || base;
+  };
 
   const togItem = (id: string) => setItems((p: any[]) => p.map((it: any) => it.id===id?{...it,on:!it.on}:it));
   const delItem = (id: string) => setItems((p: any[]) => p.filter((it: any) => it.id!==id));
+  const closeAddPanel = () => {setShowAdd(false); setNewNota("");};
+  const toggleAddPanel = () => {
+    if (showAdd) {
+      closeAddPanel();
+      return;
+    }
+    setShowAdd(true);
+  };
   const handleEntSelect = (v: string) => {setNewEnt(v);if(v!=="__custom__"){const src=ITEMS_BASE.find((it: any)=>it.entregable===v);if(src){setNewEtapa(src.etapa);setNewFmt(src.formato);setNewCant(src.cantidad);}}};
   const addItem=()=>{
     const entregable=newEnt==="__custom__"?newCustom:newEnt;
     if(!entregable.trim()) return;
     const src=ITEMS_BASE.find(it=>it.entregable===entregable);
     const id="ITM-"+String(items.length+1).padStart(3,"0")+"-c";
-    setItems(p=>[...p,{id,paquete:paq,etapa:newEtapa,entregable,formato:src?src.formato:newFmt,cantidad:src?src.cantidad:newCant,notas:src?src.notas:"",on:true}]);
-    setNewEnt("__custom__"); setNewCustom(""); setShowAdd(false);
+    setItems(p=>[...p,{id,paquete:paq,etapa:newEtapa,entregable,formato:src?src.formato:newFmt,cantidad:src?src.cantidad:newCant,notas:src?src.notas:"",notaPersonalizada:newNota.trim(),on:true}]);
+    setNewEnt("__custom__"); setNewCustom(""); setNewNota(""); setShowAdd(false);
   };
   const showMatrixEmpty = !String(cl).trim() && !String(pr).trim() && !String(ub).trim();
 
@@ -933,7 +950,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{...lb,color:G,margin:0}}>Entregables — clic en ✓/○ para incluir o excluir</p>
           <div style={{display:"flex",gap:8}}>
-            <Btn v="ol" sm onClick={()=>setShowAdd(s=>!s)}>+ Agregar ítem</Btn>
+            <Btn v="ol" sm onClick={toggleAddPanel}>+ Agregar ítem</Btn>
             <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
           </div>
         </div>
@@ -949,9 +966,14 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
             <Fld label="Etapa"><Sel value={newEtapa} onChange={setNewEtapa} options={ETAPAS_MX}/></Fld>
             <Fld label="Formato"><Inp value={newFmt} onChange={setNewFmt} placeholder="PDF"/></Fld>
             <Fld label="Cantidad"><Inp value={newCant} onChange={setNewCant} placeholder="1"/></Fld>
+            <div style={{gridColumn:"1 / 5"}}>
+              <Fld label="Nota">
+                <textarea value={newNota} onChange={e=>setNewNota(e.target.value)} placeholder="Nota opcional para este entregable..." style={{...si,height:68,resize:"vertical"}}/>
+              </Fld>
+            </div>
             <div style={{paddingBottom:12,display:"flex",gap:6}}>
               <Btn v="gd" sm onClick={addItem}>Agregar</Btn>
-              <Btn v="ol" sm onClick={()=>setShowAdd(false)}>×</Btn>
+              <Btn v="ol" sm onClick={closeAddPanel}>×</Btn>
             </div>
           </div>
         )}
@@ -976,7 +998,10 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
                     <td style={{padding:"7px 8px",textAlign:"center"}}>
                       <button onClick={()=>togItem(it.id)} style={{width:16,height:16,borderRadius:3,border:"1px solid "+(it.on?G:"#CCC"),background:it.on?G:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:"#fff",fontWeight:700}}>{it.on?"✓":""}</button>
                     </td>
-                    <td style={{padding:"7px 8px",fontSize:11,color:it.on?DK:"#BBB"}}>{it.entregable}</td>
+                    <td style={{padding:"7px 8px",fontSize:11,color:it.on?DK:"#BBB"}}>
+                      <div>{it.entregable}</div>
+                      {getNotaPersonalizada(it) && <div style={{fontSize:9,color:"#8A93A0",marginTop:2}}>{getNotaPersonalizada(it)}</div>}
+                    </td>
                     <td style={{padding:"7px 8px",fontSize:10,textAlign:"center",color:"#888"}}>{it.formato}</td>
                     <td style={{padding:"7px 8px",fontSize:10,textAlign:"center",color:"#888"}}>{it.cantidad}</td>
                     <td style={{padding:"7px 8px",fontSize:9,color:"#AAA",fontStyle:"italic"}}>{it.notas}</td>
@@ -1019,7 +1044,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
                     <tr key={it.id} style={{background:i%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
                       <td style={{padding:"7px 8px",fontSize:10}}>{it.entregable} <span style={{color:"#AAA"}}>({it.formato})</span></td>
                       <td style={{padding:"7px 8px",fontSize:10,textAlign:"center",color:"#888"}}>{it.cantidad}</td>
-                      <td style={{padding:"7px 8px",fontSize:9,color:"#AAA",fontStyle:"italic"}}>{it.notas}</td>
+                      <td style={{padding:"7px 8px",fontSize:9,color:"#AAA",fontStyle:"italic",whiteSpace:"pre-line"}}>{getNotasForExport(it)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2285,6 +2310,225 @@ export const newCotPartida = (id: number, categoria: string): CotPartida => ({
   riesgoPct: 0,
 });
 
+export type CotOcrDraftRow = {
+  draftId: string;
+  categoria: string;
+  codPartida: string;
+  descripcion: string;
+  und: string;
+  cant: number;
+  manoObra: number;
+  materiales: number;
+  utilidadPct: number;
+  riesgoPct: number;
+};
+
+export const COT_OCR_HEADER_ALIASES: Record<string, keyof Omit<CotOcrDraftRow, "draftId">> = {
+  categoria: "categoria",
+  category: "categoria",
+  codigopartida: "codPartida",
+  codpartida: "codPartida",
+  codigo: "codPartida",
+  descripcion: "descripcion",
+  descripcionpartida: "descripcion",
+  partida: "descripcion",
+  und: "und",
+  unidad: "und",
+  unidades: "und",
+  cant: "cant",
+  cantidad: "cant",
+  manoobra: "manoObra",
+  manodeobra: "manoObra",
+  mo: "manoObra",
+  materiales: "materiales",
+  material: "materiales",
+  utilidad: "utilidadPct",
+  utilidadpct: "utilidadPct",
+  utilidadporcentaje: "utilidadPct",
+  riesgo: "riesgoPct",
+  riesgopct: "riesgoPct",
+  riesgoporcentaje: "riesgoPct",
+};
+
+export const normalizeOcrHeader = (value: string) => (
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+);
+
+export const splitOcrColumns = (line: string) => (
+  line
+    .split(/\t+|\|+|\s{2,}/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
+
+export const isNumericLikeToken = (value: string) => {
+  const cleaned = String(value || "").trim().replace(/[^\d,.\-]/g, "");
+  if (!cleaned) return false;
+  const normalized = cleaned.replace(",", ".");
+  return Number.isFinite(Number(normalized));
+};
+
+export const ocrNumber = (value: string) => {
+  const cleaned = String(value || "").trim().replace(/[^\d,.\-]/g, "");
+  if (!cleaned) return 0;
+  const normalized = cleaned.replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export const isLikelyCotHeaderLine = (columns: string[]) => {
+  const mapped = columns
+    .map((item) => COT_OCR_HEADER_ALIASES[normalizeOcrHeader(item)] || null)
+    .filter(Boolean);
+  const mappedCount = mapped.length;
+  return mappedCount >= 2 && mapped.includes("descripcion");
+};
+
+export const shouldSkipOcrLine = (line: string) => {
+  const lowered = line.toLowerCase();
+  return (
+    lowered.includes("subtotal") ||
+    lowered.includes("gastos generales") ||
+    lowered.includes("supervision") ||
+    lowered.includes("base imponible") ||
+    lowered.includes("total final") ||
+    lowered.includes("detalle por partidas") ||
+    lowered.includes("precio cliente")
+  );
+};
+
+export const newCotOcrDraftRow = (idSeed: string, categoria: string): CotOcrDraftRow => ({
+  draftId: idSeed,
+  categoria: categoria || "General",
+  codPartida: "",
+  descripcion: "",
+  und: "UND",
+  cant: 0,
+  manoObra: 0,
+  materiales: 0,
+  utilidadPct: 0,
+  riesgoPct: 0,
+});
+
+export const parseRowsFromHeaderBasedOcr = (ocrText: string, categoriaDefault: string): CotOcrDraftRow[] => {
+  const lines = ocrText
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return [];
+
+  const headerIndex = lines.findIndex((line) => isLikelyCotHeaderLine(splitOcrColumns(line)));
+  if (headerIndex < 0) return [];
+
+  const headerColumns = splitOcrColumns(lines[headerIndex]);
+  const mappedColumns = headerColumns.map((header) => COT_OCR_HEADER_ALIASES[normalizeOcrHeader(header)] || null);
+  if (!mappedColumns.includes("descripcion")) return [];
+
+  const rows: CotOcrDraftRow[] = [];
+  for (let index = headerIndex + 1; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    if (!rawLine || shouldSkipOcrLine(rawLine)) continue;
+    const columns = splitOcrColumns(rawLine);
+    if (!columns.length || isLikelyCotHeaderLine(columns)) continue;
+
+    const draft = newCotOcrDraftRow(`ocr-h-${index}`, categoriaDefault);
+    let hasData = false;
+    for (let colIndex = 0; colIndex < mappedColumns.length; colIndex += 1) {
+      const key = mappedColumns[colIndex];
+      if (!key) continue;
+      const cellValue = columns[colIndex] ?? "";
+      if (!cellValue.trim()) continue;
+      hasData = true;
+      if (key === "cant" || key === "manoObra" || key === "materiales" || key === "utilidadPct" || key === "riesgoPct") {
+        draft[key] = ocrNumber(cellValue);
+      } else {
+        draft[key] = cellValue.trim();
+      }
+    }
+    if (!hasData || !draft.descripcion.trim()) continue;
+    const undUpper = draft.und.toUpperCase();
+    draft.und = COT_UNITS.includes(undUpper) ? undUpper : "UND";
+    draft.categoria = draft.categoria.trim() || categoriaDefault;
+    rows.push(draft);
+  }
+  return rows;
+};
+
+export const parseRowsFromHeuristicOcr = (ocrText: string, categoriaDefault: string): CotOcrDraftRow[] => {
+  const lines = ocrText
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return [];
+
+  const rows: CotOcrDraftRow[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    if (shouldSkipOcrLine(rawLine)) continue;
+    const columns = splitOcrColumns(rawLine);
+    if (columns.length < 2 || isLikelyCotHeaderLine(columns)) continue;
+
+    const unitCandidate = columns.find((column) => COT_UNITS.includes(column.toUpperCase()));
+    const codeCandidate = columns.find((column) => /^\d+([.\-]\d+)*$/.test(column.trim())) || "";
+    const numericColumns = columns.filter((column) => isNumericLikeToken(column)).map((column) => ocrNumber(column));
+    const tailNumbers = numericColumns.slice(-5);
+
+    let cant = 0;
+    let manoObra = 0;
+    let materiales = 0;
+    let utilidadPct = 0;
+    let riesgoPct = 0;
+    if (tailNumbers.length >= 5) {
+      [cant, manoObra, materiales, utilidadPct, riesgoPct] = tailNumbers;
+    } else if (tailNumbers.length === 4) {
+      [cant, manoObra, materiales, utilidadPct] = tailNumbers;
+    } else if (tailNumbers.length === 3) {
+      [cant, manoObra, materiales] = tailNumbers;
+    } else if (tailNumbers.length === 2) {
+      [cant, manoObra] = tailNumbers;
+    } else if (tailNumbers.length === 1) {
+      [cant] = tailNumbers;
+    }
+
+    const descriptionParts = columns.filter((column) => {
+      if (unitCandidate && column === unitCandidate) return false;
+      if (codeCandidate && column === codeCandidate) return false;
+      if (isNumericLikeToken(column)) return false;
+      return true;
+    });
+    const descripcion = descriptionParts.join(" ").trim();
+    if (!descripcion || descripcion.length < 3) continue;
+
+    rows.push({
+      draftId: `ocr-f-${index}`,
+      categoria: categoriaDefault,
+      codPartida: codeCandidate.trim(),
+      descripcion,
+      und: unitCandidate ? unitCandidate.toUpperCase() : "UND",
+      cant,
+      manoObra,
+      materiales,
+      utilidadPct,
+      riesgoPct,
+    });
+  }
+  return rows;
+};
+
+export const parseCotRowsFromOcrText = (ocrText: string, categoriaDefault: string): CotOcrDraftRow[] => {
+  const byHeaders = parseRowsFromHeaderBasedOcr(ocrText, categoriaDefault);
+  if (byHeaders.length) return byHeaders;
+  return parseRowsFromHeuristicOcr(ocrText, categoriaDefault);
+};
+
+export type CotOcrEditableKey = keyof Omit<CotOcrDraftRow, "draftId">;
+export type CotOcrNumericKey = "cant" | "manoObra" | "materiales" | "utilidadPct" | "riesgoPct";
+export const COT_OCR_NUMERIC_KEYS = new Set<CotOcrNumericKey>(["cant", "manoObra", "materiales", "utilidadPct", "riesgoPct"]);
+
 export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today = new Date().toISOString().split("T")[0];
   const [step, setStep] = usePersistentState("cot.step", 1);
@@ -2305,6 +2549,14 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
   const [igvPct, sIgvPct] = usePersistentState("cot.igvPct", 18);
   const [condPago, sCondPago] = usePersistentState("cot.condPago", "50% adelanto y 50% contra entrega");
   const [obs, sObs] = usePersistentState("cot.obs", "");
+  const pdfImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState("");
+  const [ocrFileName, setOcrFileName] = useState("");
+  const [ocrRawText, setOcrRawText] = useState("");
+  const [ocrDraftRows, setOcrDraftRows] = useState<CotOcrDraftRow[]>([]);
+  const [ocrError, setOcrError] = useState("");
 
   const categoriasSafe = useMemo(() => (
     categorias.length ? categorias : COT_CATEGORIES_BASE
@@ -2342,53 +2594,199 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
   };
   const delPartida = (id: number) => setPartidas((prev: CotPartida[]) => prev.filter((item) => item.id !== id));
 
-  const importPartidasFromExcel = async () => {
-    if (!window.curvDesktop?.importCotizacionXlsx) {
-      window.alert("La importación desde Excel está disponible en la versión desktop (.exe).");
+  const clearOcrDraft = () => {
+    setOcrStatus("");
+    setOcrError("");
+    setOcrFileName("");
+    setOcrRawText("");
+    setOcrDraftRows([]);
+  };
+
+  const closeOcrModal = () => {
+    if (ocrBusy) return;
+    setOcrModalOpen(false);
+    clearOcrDraft();
+  };
+
+  const updateOcrDraftValue = (draftId: string, key: CotOcrEditableKey, value: string) => {
+    setOcrDraftRows((prev) => (
+      prev.map((row) => {
+        if (row.draftId !== draftId) return row;
+        if (COT_OCR_NUMERIC_KEYS.has(key as CotOcrNumericKey)) {
+          return {...row, [key]: ocrNumber(value)};
+        }
+        if (key === "und") {
+          const unit = String(value || "").toUpperCase().trim();
+          return {...row, und: unit || "UND"};
+        }
+        return {...row, [key]: value};
+      })
+    ));
+  };
+
+  const addOcrDraftRow = () => {
+    const categoriaDefault = categoriasSafe[0] || "General";
+    setOcrDraftRows((prev) => [
+      ...prev,
+      newCotOcrDraftRow(`ocr-manual-${Date.now()}-${prev.length + 1}`, categoriaDefault),
+    ]);
+  };
+
+  const removeOcrDraftRow = (draftId: string) => {
+    setOcrDraftRows((prev) => prev.filter((row) => row.draftId !== draftId));
+  };
+
+  const openPdfImportPicker = () => {
+    if (ocrBusy) return;
+    pdfImportInputRef.current?.click();
+  };
+
+  const runPdfOcrImport = async (file: File) => {
+    let ocrWorker: any = null;
+    try {
+      const categoriaDefault = categoriasSafe[0] || "General";
+      setOcrModalOpen(true);
+      setOcrBusy(true);
+      setOcrError("");
+      setOcrFileName(file.name);
+      setOcrRawText("");
+      setOcrDraftRows([]);
+      setOcrStatus("Preparando OCR...");
+
+      const [{createWorker}, pdfjsModule, workerUrlModule] = await Promise.all([
+        import("tesseract.js"),
+        import("pdfjs-dist/legacy/build/pdf.mjs"),
+        import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"),
+      ]);
+
+      const pdfjs = pdfjsModule as unknown as {
+        GlobalWorkerOptions: { workerSrc: string };
+        getDocument: (src: { data: Uint8Array }) => { promise: Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> };
+      };
+      const workerUrl = String((workerUrlModule as { default?: string }).default || workerUrlModule);
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+      const logProgress = (message: { status?: string; progress?: number }) => {
+        if (!message || typeof message !== "object") return;
+        if (message.status === "recognizing text" && typeof message.progress === "number") {
+          const pct = Math.max(0, Math.min(100, Math.round(message.progress * 100)));
+          setOcrStatus(`OCR en progreso: ${pct}%`);
+        }
+      };
+
+      ocrWorker = await createWorker("spa+eng", 1, { logger: logProgress });
+
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const doc = await pdfjs.getDocument({data: bytes}).promise;
+      const chunks: string[] = [];
+      for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
+        setOcrStatus(`Renderizando página ${pageIndex} de ${doc.numPages}...`);
+        const page = await doc.getPage(pageIndex);
+        const viewport = page.getViewport({scale: 2});
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.floor(viewport.width));
+        canvas.height = Math.max(1, Math.floor(viewport.height));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) continue;
+        await page.render({canvasContext: ctx, viewport}).promise;
+        setOcrStatus(`Leyendo texto (OCR) ${pageIndex}/${doc.numPages}...`);
+        const recognized = await ocrWorker.recognize(canvas);
+        const text = String(recognized?.data?.text || "").trim();
+        if (text) chunks.push(text);
+      }
+
+      const rawText = chunks.join("\n").trim();
+      setOcrRawText(rawText);
+      const parsedRows = parseCotRowsFromOcrText(rawText, categoriaDefault);
+      setOcrDraftRows(parsedRows);
+      if (!parsedRows.length) {
+        setOcrError("No se detectaron filas válidas. Puedes agregar o editar filas manualmente antes de importar.");
+      }
+      setOcrStatus(`OCR completado. ${parsedRows.length} fila(s) detectada(s).`);
+    } catch (error) {
+      setOcrError("No se pudo procesar el PDF con OCR. Verifica que el archivo sea legible e inténtalo nuevamente.");
+      setOcrStatus("");
+      setOcrRawText("");
+      setOcrDraftRows([]);
+      if (error instanceof Error && error.message) {
+        console.error(error.message);
+      }
+    } finally {
+      if (ocrWorker?.terminate) {
+        try {
+          await ocrWorker.terminate();
+        } catch {
+          // ignore worker shutdown errors
+        }
+      }
+      setOcrBusy(false);
+    }
+  };
+
+  const onPdfImportFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+    if (!isPdf) {
+      window.alert("Selecciona un archivo PDF válido.");
       return;
     }
-    try {
-      const result = await window.curvDesktop.importCotizacionXlsx();
-      if (!result.ok) {
-        if (result.code !== "cancelled") window.alert(result.message || "No se pudo importar el archivo.");
-        return;
-      }
+    await runPdfOcrImport(file);
+  };
 
-      const maxExistingId = partidas.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
-      const startId = Math.max(nextId, maxExistingId + 1);
-      const categoriaDefault = categoriasSafe[0] || "General";
+  const confirmOcrImport = () => {
+    const categoriaDefault = categoriasSafe[0] || "General";
+    const normalizedRows = ocrDraftRows
+      .map((row) => ({
+        categoria: String(row.categoria || "").trim() || categoriaDefault,
+        codPartida: String(row.codPartida || "").trim(),
+        descripcion: String(row.descripcion || "").trim(),
+        und: String(row.und || "").toUpperCase().trim() || "UND",
+        cant: ocrNumber(String(row.cant)),
+        manoObra: ocrNumber(String(row.manoObra)),
+        materiales: ocrNumber(String(row.materiales)),
+        utilidadPct: ocrNumber(String(row.utilidadPct)),
+        riesgoPct: ocrNumber(String(row.riesgoPct)),
+      }))
+      .filter((row) => row.descripcion.length > 0);
 
-      const importedPartidas: CotPartida[] = result.rows.map((row, index) => ({
-        id: startId + index,
-        categoria: row.categoria.trim() || categoriaDefault,
-        codPartida: row.codPartida.trim(),
-        descripcion: row.descripcion.trim(),
-        und: row.und.trim() || "UND",
-        cant: Number.isFinite(row.cant) ? row.cant : 0,
-        manoObra: Number.isFinite(row.manoObra) ? row.manoObra : 0,
-        materiales: Number.isFinite(row.materiales) ? row.materiales : 0,
-        utilidadPct: Number.isFinite(row.utilidadPct) ? row.utilidadPct : 0,
-        riesgoPct: Number.isFinite(row.riesgoPct) ? row.riesgoPct : 0,
-      }));
-
-      if (!importedPartidas.length) {
-        window.alert("El archivo no contiene filas válidas para importar.");
-        return;
-      }
-
-      setPartidas((prev: CotPartida[]) => [...prev, ...importedPartidas]);
-      setNextId(startId + importedPartidas.length);
-      setCategorias((prev) => {
-        const merged = new Set(prev.length ? prev : COT_CATEGORIES_BASE);
-        importedPartidas.forEach((item) => {
-          if (item.categoria.trim()) merged.add(item.categoria.trim());
-        });
-        return [...merged];
-      });
-      window.alert(`Importación completada: ${importedPartidas.length} partida(s) agregada(s) desde ${result.fileName}.`);
-    } catch {
-      window.alert("No se pudo completar la importación del Excel.");
+    if (!normalizedRows.length) {
+      window.alert("No hay filas válidas para importar.");
+      return;
     }
+
+    const maxExistingId = partidas.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+    const startId = Math.max(nextId, maxExistingId + 1);
+    const importedPartidas: CotPartida[] = normalizedRows.map((row, index) => ({
+      id: startId + index,
+      categoria: row.categoria,
+      codPartida: row.codPartida,
+      descripcion: row.descripcion,
+      und: COT_UNITS.includes(row.und) ? row.und : "UND",
+      cant: row.cant,
+      manoObra: row.manoObra,
+      materiales: row.materiales,
+      utilidadPct: row.utilidadPct,
+      riesgoPct: row.riesgoPct,
+    }));
+
+    setPartidas((prev: CotPartida[]) => [...prev, ...importedPartidas]);
+    setNextId(startId + importedPartidas.length);
+    setCategorias((prev) => {
+      const merged = new Set(prev.length ? prev : COT_CATEGORIES_BASE);
+      importedPartidas.forEach((item) => {
+        if (item.categoria.trim()) merged.add(item.categoria.trim());
+      });
+      return [...merged];
+    });
+    setOcrModalOpen(false);
+    clearOcrDraft();
+    window.alert(`Importación completada: ${importedPartidas.length} partida(s) agregada(s) desde ${ocrFileName || "PDF"}.`);
+  };
+
+  const importPartidasFromPdf = () => {
+    openPdfImportPicker();
   };
 
   const calcPartida = (item: CotPartida) => {
@@ -2487,10 +2885,17 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                 </span>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <Btn v="ol" sm onClick={importPartidasFromExcel}>Importar</Btn>
+                <Btn v="ol" sm onClick={importPartidasFromPdf}>Importar PDF (OCR)</Btn>
                 <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
               </div>
             </div>
+            <input
+              ref={pdfImportInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              style={{display:"none"}}
+              onChange={onPdfImportFileSelected}
+            />
             <div style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead>
@@ -2675,6 +3080,99 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
           <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
             <Btn v="ol" onClick={() => setStep(1)}>← Anterior</Btn>
             <Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn>
+          </div>
+        </div>
+      )}
+      {ocrModalOpen && (
+        <div style={{position:"fixed",inset:0,zIndex:140,background:"rgba(15,23,42,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
+          <div style={{width:"min(1220px,96vw)",maxHeight:"92vh",background:UI.card,border:`1px solid ${UI.border}`,borderRadius:10,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{padding:"12px 14px",borderBottom:`1px solid ${UI.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:800,color:DK}}>Importar PDF (OCR)</div>
+                <div style={{fontSize:10,color:UI.textMuted}}>{ocrFileName || "Sin archivo seleccionado"}</div>
+              </div>
+              <button
+                type="button"
+                onClick={closeOcrModal}
+                disabled={ocrBusy}
+                style={{border:`1px solid ${UI.border}`,background:"#fff",color:DK,borderRadius:6,padding:"6px 10px",fontSize:10,fontWeight:700,cursor:ocrBusy?"not-allowed":"pointer",opacity:ocrBusy?0.6:1}}
+              >
+                Cerrar
+              </button>
+            </div>
+            <div style={{padding:"10px 14px",borderBottom:`1px solid ${UI.border}`,display:"flex",flexDirection:"column",gap:6}}>
+              {ocrStatus && <div style={{fontSize:10,color:"#6B7280"}}>{ocrStatus}</div>}
+              {ocrError && <div style={{fontSize:10,color:"#A63B2A"}}>{ocrError}</div>}
+              {!ocrBusy && !ocrError && !ocrStatus && <div style={{fontSize:10,color:"#6B7280"}}>Carga un PDF para detectar partidas y revisarlas antes de importar.</div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1.5fr",gap:12,padding:14,minHeight:280,overflow:"hidden"}}>
+              <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:0}}>
+                <div style={{fontSize:10,fontWeight:700,color:DK}}>Texto OCR (referencia)</div>
+                <textarea
+                  value={ocrRawText}
+                  readOnly
+                  style={{width:"100%",minHeight:220,flex:1,border:`1px solid ${UI.border}`,borderRadius:6,padding:10,fontSize:10,lineHeight:1.5,resize:"vertical",background:"#fff",color:"#4B5563"}}
+                />
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                  <div style={{fontSize:10,fontWeight:700,color:DK}}>Preview editable de partidas detectadas</div>
+                  <Btn v="ol" sm onClick={addOcrDraftRow}>+ Fila</Btn>
+                </div>
+                <div style={{overflow:"auto",border:`1px solid ${UI.border}`,borderRadius:6}}>
+                  <table style={{width:"100%",borderCollapse:"collapse"}}>
+                    <thead>
+                      <tr style={{background:"#F8F6F1"}}>
+                        {["Categoría","Código","Descripción","UND","Cant","MO","Mat","Util%","Riesgo%",""].map((header) => (
+                          <th key={header} style={{padding:"6px 7px",fontSize:9,color:"#808A94",borderBottom:`1px solid ${UI.border}`,textAlign:header==="Descripción"?"left":"right",whiteSpace:"nowrap"}}>{header}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!ocrDraftRows.length && (
+                        <tr>
+                          <td colSpan={10} style={{padding:"16px 10px",textAlign:"center",fontSize:10,color:"#9CA3AF"}}>
+                            No hay filas detectadas. Puedes agregar filas manualmente.
+                          </td>
+                        </tr>
+                      )}
+                      {ocrDraftRows.map((row, index) => (
+                        <tr key={row.draftId} style={{background:index%2?"#fff":"#FAFAF7",borderBottom:`1px solid ${UI.borderSoft}`}}>
+                          <td style={{padding:"5px 6px"}}><input value={row.categoria} onChange={(event) => updateOcrDraftValue(row.draftId, "categoria", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:110}}/></td>
+                          <td style={{padding:"5px 6px"}}><input value={row.codPartida} onChange={(event) => updateOcrDraftValue(row.draftId, "codPartida", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:82,textAlign:"right"}}/></td>
+                          <td style={{padding:"5px 6px"}}><input value={row.descripcion} onChange={(event) => updateOcrDraftValue(row.draftId, "descripcion", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:170}}/></td>
+                          <td style={{padding:"5px 6px"}}><input value={row.und} onChange={(event) => updateOcrDraftValue(row.draftId, "und", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:64,textTransform:"uppercase"}}/></td>
+                          <td style={{padding:"5px 6px"}}><input type="number" value={row.cant} onChange={(event) => updateOcrDraftValue(row.draftId, "cant", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:72,textAlign:"right"}}/></td>
+                          <td style={{padding:"5px 6px"}}><input type="number" value={row.manoObra} onChange={(event) => updateOcrDraftValue(row.draftId, "manoObra", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:82,textAlign:"right"}}/></td>
+                          <td style={{padding:"5px 6px"}}><input type="number" value={row.materiales} onChange={(event) => updateOcrDraftValue(row.draftId, "materiales", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:82,textAlign:"right"}}/></td>
+                          <td style={{padding:"5px 6px"}}><input type="number" value={row.utilidadPct} onChange={(event) => updateOcrDraftValue(row.draftId, "utilidadPct", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:70,textAlign:"right"}}/></td>
+                          <td style={{padding:"5px 6px"}}><input type="number" value={row.riesgoPct} onChange={(event) => updateOcrDraftValue(row.draftId, "riesgoPct", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:70,textAlign:"right"}}/></td>
+                          <td style={{padding:"5px 6px",textAlign:"center"}}>
+                            <button type="button" onClick={() => removeOcrDraftRow(row.draftId)} style={{border:"none",background:"none",fontSize:13,color:"#9CA3AF",cursor:"pointer",padding:0}}>
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div style={{padding:"10px 14px",borderTop:`1px solid ${UI.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+              <div style={{fontSize:10,color:UI.textMuted}}>Modo de importación: agregar al final.</div>
+              <div style={{display:"flex",gap:8}}>
+                <Btn v="ol" sm onClick={closeOcrModal}>Cancelar</Btn>
+                <button
+                  type="button"
+                  onClick={confirmOcrImport}
+                  disabled={ocrBusy}
+                  style={{background:DK,color:"#fff",border:`1px solid ${DK}`,borderRadius:6,padding:"6px 12px",fontSize:10,fontWeight:700,cursor:ocrBusy?"not-allowed":"pointer",opacity:ocrBusy?0.7:1}}
+                >
+                  Importar al formulario
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

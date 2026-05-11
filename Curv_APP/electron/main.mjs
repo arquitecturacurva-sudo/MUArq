@@ -1,9 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import * as XLSX from "xlsx";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,128 +45,6 @@ const openExternalSafely = async (rawUrl) => {
   if (!isSafeExternalUrl(rawUrl)) return false;
   await shell.openExternal(rawUrl);
   return true;
-};
-
-const COTIZACION_HEADER_ALIASES = {
-  categoria: "categoria",
-  category: "categoria",
-  codigopartida: "codPartida",
-  codpartida: "codPartida",
-  codigo: "codPartida",
-  descripcion: "descripcion",
-  descripcionpartida: "descripcion",
-  und: "und",
-  unidad: "und",
-  unidades: "und",
-  cant: "cant",
-  cantidad: "cant",
-  manoobra: "manoObra",
-  manodeobra: "manoObra",
-  mo: "manoObra",
-  materiales: "materiales",
-  material: "materiales",
-  utilidad: "utilidadPct",
-  utilidadpct: "utilidadPct",
-  utilidadporcentaje: "utilidadPct",
-  riesgo: "riesgoPct",
-  riesgopct: "riesgoPct",
-  riesgoporcentaje: "riesgoPct",
-};
-
-const NUMERIC_KEYS = new Set(["cant", "manoObra", "materiales", "utilidadPct", "riesgoPct"]);
-const REQUIRED_HEADERS = ["descripcion"];
-
-const normalizeHeader = (value) =>
-  String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-
-const toNumberOrZero = (value) => {
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  const normalized = String(value ?? "")
-    .trim()
-    .replace(/\s+/g, "")
-    .replace(",", ".");
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const parseCotizacionXlsx = (fileBuffer) => {
-  const workbook = XLSX.read(fileBuffer, { type: "buffer", cellDates: false });
-  const firstSheetName = workbook.SheetNames?.[0];
-  if (!firstSheetName) {
-    return { ok: false, code: "empty_workbook", message: "El archivo no contiene hojas para importar." };
-  }
-
-  const sheet = workbook.Sheets[firstSheetName];
-  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", blankrows: false });
-  if (!Array.isArray(matrix) || matrix.length < 2) {
-    return { ok: false, code: "empty_sheet", message: "La hoja no tiene filas de datos para importar." };
-  }
-
-  const rawHeaders = Array.isArray(matrix[0]) ? matrix[0] : [];
-  const mappedColumns = [];
-  const presentHeaders = new Set();
-  for (let index = 0; index < rawHeaders.length; index += 1) {
-    const normalized = normalizeHeader(rawHeaders[index]);
-    const mapped = COTIZACION_HEADER_ALIASES[normalized];
-    mappedColumns[index] = mapped || null;
-    if (mapped) presentHeaders.add(mapped);
-  }
-
-  const missing = REQUIRED_HEADERS.filter((header) => !presentHeaders.has(header));
-  if (missing.length > 0) {
-    return {
-      ok: false,
-      code: "invalid_structure",
-      message: `Estructura inválida: falta columna requerida (${missing.join(", ")}).`,
-    };
-  }
-
-  const rows = [];
-  for (let rowIndex = 1; rowIndex < matrix.length; rowIndex += 1) {
-    const row = Array.isArray(matrix[rowIndex]) ? matrix[rowIndex] : [];
-    const normalizedRow = {
-      categoria: "",
-      codPartida: "",
-      descripcion: "",
-      und: "",
-      cant: 0,
-      manoObra: 0,
-      materiales: 0,
-      utilidadPct: 0,
-      riesgoPct: 0,
-    };
-    let hasAnyValue = false;
-
-    for (let colIndex = 0; colIndex < mappedColumns.length; colIndex += 1) {
-      const key = mappedColumns[colIndex];
-      if (!key) continue;
-      const cellValue = row[colIndex];
-      if (cellValue !== "" && cellValue !== null && cellValue !== undefined) hasAnyValue = true;
-      if (NUMERIC_KEYS.has(key)) {
-        normalizedRow[key] = toNumberOrZero(cellValue);
-      } else {
-        normalizedRow[key] = String(cellValue ?? "").trim();
-      }
-    }
-
-    if (!hasAnyValue) continue;
-    if (!normalizedRow.descripcion.trim()) continue;
-    rows.push(normalizedRow);
-  }
-
-  if (!rows.length) {
-    return {
-      ok: false,
-      code: "no_valid_rows",
-      message: "No se encontraron filas válidas para importar (revisa encabezados y descripciones).",
-    };
-  }
-
-  return { ok: true, rows };
 };
 
 const isInAppUrl = (rawUrl) => {
@@ -308,31 +185,6 @@ const createMainWindow = async () => {
 };
 
 ipcMain.handle("desktop:openExternal", async (_event, url) => openExternalSafely(url));
-ipcMain.handle("desktop:importCotizacionXlsx", async (event) => {
-  const ownerWindow = BrowserWindow.fromWebContents(event.sender) || null;
-  try {
-    const picker = await dialog.showOpenDialog(ownerWindow, {
-      title: "Importar cotización desde Excel",
-      properties: ["openFile"],
-      filters: [{ name: "Excel", extensions: ["xlsx"] }],
-    });
-    if (picker.canceled || !picker.filePaths.length) {
-      return { ok: false, code: "cancelled", message: "Importación cancelada." };
-    }
-
-    const filePath = picker.filePaths[0];
-    const fileBuffer = await readFile(filePath);
-    const parsed = parseCotizacionXlsx(fileBuffer);
-    if (!parsed.ok) return parsed;
-    return { ok: true, rows: parsed.rows, fileName: path.basename(filePath) };
-  } catch {
-    return {
-      ok: false,
-      code: "read_error",
-      message: "No se pudo leer el archivo Excel. Verifica que sea un .xlsx válido.",
-    };
-  }
-});
 
 app.whenReady().then(() => {
   void createMainWindow();
