@@ -8,6 +8,7 @@
  * @property {string} clientId
  * @property {BillingPlan} plan
  * @property {string} [email]
+ * @property {string} [cardTokenId]
  * @property {string} [successUrl]
  * @property {string} [cancelUrl]
  *
@@ -15,6 +16,7 @@
  * @property {string} clientId
  * @property {BillingPlan} plan
  * @property {string} [email]
+ * @property {string} [cardTokenId]
  * @property {string} [successUrl]
  * @property {string} [cancelUrl]
  *

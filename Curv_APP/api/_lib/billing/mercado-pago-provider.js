@@ -13,6 +13,10 @@ const getAccessToken = () => {
 
 const getWebhookSecret = () => String(process.env.MP_WEBHOOK_SECRET || "").trim();
 
+const getPlanCheckoutUrl = (preapprovalPlanId) => (
+  `https://www.mercadopago.com.pe/subscriptions/checkout?preapproval_plan_id=${encodeURIComponent(preapprovalPlanId)}`
+);
+
 /**
  * @param {string} path
  * @param {RequestInit} [options]
@@ -81,12 +85,21 @@ const createPendingPreapproval = async (input) => {
   const clientId = String(input.clientId || "").trim();
   const plan = normalizePlan(input.plan, "");
   const email = String(input.email || "").trim();
+  const cardTokenId = String(input.cardTokenId || "").trim();
   const preapprovalPlanId = getPreapprovalPlanId(plan);
 
   if (!clientId) throw new Error("Missing clientId.");
   if (!plan) throw new Error("Invalid plan.");
   if (!preapprovalPlanId) {
     throw new Error(`Missing Mercado Pago preapproval plan id for plan ${plan}.`);
+  }
+
+  if (!cardTokenId) {
+    return {
+      subscriptionId: preapprovalPlanId,
+      url: getPlanCheckoutUrl(preapprovalPlanId),
+      status: "trialing",
+    };
   }
 
   const preapproval = await mpRequest("/preapproval", {
@@ -96,6 +109,7 @@ const createPendingPreapproval = async (input) => {
       reason: `Curv App ${plan}`,
       external_reference: clientId,
       payer_email: email || undefined,
+      card_token_id: cardTokenId || undefined,
       back_url: input.successUrl || undefined,
       status: "pending",
       metadata: {

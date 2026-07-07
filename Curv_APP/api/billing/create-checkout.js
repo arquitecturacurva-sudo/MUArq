@@ -13,6 +13,7 @@ export default async function handler(req, res) {
     const clientId = String(payload?.clientId || "").trim();
     const plan = payload?.plan;
     const email = String(payload?.email || "").trim() || undefined;
+    const cardTokenId = String(payload?.cardTokenId || "").trim() || undefined;
 
     if (!clientId) {
       return res.status(400).json({ error: "Missing clientId." });
@@ -32,6 +33,7 @@ export default async function handler(req, res) {
       clientId,
       plan,
       email,
+      cardTokenId,
       successUrl,
       cancelUrl,
     });
