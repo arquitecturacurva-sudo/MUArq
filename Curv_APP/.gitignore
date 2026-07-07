@@ -24,3 +24,5 @@ build/icon.ico
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*

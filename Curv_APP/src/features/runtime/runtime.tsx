@@ -550,6 +550,20 @@ export function openPrint(html: string) {
         }
       }
       #__print_portal__ *, #__print_portal__ *::before, #__print_portal__ *::after { box-sizing: border-box; }
+      #__print_portal__ { color: #1A1A1A; }
+      #__print_portal__ [style*="color:#888"],
+      #__print_portal__ [style*="color: #888"],
+      #__print_portal__ [style*="color:#999"],
+      #__print_portal__ [style*="color: #999"],
+      #__print_portal__ [style*="color:#AAA"],
+      #__print_portal__ [style*="color: #AAA"],
+      #__print_portal__ [style*="color:#aaa"],
+      #__print_portal__ [style*="color: #aaa"],
+      #__print_portal__ [style*="color: rgb(136, 136, 136)"],
+      #__print_portal__ [style*="color: rgb(153, 153, 153)"],
+      #__print_portal__ [style*="color: rgb(170, 170, 170)"] {
+        color: #3F3F3F !important;
+      }
     </style>
     <div class="__pbar__" style="position:sticky;top:0;background:#fff;padding:10px 0 12px;
       margin-bottom:28px;border-bottom:2px solid #f0ebe0;display:flex;gap:8px;
@@ -822,10 +836,6 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
               </tr>
             </tbody>
           </table>
-          <div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"8px 11px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
-            <span style={{...lb,margin:0,whiteSpace:"nowrap"}}>Rango ±8%</span>
-            <span style={{fontWeight:700,fontSize:12}}>{fmt(c.rMin)} — {fmt(c.rMax)}</span>
-          </div>
           <p style={{...lb,color:G,marginBottom:8}}>Hitos de cobro</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
             {c.hitos.map(h=>(
@@ -2366,14 +2376,14 @@ export const splitOcrColumns = (line: string) => (
 );
 
 export const isNumericLikeToken = (value: string) => {
-  const cleaned = String(value || "").trim().replace(/[^\d,.\-]/g, "");
+  const cleaned = String(value || "").trim().replace(/[^\d,.-]/g, "");
   if (!cleaned) return false;
   const normalized = cleaned.replace(",", ".");
   return Number.isFinite(Number(normalized));
 };
 
 export const ocrNumber = (value: string) => {
-  const cleaned = String(value || "").trim().replace(/[^\d,.\-]/g, "");
+  const cleaned = String(value || "").trim().replace(/[^\d,.-]/g, "");
   if (!cleaned) return 0;
   const normalized = cleaned.replace(",", ".");
   const parsed = Number(normalized);
@@ -2473,7 +2483,7 @@ export const parseRowsFromHeuristicOcr = (ocrText: string, categoriaDefault: str
     if (columns.length < 2 || isLikelyCotHeaderLine(columns)) continue;
 
     const unitCandidate = columns.find((column) => COT_UNITS.includes(column.toUpperCase()));
-    const codeCandidate = columns.find((column) => /^\d+([.\-]\d+)*$/.test(column.trim())) || "";
+    const codeCandidate = columns.find((column) => /^\d+([.-]\d+)*$/.test(column.trim())) || "";
     const numericColumns = columns.filter((column) => isNumericLikeToken(column)).map((column) => ocrNumber(column));
     const tailNumbers = numericColumns.slice(-5);
 

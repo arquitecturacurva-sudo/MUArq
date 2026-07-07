@@ -20,7 +20,7 @@ Plan limits currently implemented:
 
 `EMPRESA` is intentionally not enforced in this phase.
 
-## Manual Paywall (no Stripe)
+## Manual Paywall (no payment provider)
 
 Billing source of truth is `clients/{clientId}.billing`:
 
@@ -69,61 +69,48 @@ Frontend only reflects billing status and never changes plan/status directly.
 - `name`, `client`, `code`, `location`, `currency`, `status`
 - `createdAt`, `updatedAt`
 
-## Stripe Checkout + Webhook (manual ops friendly)
+## Mercado Pago Checkout + Webhook
 
-This repo now includes Vercel server endpoints:
+Billing is provider-agnostic. The active provider is **Mercado Pago**.
 
-- `POST /api/billing/create-checkout-session`
+See full setup guide: [`docs/billing.md`](./billing.md)
+
+Server endpoints:
+
+- `POST /api/billing/create-checkout`
 - `POST /api/billing/webhook`
+- `POST /api/billing/cancel-subscription`
 
 Checkout flow:
 
 1. User clicks `Activar BASE` or `Elegir PRO` in Home banner.
-2. Frontend requests `/api/billing/create-checkout-session`.
-3. Backend creates Stripe Checkout subscription session.
-4. User pays in Stripe Checkout.
-5. Stripe webhook updates `clients/{clientId}.billing`.
+2. Frontend requests `/api/billing/create-checkout`.
+3. Backend creates a Mercado Pago preapproval (subscription) and returns `init_point`.
+4. User pays in Mercado Pago (cards, local methods, installments where available).
+5. Mercado Pago webhook updates `clients/{clientId}.billing`.
 6. User clicks `Ya pagué` (or refreshes) and app reads updated billing.
 
 ### Required server env vars (Vercel)
 
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_BASE`
-- `STRIPE_PRICE_PRO`
+- `BILLING_PROVIDER=mercadopago`
+- `MP_ACCESS_TOKEN`
+- `MP_WEBHOOK_SECRET`
+- `MP_PREAPPROVAL_PLAN_BASE`
+- `MP_PREAPPROVAL_PLAN_PRO`
 - `FIREBASE_SERVICE_ACCOUNT_JSON` (or `FIREBASE_SERVICE_ACCOUNT_B64`)
 - `APP_BASE_URL` (optional fallback)
 
 Important:
 
-- `STRIPE_*` and `FIREBASE_SERVICE_ACCOUNT_*` are **server-only** (no `VITE_` prefix).
+- `MP_*` and `FIREBASE_SERVICE_ACCOUNT_*` are **server-only** (no `VITE_` prefix).
 - `VITE_FIREBASE_*` are expected to be public in browser.
-
-### Webhook endpoint setup
-
-In Stripe Dashboard:
-
-1. Create webhook endpoint to:
-   - `https://<your-domain>/api/billing/webhook`
-2. Subscribe to events:
-   - `checkout.session.completed`
-   - `invoice.paid`
-   - `invoice.payment_failed`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-3. Copy endpoint signing secret into `STRIPE_WEBHOOK_SECRET`.
 
 ### Operational model
 
 - Frontend never writes billing activation/deactivation directly.
 - Webhook is the primary billing updater.
 - Firebase Console manual edits still supported as fallback.
-
-### Payment methods and destination account
-
-- Payment methods are managed in Stripe Dashboard / Checkout settings.
-- Recommended setup for this SaaS phase: single Stripe account collecting payments for your company.
-- Use Stripe Connect only if you need to split payouts to third-party accounts (marketplace model).
+- Legacy `clients.stripe` is ignored for new checkouts; `billingProvider` is the source of truth.
 
 ## Firestore Rules
 

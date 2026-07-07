@@ -85,6 +85,7 @@ type HomeViewProps = {
   openProject: (projectId: string) => void;
   handleEditProject: (project: ProjectRecord) => void;
   toggleArchiveProject: (project: ProjectRecord) => void;
+  handleDeleteProject: (project: ProjectRecord) => void;
 };
 
 export default function HomeView({
@@ -117,6 +118,7 @@ export default function HomeView({
   openProject,
   handleEditProject,
   toggleArchiveProject,
+  handleDeleteProject,
 }: HomeViewProps) {
   const showPaywall = !!paywallAccess && paywallAccess.reason !== "active";
   const paywallTitle = !paywallAccess
@@ -322,6 +324,7 @@ export default function HomeView({
                   <Btn sm onClick={() => openProject(project.id)}>Abrir</Btn>
                   <Btn sm v="ol" onClick={() => handleEditProject(project)}>Editar</Btn>
                   <Btn sm v="ol" onClick={() => toggleArchiveProject(project)}>{project.archived ? "Desarchivar" : "Archivar"}</Btn>
+                  <Btn sm v="ol" onClick={() => handleDeleteProject(project)}>Eliminar</Btn>
                 </div>
               </div>
             ))}

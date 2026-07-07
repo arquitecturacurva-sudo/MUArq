@@ -56,7 +56,7 @@ import {
   watchAuth,
 } from "./lib/auth/authService";
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
-import { createCheckoutSession } from "./lib/billing/checkoutService";
+import { createCheckout } from "./lib/billing/billingService";
 import { isDesktopRuntime, openExternalUrl } from "./lib/desktop";
 import { importLocalProjectsOnce, listProjectsByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
@@ -578,14 +578,14 @@ export default function App() {
       const baseUrl = window.location.origin;
       const successUrl = `${baseUrl}/?checkout=success`;
       const cancelUrl = `${baseUrl}/?checkout=cancel`;
-      const session = await createCheckoutSession({
+      const checkout = await createCheckout({
         clientId: activeClientId,
         plan,
         email: authUser.email || undefined,
         successUrl,
         cancelUrl,
       });
-      window.location.assign(session.url);
+      window.location.assign(checkout.url);
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo iniciar el checkout.";
       window.alert(message);
@@ -672,6 +672,21 @@ export default function App() {
 
   const toggleArchiveProject = (project: ProjectRecord) => {
     updateProject(project.id, {archived: !project.archived});
+  };
+
+  const handleDeleteProject = (project: ProjectRecord) => {
+    const projectName = readProjectBaseMetadata(project.id).projectName.trim() || project.name;
+    const shouldDelete = window.confirm(`Se eliminará el proyecto "${projectName}" y sus datos guardados. ¿Deseas continuar?`);
+    if (!shouldDelete) return;
+
+    clearProjectStorage(project.id);
+    const remaining = normalizeProjectRecords(projects).filter((item) => item.id !== project.id);
+    setProjects(remaining);
+
+    if (activeProjectId === project.id) {
+      setActiveProjectId(remaining[0]?.id || "");
+      setRoute("home");
+    }
   };
 
   const openProject = (projectId: string) => {
@@ -957,6 +972,7 @@ export default function App() {
         openProject={openProject}
         handleEditProject={handleEditProject}
         toggleArchiveProject={toggleArchiveProject}
+        handleDeleteProject={handleDeleteProject}
       />
     );
   }
