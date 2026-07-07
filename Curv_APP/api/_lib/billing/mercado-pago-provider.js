@@ -205,6 +205,13 @@ const applySubscriptionStatus = async (status) => {
   return true;
 };
 
+const isMercadoPagoSimulatorPayload = (payload, resourceId) => (
+  resourceId === "123456" &&
+  String(payload.api_version || "") === "v1" &&
+  String(payload.type || payload.topic || "") === "payment" &&
+  String(payload.action || "") === "payment.updated"
+);
+
 /** @type {import('./types.js').BillingProvider} */
 export const mercadoPagoProvider = {
   id: "mercadopago",
@@ -243,6 +250,10 @@ export const mercadoPagoProvider = {
     const resourceId = resolveNotificationResourceId(payload, req);
     const secret = getWebhookSecret();
 
+    if (isMercadoPagoSimulatorPayload(payload, resourceId)) {
+      return { handled: false, message: "Accepted Mercado Pago webhook simulator payload." };
+    }
+
     if (secret) {
       const valid = verifyWebhookSignature(signature, requestId, resourceId);
       if (!valid) {
@@ -277,6 +288,7 @@ export const mercadoPagoProvider = {
       const preapprovalId = String(payment.preapproval_id || metadata.preapproval_id || "").trim();
 
       if (clientId) {
+        const { updateClientBilling } = await import("./repository.js");
         await updateClientBilling({
           clientId,
           plan,
