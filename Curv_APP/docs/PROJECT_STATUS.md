@@ -18,9 +18,17 @@ The product ships as:
 
 Backend concerns are handled mostly by **Firebase** (Auth + Firestore) with **Mercado Pago billing** via a provider-agnostic layer and **Vercel serverless API routes**. There is no dedicated application server.
 
-**Maturity estimate: early beta / late prototype (≈ 55–65%).**
+**Maturity estimate: early beta / late prototype (≈ 60–70%).**
 
 Core domain tools are rich and usable locally. Multi-tenant cloud sync, billing, team roles, and production hardening are **partially implemented** with notable schema gaps, missing tests, and architectural debt centered on a ~4,000-line monolith (`runtime.tsx`).
+
+### Production status update — 2026-07-07
+
+- [x] GitHub -> Vercel deploy is live at `https://mu-arq.vercel.app/`.
+- [x] Mercado Pago checkout links for BASE and PRO are working from production.
+- [x] `POST /api/billing/create-checkout` returns Mercado Pago subscription checkout URLs for both plans.
+- [x] `POST /api/billing/webhook` is reachable and accepts Mercado Pago's webhook simulator payload.
+- [ ] Automatic payment-to-client association remains a follow-up because plan checkout URLs do not currently attach `clientId` / `external_reference`.
 
 ---
 
@@ -47,12 +55,12 @@ flowchart TB
   end
 
   subgraph vercel [Vercel Serverless]
-    Checkout[POST /api/billing/create-checkout-session]
+    Checkout[POST /api/billing/create-checkout]
     Webhook[POST /api/billing/webhook]
   end
 
   subgraph external [Third-party]
-    Stripe[Stripe Checkout + Webhooks]
+    MP[Mercado Pago Subscriptions + Webhooks]
     Google[Google OAuth]
   end
 
@@ -66,8 +74,8 @@ flowchart TB
   Desktop --> FS
 
   Web --> Checkout
-  Checkout --> Stripe
-  Stripe --> Webhook
+  Checkout --> MP
+  MP --> Webhook
   Webhook --> FS
 
   Auth --> Google
@@ -82,7 +90,7 @@ flowchart TB
 | Views | `src/features/layout/*` | Landing, auth, home dashboard, workspace chrome, onboarding |
 | Domain + tools | `src/features/runtime/runtime.tsx` | All 9 tools, storage, calculations, print/PDF helpers, UI primitives |
 | Services | `src/lib/*` | Firebase init, auth, tenant/client, billing, persistence, desktop bridge |
-| API | `api/billing/*` | Stripe checkout + webhook → Firestore billing updates |
+| API | `api/billing/*` | Mercado Pago checkout + webhook → Firestore billing updates |
 | Functions | `functions/src/index.ts` | Auth trigger provisioning (legacy schema) |
 | Desktop | `electron/*` | Static server, OAuth popups, external URL handling |
 
@@ -136,8 +144,8 @@ On every cold boot, the app **forces `landing` once** (`forceLandingOnBootRef` i
 | `src/lib/billing/` | Trial/paywall logic + checkout client |
 | `src/lib/persistence/` | Firestore project CRUD + smoke test collection |
 | `src/lib/desktop.ts` | Electron bridge helpers |
-| `api/` | Vercel serverless Stripe + Firebase Admin billing sync |
-| `api/_lib/` | Shared Stripe + Firebase Admin initialization |
+| `api/` | Vercel serverless Mercado Pago + Firebase Admin billing sync |
+| `api/_lib/` | Shared Mercado Pago provider + Firebase Admin initialization |
 | `functions/` | Firebase Cloud Functions (`onUserCreate` provisioning) |
 | `electron/` | Main process, preload, local static server for OAuth |
 | `scripts/` | Standalone HTML build, desktop dev/build, icon prep, signing guard |
@@ -176,7 +184,7 @@ flowchart LR
   Smoke --> Firebase
   Checkout --> API[api/billing/*]
 
-  API --> StripeLib[api/_lib/stripe]
+  API --> MercadoPagoLib[api/_lib/billing]
   API --> AdminLib[api/_lib/firebase-admin]
 
   Layout --> Runtime
@@ -224,8 +232,9 @@ flowchart LR
 - [x] Firebase Auth (email + Google)
 - [x] Firestore multi-tenant model (`users`, `clients`, `members`, `projects`)
 - [x] Trial paywall (14-day default) + plan limits defined (BASE/PRO)
-- [x] Mercado Pago checkout session creation (web) via `BillingProvider`
-- [x] Mercado Pago webhook → Firestore billing update
+- [x] Mercado Pago subscription checkout links (BASE/PRO) via `BillingProvider`
+- [x] Mercado Pago webhook endpoint deployed and simulator-compatible
+- [ ] Automatic Mercado Pago payment → `clientId` billing activation still needs a reliable association strategy
 - [x] Desktop Electron build pipeline (unsigned local / signed CI intended)
 - [x] Standalone HTML build
 - [x] Firestore security rules (tenant-scoped)
@@ -279,9 +288,9 @@ flowchart LR
 ### Medium
 
 6. **Forced landing on every app boot** — extra friction for returning users  
-7. **`firebase-admin` and `stripe` in root `package.json` dependencies** — server libs colocated with frontend; risk of bundling misconfiguration (currently only used under `api/`)  
+7. **`firebase-admin` in root `package.json` dependencies** — server library colocated with frontend; risk of bundling misconfiguration (currently only used under `api/`)  
 8. **`node` listed as runtime dependency** in `package.json` — unusual and likely unintentional  
-9. **Vite dev server does not serve `/api/*`** — local Stripe checkout fails unless Vercel CLI or proxy is used  
+9. **Vite dev server does not serve `/api/*`** — local Mercado Pago checkout fails unless Vercel CLI or proxy is used  
 10. **Project edit uses `window.prompt`** — brittle UX, no validation  
 11. **Logout clears local `projects` state** but not necessarily all localStorage keys  
 12. **No git-visible CI** despite README release checklist  
@@ -320,7 +329,7 @@ flowchart LR
 4. Authenticate checkout API (Firebase ID token verification)
 5. Add `vercel.json` + document local API dev workflow
 6. Restore/create `.github/workflows/release-desktop.yml`
-7. Remove `node` from frontend dependencies; move `firebase-admin`/`stripe` to devDependencies or separate package
+7. Remove `node` from frontend dependencies; move `firebase-admin` to devDependencies or a server-only package
 
 ### Phase 1 — Data integrity (2–3 weeks)
 
@@ -374,7 +383,7 @@ Follow existing patterns unless refactoring:
 | Monolith regression on any change | High | Medium | Split + tests |
 | Electron OAuth breakage on Firebase/Google policy changes | Medium | Medium | Document authorized domains; test each release |
 | Firestore rules/index drift | Medium | High | Deploy scripts in CI; integration tests against emulator |
-| Stripe webhook misconfiguration | Medium | High | Staging webhook + idempotent handlers |
+| Mercado Pago webhook/client association drift | Medium | High | Staging webhook, idempotent handlers, and persistent checkout-session mapping |
 | localStorage quota exceeded (large projects) | Low | Medium | Compress snapshots; cloud primary storage |
 
 ---
@@ -457,9 +466,9 @@ Placeholder `xxx` disables Firebase smoke features.
 
 | Target | Mechanism | Status in repo |
 |--------|-----------|----------------|
-| Web build | `npm run build` → `dist/` | Config present |
-| Web hosting | Not configured in `firebase.json` | **Gap** |
-| API | `api/` Vercel functions | Code present; no `vercel.json` |
+| Web build | `npm run build` -> `dist/` | Config present; verified 2026-07-07 |
+| Web hosting | GitHub -> Vercel | Live at `https://mu-arq.vercel.app/` |
+| API | `api/` Vercel functions | Live; checkout and webhook verified |
 | Firestore rules | `firebase deploy --only firestore:rules` | Documented |
 | Firestore indexes | `firebase deploy --only firestore:indexes` | Required for membership repair |
 | Cloud Functions | `firebase deploy --only functions` | Config present |
