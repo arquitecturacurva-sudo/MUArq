@@ -1,6 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { normalizePlan, getPreapprovalPlanId, resolvePlanByPreapprovalPlanId } from "./plans.js";
-import { updateClientBilling } from "./repository.js";
 
 const MP_API_BASE = "https://api.mercadopago.com";
 
@@ -179,6 +178,7 @@ const resolveNotificationResourceId = (notification, req) => {
  */
 const applySubscriptionStatus = async (status) => {
   if (!status.clientId || !status.subscriptionId) return false;
+  const { updateClientBilling } = await import("./repository.js");
   await updateClientBilling({
     clientId: status.clientId,
     plan: status.plan || "BASE",
