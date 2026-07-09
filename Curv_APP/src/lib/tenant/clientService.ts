@@ -131,39 +131,44 @@ const dedupeAndSortMembershipCandidates = (items: MembershipCandidate[]) => {
 };
 
 const readDeterministicMembershipCandidates = async (uid: string) => {
-  const orderedSnapshots = await getDocs(
-    query(
-      collectionGroup(ensureDb(), "members"),
-      where("uid", "==", uid),
-      orderBy("createdAt", "asc"),
-      limit(MEMBERSHIP_REPAIR_SCAN_LIMIT)
-    )
-  );
-
-  let candidates = dedupeAndSortMembershipCandidates(
-    orderedSnapshots.docs.map((memberDoc) => ({
-      clientId: getClientIdFromMemberDocPath(memberDoc.ref.path),
-      createdAt: getMembershipCreatedAt(memberDoc.data().createdAt),
-    }))
-  );
-
-  if (!candidates.length) {
-    const fallbackSnapshots = await getDocs(
+  try {
+    const orderedSnapshots = await getDocs(
       query(
         collectionGroup(ensureDb(), "members"),
         where("uid", "==", uid),
+        orderBy("createdAt", "asc"),
         limit(MEMBERSHIP_REPAIR_SCAN_LIMIT)
       )
     );
-    candidates = dedupeAndSortMembershipCandidates(
-      fallbackSnapshots.docs.map((memberDoc) => ({
+
+    let candidates = dedupeAndSortMembershipCandidates(
+      orderedSnapshots.docs.map((memberDoc) => ({
         clientId: getClientIdFromMemberDocPath(memberDoc.ref.path),
         createdAt: getMembershipCreatedAt(memberDoc.data().createdAt),
       }))
     );
-  }
 
-  return candidates;
+    if (!candidates.length) {
+      const fallbackSnapshots = await getDocs(
+        query(
+          collectionGroup(ensureDb(), "members"),
+          where("uid", "==", uid),
+          limit(MEMBERSHIP_REPAIR_SCAN_LIMIT)
+        )
+      );
+      candidates = dedupeAndSortMembershipCandidates(
+        fallbackSnapshots.docs.map((memberDoc) => ({
+          clientId: getClientIdFromMemberDocPath(memberDoc.ref.path),
+          createdAt: getMembershipCreatedAt(memberDoc.data().createdAt),
+        }))
+      );
+    }
+
+    return candidates;
+  } catch (error) {
+    console.warn("[tenant] membership repair scan failed", error);
+    return [];
+  }
 };
 
 const upsertClientAndMembershipAndUser = async (

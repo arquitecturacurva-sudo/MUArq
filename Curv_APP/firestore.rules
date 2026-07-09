@@ -59,7 +59,8 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isAdmin(clientId)
-        && request.resource.data.id == resource.data.id;
+        && request.resource.data.id == clientId
+        && (!("id" in resource.data) || resource.data.id == clientId);
       allow delete: if false;
     }
 
@@ -83,6 +84,14 @@ service cloud.firestore {
           )
         );
       allow update, delete: if isAdmin(clientId);
+    }
+
+    match /{path=**}/members/{memberId} {
+      allow read: if signedIn()
+        && (
+          memberId == request.auth.uid
+          || resource.data.uid == request.auth.uid
+        );
     }
 
     match /clients/{clientId}/projects/{projectId} {
