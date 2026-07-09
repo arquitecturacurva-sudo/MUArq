@@ -627,9 +627,11 @@ export default function App() {
       const baseUrl = window.location.origin;
       const successUrl = `${baseUrl}/?checkout=success`;
       const cancelUrl = `${baseUrl}/?checkout=cancel`;
+      const idToken = await authUser.getIdToken();
       const checkout = await createCheckout({
         clientId: activeClientId,
         plan,
+        idToken,
         email: authUser.email || undefined,
         successUrl,
         cancelUrl,

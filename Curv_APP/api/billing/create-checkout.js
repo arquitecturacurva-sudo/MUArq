@@ -1,6 +1,23 @@
 import { getBillingProvider } from "../_lib/billing/provider.js";
 import { isBillingPlan } from "../_lib/billing/plans.js";
+import { adminAuth, adminDb } from "../_lib/firebase-admin.js";
 import { readJsonBody, resolveOrigin } from "../_lib/http.js";
+
+const readBearerToken = (req) => {
+  const raw = String(req.headers.authorization || req.headers.Authorization || "").trim();
+  if (!raw.toLowerCase().startsWith("bearer ")) return "";
+  return raw.slice(7).trim();
+};
+
+const verifyClientMembership = async (uid, clientId) => {
+  const memberRef = adminDb
+    .collection("clients")
+    .doc(clientId)
+    .collection("members")
+    .doc(uid);
+  const memberSnapshot = await memberRef.get();
+  return memberSnapshot.exists;
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -9,6 +26,18 @@ export default async function handler(req, res) {
   }
 
   try {
+    const token = readBearerToken(req);
+    if (!token) {
+      return res.status(401).json({ error: "Missing Firebase ID token." });
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch {
+      return res.status(401).json({ error: "Invalid Firebase ID token." });
+    }
+
     const payload = await readJsonBody(req);
     const clientId = String(payload?.clientId || "").trim();
     const plan = payload?.plan;
@@ -20,6 +49,10 @@ export default async function handler(req, res) {
     }
     if (!isBillingPlan(plan)) {
       return res.status(400).json({ error: "Invalid plan." });
+    }
+    const isMember = await verifyClientMembership(decodedToken.uid, clientId);
+    if (!isMember) {
+      return res.status(403).json({ error: "User does not belong to this client." });
     }
 
     const origin = resolveOrigin(req);

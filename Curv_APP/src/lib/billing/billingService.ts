@@ -5,6 +5,7 @@ export type BillingProviderId = "mercadopago";
 export type CreateCheckoutInput = {
   clientId: string;
   plan: ClientPlan;
+  idToken: string;
   email?: string;
   successUrl?: string;
   cancelUrl?: string;
@@ -19,7 +20,10 @@ export type CreateCheckoutResponse = {
 export const createCheckout = async (input: CreateCheckoutInput) => {
   const response = await fetch("/api/billing/create-checkout", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${input.idToken}`,
+    },
     body: JSON.stringify(input),
   });
 
