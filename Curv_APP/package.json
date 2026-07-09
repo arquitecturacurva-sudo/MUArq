@@ -17,6 +17,8 @@
     "desktop:build": "npm run build && npm run build:icon",
     "desktop:dist": "node scripts/ensure-signing-env.mjs && npm run desktop:build && node scripts/run-electron-builder.mjs --win nsis portable --x64",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "build": {
@@ -65,11 +67,11 @@
     "firebase-admin": "^13.7.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",
+    "node": "24",
     "pdfjs-dist": "^4.10.38",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tesseract.js": "^5.1.1",
-    "node": "24"
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -87,6 +89,7 @@
     "png-to-ico": "^2.1.8",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.0"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.10"
   }
 }
