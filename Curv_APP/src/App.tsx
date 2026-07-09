@@ -44,6 +44,7 @@ import {
   readStorage,
   readProjectBaseMetadata,
   setActiveStorageProjectId,
+  trackLocalProductEvent,
   usePersistentState,
   writeProjectBaseMetadata,
   writeStorage,
@@ -58,7 +59,7 @@ import {
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
 import { createCheckout } from "./lib/billing/billingService";
 import { isDesktopRuntime, openExternalUrl } from "./lib/desktop";
-import { importLocalProjectsOnce, listProjectsByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
+import { importLocalProjectsOnce, listProjectSnapshotsByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
@@ -113,26 +114,33 @@ export default function App() {
   const [newProjectTracks,setNewProjectTracks]=useState<Record<TrackId,boolean>>({...DEFAULT_TRACKS});
   const themeVars: React.CSSProperties = darkMode ? {
     "--ui-accent": "#C9A96E",
+    "--ui-accent-ink": "#19140C",
     "--ui-accent-soft": "#2A2318",
     "--ui-text": "#E6EDF3",
     "--ui-text-muted": "#9DA7B3",
-    "--ui-bg": "#0D1117",
-    "--ui-card": "#161B22",
-    "--ui-border": "#30363D",
-    "--ui-border-soft": "#21262D",
-    "--ui-dark": "#0D1117",
+    "--ui-text-subtle": "#768292",
+    "--ui-bg": "#0B0F14",
+    "--ui-bg-band": "#10161F",
+    "--ui-card": "#151B24",
+    "--ui-panel": "#111821",
+    "--ui-border": "#2A3442",
+    "--ui-border-soft": "#202A36",
+    "--ui-dark": "#0B1017",
+    "--ui-dark-panel": "#111923",
     "--ui-input-bg": "#0F141B",
     "--ui-input-text": "#E6EDF3",
-    "--ui-btn-dk-bg": "#0F141A",
+    "--ui-btn-dk-bg": "#111923",
     "--ui-btn-dk-text": "#F0F6FC",
-    "--ui-btn-dk-border": "#30363D",
-    "--ui-btn-ol-bg": "#161B22",
+    "--ui-btn-dk-border": "#344155",
+    "--ui-btn-ol-bg": "#151B24",
     "--ui-btn-ol-text": "#E6EDF3",
-    "--ui-btn-ol-border": "#30363D",
+    "--ui-btn-ol-border": "#2A3442",
     "--ui-btn-gd-text": "#111827",
+    "--ui-button-shadow": "0 8px 18px rgba(0,0,0,0.24)",
     "--ui-chip-bg": "#111924",
     "--ui-chip-border": "#2B3645",
     "--ui-chip-text": "#C3CDD8",
+    "--ui-metric-bg": "#111821",
     "--ui-muted-dot": "#6B7683",
     "--ui-saved-bg": "#1B2330",
     "--ui-saved-border": "#3C4B61",
@@ -143,28 +151,42 @@ export default function App() {
     "--ui-empty-title": "#E3EAF2",
     "--ui-empty-text": "#AAB5C1",
     "--ui-empty-label": "#D3BE93",
+    "--ui-empty-shadow": "0 1px 0 rgba(255,255,255,0.03)",
+    "--ui-success": "#79B06B",
+    "--ui-warning": "#D8A74E",
+    "--ui-danger": "#D96D5F",
+    "--ui-info": "#6D9DCA",
+    "--ui-shadow": "0 12px 28px rgba(0,0,0,0.18)",
+    "--ui-shadow-lift": "0 20px 45px rgba(0,0,0,0.28)",
   } as React.CSSProperties : {
     "--ui-accent": "#C9A96E",
+    "--ui-accent-ink": "#211807",
     "--ui-accent-soft": "#F4EEE4",
-    "--ui-text": "#1A1A1A",
-    "--ui-text-muted": "#57606A",
-    "--ui-bg": "#F5F3EF",
+    "--ui-text": "#171A1F",
+    "--ui-text-muted": "#5D6470",
+    "--ui-text-subtle": "#818995",
+    "--ui-bg": "#F4F2EE",
+    "--ui-bg-band": "#ECE8DF",
     "--ui-card": "#FFFFFF",
-    "--ui-border": "#D0D7DE",
-    "--ui-border-soft": "#E7EBF0",
-    "--ui-dark": "#161B22",
+    "--ui-panel": "#FBFAF7",
+    "--ui-border": "#D8D1C5",
+    "--ui-border-soft": "#E7E1D7",
+    "--ui-dark": "#101720",
+    "--ui-dark-panel": "#151E29",
     "--ui-input-bg": "#FFFFFF",
-    "--ui-input-text": "#1A1A1A",
-    "--ui-btn-dk-bg": "#161B22",
+    "--ui-input-text": "#171A1F",
+    "--ui-btn-dk-bg": "#111827",
     "--ui-btn-dk-text": "#FFFFFF",
-    "--ui-btn-dk-border": "#0F141A",
+    "--ui-btn-dk-border": "#111827",
     "--ui-btn-ol-bg": "#FFFFFF",
-    "--ui-btn-ol-text": "#1A1A1A",
-    "--ui-btn-ol-border": "#D0D7DE",
-    "--ui-btn-gd-text": "#FFFFFF",
+    "--ui-btn-ol-text": "#171A1F",
+    "--ui-btn-ol-border": "#D8D1C5",
+    "--ui-btn-gd-text": "#171A1F",
+    "--ui-button-shadow": "0 10px 24px rgba(17,24,39,0.12)",
     "--ui-chip-bg": "#FFFFFF",
-    "--ui-chip-border": "#D0D7DE",
-    "--ui-chip-text": "#57606A",
+    "--ui-chip-border": "#D8D1C5",
+    "--ui-chip-text": "#5D6470",
+    "--ui-metric-bg": "#FBFAF7",
     "--ui-muted-dot": "#9AA3AE",
     "--ui-saved-bg": "#FBF7EF",
     "--ui-saved-border": "#D6C299",
@@ -175,6 +197,13 @@ export default function App() {
     "--ui-empty-title": "#1A1A1A",
     "--ui-empty-text": "#6A737D",
     "--ui-empty-label": "#8A6D3A",
+    "--ui-empty-shadow": "0 1px 2px rgba(17,24,39,0.04)",
+    "--ui-success": "#4D8A5A",
+    "--ui-warning": "#B8831B",
+    "--ui-danger": "#B55345",
+    "--ui-info": "#3F6F9E",
+    "--ui-shadow": "0 12px 30px rgba(27,31,36,0.06)",
+    "--ui-shadow-lift": "0 22px 50px rgba(27,31,36,0.12)",
   } as React.CSSProperties;
   const normalizedProjects = useMemo(
     () => normalizeProjectRecords(projects).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)),
@@ -366,8 +395,12 @@ export default function App() {
           projects: localProjects,
           readBaseMetaByProjectId: (projectId) => readProjectBaseMetadata(projectId),
         });
-        const cloudProjects = normalizeProjectRecords(await listProjectsByClient(activeClientId));
+        const cloudSnapshots = await listProjectSnapshotsByClient(activeClientId);
         if (cancelled) return;
+        cloudSnapshots.forEach(({project, baseMeta}) => {
+          writeProjectBaseMetadata(baseMeta, project.id);
+        });
+        const cloudProjects = normalizeProjectRecords(cloudSnapshots.map(({project}) => project));
         setProjects(cloudProjects);
         if (!cloudProjects.length) {
           setActiveProjectId("");
@@ -655,6 +688,10 @@ export default function App() {
     const baseMeta = readProjectBaseMetadata(project.id);
     const name = window.prompt("Nombre del proyecto", baseMeta.projectName.trim() || project.name);
     if (name === null) return;
+    const client = window.prompt("Cliente", baseMeta.client.trim());
+    if (client === null) return;
+    const code = window.prompt("Codigo interno", baseMeta.code.trim());
+    if (code === null) return;
     const type = window.prompt("Tipo de proyecto", project.type);
     if (type === null) return;
     const location = window.prompt("Ubicación", baseMeta.location.trim() || project.location);
@@ -667,7 +704,7 @@ export default function App() {
     const normalizedCurrencyRaw = currency.trim().toUpperCase();
     const normalizedCurrency = isProjectCurrency(normalizedCurrencyRaw) ? normalizedCurrencyRaw : baseMeta.currency;
     updateProject(project.id, {name: name.trim() || project.name, type: type.trim(), location: location.trim(), commercialStatus});
-    writeProjectBaseMetadata({currency: normalizedCurrency}, project.id);
+    writeProjectBaseMetadata({client: client.trim(), code: code.trim(), currency: normalizedCurrency}, project.id);
   };
 
   const toggleArchiveProject = (project: ProjectRecord) => {
@@ -690,6 +727,11 @@ export default function App() {
   };
 
   const openProject = (projectId: string) => {
+    trackLocalProductEvent({
+      name: "home.project_opened",
+      projectId,
+      payload: {from: "home"},
+    });
     setActiveProjectId(projectId);
     setRoute("workspace");
   };
@@ -858,6 +900,11 @@ export default function App() {
       const rawName = explicitName || fallbackName;
       const safeName = rawName.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "propuesta";
       pdf.save(`${safeName}.pdf`);
+      trackLocalProductEvent({
+        name: "proposal.exported",
+        projectId: activeProjectId,
+        payload: {sectionCount: docNodes.length, missingCount: missing.length},
+      });
     } catch (error) {
       console.error(error);
       alert("No se pudo exportar la propuesta en PDF.");
@@ -969,6 +1016,11 @@ export default function App() {
         normalizedProjects={normalizedProjects}
         totalsByTrack={totalsByTrack}
         projectsWithMetrics={projectsWithMetrics}
+        openDemoHub={() => {
+          trackLocalProductEvent({name: "landing.cta_clicked", payload: {source: "home_demo_hub"}});
+          setLandingSeen(true);
+          setRoute("landing");
+        }}
         openProject={openProject}
         handleEditProject={handleEditProject}
         toggleArchiveProject={toggleArchiveProject}
@@ -1082,12 +1134,39 @@ export default function App() {
         [data-theme="dark"] [style*="color:rgb(102,102,102)"] {
           color: #9da7b3 !important;
         }
-        [data-theme="dark"] button {
-          box-shadow: none !important;
+        [data-theme] * {
+          scrollbar-width: thin;
+          scrollbar-color: var(--ui-border) transparent;
+        }
+        [data-theme] input:focus,
+        [data-theme] select:focus,
+        [data-theme] textarea:focus,
+        [data-theme] button:focus-visible {
+          outline: 2px solid rgba(201, 169, 110, 0.42) !important;
+          outline-offset: 2px;
+        }
+        [data-theme] table {
+          border-color: var(--ui-border-soft) !important;
+        }
+        [data-theme] table th {
+          font-weight: 900 !important;
+          letter-spacing: 0.2px !important;
+          background: var(--ui-bg-band) !important;
+        }
+        [data-theme] table td {
+          border-color: var(--ui-border-soft) !important;
+        }
+        [data-theme] table input,
+        [data-theme] table select {
+          border-radius: 5px !important;
+        }
+        [data-theme="dark"] button:not([data-tour-id="export"]) {
+          box-shadow: none;
         }
       `}</style>
       <WorkspaceSidebar
         activeProject={activeProject}
+        activeProjectId={activeProjectId}
         enabledTrackOrder={enabledTrackOrder}
         workspaceTrack={workspaceTrack}
         setWorkspaceTrack={setWorkspaceTrack}
@@ -1112,6 +1191,7 @@ export default function App() {
         hasSavedData={hasSavedData}
         activeTrackTools={activeTrackTools}
         activeProjectId={activeProjectId}
+        activeProject={activeProject}
         projectResetToken={projectResetToken}
         printTool={printTool}
         current={current}

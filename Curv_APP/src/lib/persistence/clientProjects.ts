@@ -51,6 +51,11 @@ type ProjectStorageDoc = ProjectDoc & {
   project?: ProjectRecord;
 };
 
+export type ProjectHydrationSnapshot = {
+  project: ProjectRecord;
+  baseMeta: ProjectBaseMetadata;
+};
+
 type ImportLocalProjectsInput = {
   uid: string;
   clientId: string;
@@ -67,6 +72,10 @@ const getCurrency = (value: unknown, fallback: ProjectCurrency = "PEN"): Project
 
 const getStatus = (value: unknown, fallback: CommercialStatus = "Lead"): CommercialStatus =>
   isValidCommercialStatus(value) ? value : fallback;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  typeof value === "object" && value !== null && !Array.isArray(value)
+);
 
 const normalizeProjectDoc = (
   clientId: string,
@@ -154,6 +163,23 @@ const projectDocToRuntimeProject = (
   });
 };
 
+const projectDocToBaseMeta = (
+  projectDoc: ProjectDoc,
+  payload: unknown
+): ProjectBaseMetadata => {
+  const data = isRecord(payload) ? payload : {};
+  const rawBase = isRecord(data.baseMeta) ? data.baseMeta : {};
+  const rawProjectName = typeof rawBase.projectName === "string" ? rawBase.projectName : "";
+  const rawLocation = typeof rawBase.location === "string" ? rawBase.location : "";
+  return {
+    client: typeof rawBase.client === "string" ? rawBase.client : projectDoc.client,
+    projectName: rawProjectName.trim() ? rawProjectName : projectDoc.name,
+    location: rawLocation.trim() ? rawLocation : projectDoc.location,
+    code: typeof rawBase.code === "string" ? rawBase.code : projectDoc.code,
+    currency: getCurrency(rawBase.currency, projectDoc.currency),
+  };
+};
+
 const runtimeToProjectDoc = (
   clientId: string,
   ownerUid: string,
@@ -227,16 +253,24 @@ export const updateProject = async (
   await updateDoc(projectDocRef(clientId, projectId), payload);
 };
 
-export const listProjectsByClient = async (clientId: string) => {
+export const listProjectSnapshotsByClient = async (clientId: string): Promise<ProjectHydrationSnapshot[]> => {
   const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
-  const projects: ProjectRecord[] = [];
+  const projects: ProjectHydrationSnapshot[] = [];
   snapshot.forEach((docSnapshot) => {
     const rawPayload = docSnapshot.data() as ProjectStorageDoc;
     const canonical = normalizeProjectDoc(clientId, docSnapshot.id, rawPayload);
     if (!canonical) return;
-    projects.push(projectDocToRuntimeProject(canonical, rawPayload));
+    projects.push({
+      project: projectDocToRuntimeProject(canonical, rawPayload),
+      baseMeta: projectDocToBaseMeta(canonical, rawPayload),
+    });
   });
   return projects;
+};
+
+export const listProjectsByClient = async (clientId: string) => {
+  const snapshots = await listProjectSnapshotsByClient(clientId);
+  return snapshots.map((snapshot) => snapshot.project);
 };
 
 export const upsertProjectByClient = async (

@@ -30,6 +30,34 @@ Core domain tools are rich and usable locally. Multi-tenant cloud sync, billing,
 - [x] `POST /api/billing/webhook` is reachable and accepts Mercado Pago's webhook simulator payload.
 - [ ] Automatic payment-to-client association remains a follow-up because plan checkout URLs do not currently attach `clientId` / `external_reference`.
 
+### Local implementation update - 2026-07-07
+
+- [x] Started local-only implementation block; no GitHub push and no Vercel deploy.
+- [x] `ProjectBaseMetadata` is reinforced as the canonical source for client, project, location, code, and currency.
+- [x] Legacy keys such as `calc.cl`, `matrix.ub`, `brief.cod`, `oc.cod`, `cot.*`, `obra.*`, and `val.*` remain readable without deleting old localStorage data.
+- [x] Firestore project hydration now brings `project + baseMeta` back to local `project.*` storage so Home and tools keep metadata aligned.
+- [x] Cotizacion de Obra PDF import now attempts embedded PDF text first and only falls back to Tesseract OCR when needed.
+- [x] OCR review now reports source, detected rows, incomplete rows, and blocks import of rows without a valid description.
+- [x] Added local UX/marketing roadmap: `docs/UX_MARKETING_ROADMAP.md`.
+
+### Local implementation update - 2026-07-08
+
+- [x] Workspace sidebar now includes a compact editable base ficha for client, project, location, code, and currency using `ProjectBaseMetadata`.
+- [x] Added local event tracking in `app.localEvents.v1` with a 250-event cap and a sidebar diagnostic panel for summary, recent events, JSON export, and cleanup.
+- [x] Instrumented local events for base ficha edits, OCR start/completion/import/review, proposal export, and landing demo clicks.
+- [x] Cotizacion de Obra imported PDF rows are marked with review metadata and can be filtered as pending OCR, highlighted, and marked reviewed.
+- [x] Landing now includes three vertical demo cards: residential, commercial interiorism, and design-build.
+- [x] This block remains local-only; no GitHub push and no Vercel deploy.
+
+### Local aesthetic overhaul update - 2026-07-08
+
+- [x] Introduced a Studio OS Premium visual layer with richer semantic tokens, refined cards, inputs, buttons, badges, metrics, shadows, and table/focus polish.
+- [x] Rebuilt Landing around a clearer sales narrative: problem, connected workflow, vertical demos, product proof, BASE/PRO pricing, and sticky conversion CTA.
+- [x] Reworked Home into a commercial dashboard with pipeline, operating metrics, quick project creation, recent project cards, and demo access.
+- [x] Refined Workspace chrome with a wider premium sidebar, project status/proposal progress, contextual header, saved-state chips, and export click tracking.
+- [x] Added local events for landing CTA clicks, Home project opens, Workspace export clicks, and tool first-step completion.
+- [x] Verified Landing desktop/mobile without horizontal overflow; Home/Workspace compile and lint cleanly, but browser access remains gated by auth in a fresh session.
+
 ---
 
 ## Architecture

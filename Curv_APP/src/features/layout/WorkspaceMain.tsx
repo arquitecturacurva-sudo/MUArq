@@ -1,6 +1,14 @@
 import React from "react";
 import InfoBubble from "../ui/InfoBubble";
-import { DK, G, IconCalc, TOOL_ICONS, UI } from "../runtime/runtime";
+import {
+  G,
+  IconCalc,
+  TOOL_ICONS,
+  UI,
+  readProjectBaseMetadata,
+  trackLocalProductEvent,
+  type ProjectRecord,
+} from "../runtime/runtime";
 
 type WorkspaceTool = {
   id: string;
@@ -18,6 +26,7 @@ type WorkspaceMainProps = {
   hasSavedData: boolean;
   activeTrackTools: WorkspaceTool[];
   activeProjectId: string;
+  activeProject: ProjectRecord;
   projectResetToken: number;
   printTool: (id: string) => void;
   current?: WorkspaceTool;
@@ -32,50 +41,80 @@ export default function WorkspaceMain({
   hasSavedData,
   activeTrackTools,
   activeProjectId,
+  activeProject,
   projectResetToken,
   printTool,
   current,
 }: WorkspaceMainProps) {
+  const baseMeta = readProjectBaseMetadata(activeProjectId);
+  const completedToolRef = React.useRef<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    if (!hasSavedData || !active) return;
+    const eventKey = `${activeProjectId}:${active}`;
+    if (completedToolRef.current.has(eventKey)) return;
+    completedToolRef.current.add(eventKey);
+    trackLocalProductEvent({
+      name: "tool.completed_first_step",
+      projectId: activeProjectId,
+      toolId: active,
+      payload: {hasSavedData: true},
+    });
+  }, [active, activeProjectId, hasSavedData]);
+
+  const included = tools.find((tool) => tool.id === active)?.checked;
+
   return (
-    <div style={{flex: 1, overflowY: "auto", padding: "20px 24px"}}>
-      <div data-tour-id="workspace" style={{maxWidth: 860, margin: "0 auto"}}>
-        <div style={{marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between"}}>
-          <h1 style={{margin: 0, fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", gap: 10}}>
-            {(() => { const Icon = TOOL_ICONS[current?.id ?? "calc"] || IconCalc; return <Icon c={DK} s={18} />; })()}
-            {current?.label}
-          </h1>
-          <div style={{display: "flex", alignItems: "center", gap: 8}}>
+    <div style={{flex: 1, overflowY: "auto", padding: "18px 24px 24px", background: UI.bg}}>
+      <div data-tour-id="workspace" style={{maxWidth: 940, margin: "0 auto"}}>
+        <div style={{marginBottom: 14, border: `1px solid ${UI.borderSoft}`, borderRadius: 8, background: UI.card, boxShadow: UI.shadow, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap"}}>
+          <div>
+            <div style={{display: "flex", alignItems: "center", gap: 9, marginBottom: 5}}>
+              {(() => { const Icon = TOOL_ICONS[current?.id ?? "calc"] || IconCalc; return <Icon c={G} s={17} />; })()}
+              <h1 style={{margin: 0, fontSize: 15, fontWeight: 900, display: "flex", alignItems: "center", gap: 10}}>
+                {current?.label}
+              </h1>
+            </div>
+            <div style={{display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center"}}>
+              <span style={{fontSize: 10, color: UI.textMuted}}>{baseMeta.projectName.trim() || activeProject.name}</span>
+              <span style={{fontSize: 10, color: UI.textSubtle}}>Cliente: {baseMeta.client.trim() || "No definido"}</span>
+              <span style={{fontSize: 10, color: UI.textSubtle}}>Moneda: {baseMeta.currency}</span>
+              <span style={{fontSize: 10, color: UI.textSubtle}}>Actualizado: {new Date(activeProject.updatedAt).toLocaleDateString("es-PE")}</span>
+            </div>
+          </div>
+
+          <div style={{display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap"}}>
             <button
-              onClick={() => setDarkMode((v) => !v)}
-              style={{padding: "5px 10px", borderRadius: 999, border: `1px solid ${UI.border}`, background: UI.card, color: UI.textMuted, fontSize: 9, fontWeight: 700, cursor: "pointer", letterSpacing: "0.3px"}}
+              onClick={() => setDarkMode((value) => !value)}
+              style={{padding: "6px 10px", borderRadius: 999, border: `1px solid ${UI.border}`, background: UI.panel, color: UI.textMuted, fontSize: 9, fontWeight: 800, cursor: "pointer", letterSpacing: 0}}
               title="Cambiar tema"
             >
-              {darkMode ? "☀ Claro" : "🌙 Oscuro"}
+              {darkMode ? "Claro" : "Oscuro"}
             </button>
             <button
               onClick={openOnboarding}
-              style={{padding: "5px 10px", borderRadius: 999, border: `1px solid ${UI.border}`, background: UI.card, color: UI.textMuted, fontSize: 9, fontWeight: 700, cursor: "pointer", letterSpacing: "0.3px"}}
+              style={{padding: "6px 10px", borderRadius: 999, border: `1px solid ${UI.border}`, background: UI.panel, color: UI.textMuted, fontSize: 9, fontWeight: 800, cursor: "pointer", letterSpacing: 0}}
             >
-              Ver guia
+              Guía
             </button>
-            <div style={{display: "flex", alignItems: "center", gap: 6}}>
-              <div style={{width: 8, height: 8, borderRadius: "50%", background: tools.find((t) => t.id === active)?.checked ? G : "var(--ui-muted-dot,#9AA3AE)"}}/>
-              <span style={{fontSize: 9, color: "var(--ui-chip-text,#8A93A0)"}}>{tools.find((t) => t.id === active)?.checked ? "Incluida en propuesta" : "No incluida"}</span>
+            <div style={{display: "flex", alignItems: "center", gap: 6, padding: "5px 9px", borderRadius: 999, border: `1px solid ${UI.border}`, background: UI.panel}}>
+              <div style={{width: 8, height: 8, borderRadius: "50%", background: included ? G : "var(--ui-muted-dot,#9AA3AE)"}}/>
+              <span style={{fontSize: 9, color: UI.textMuted, fontWeight: 800}}>{included ? "Incluida en propuesta" : "No incluida"}</span>
             </div>
-            <div data-tour-id="saved-state" style={{display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 999, border: "1px solid var(--ui-saved-border,#D6C299)", background: "var(--ui-saved-bg,#FBF7EF)"}}>
+            <div data-tour-id="saved-state" style={{display: "flex", alignItems: "center", gap: 6, padding: "5px 9px", borderRadius: 999, border: "1px solid var(--ui-saved-border,#D6C299)", background: "var(--ui-saved-bg,#FBF7EF)"}}>
               <div style={{width: 7, height: 7, borderRadius: "50%", background: hasSavedData ? "var(--ui-saved-dot,#5A8F22)" : "var(--ui-muted-dot,#9AA3AE)"}}/>
-              <span style={{fontSize: 9, color: hasSavedData ? "var(--ui-saved-text,#70562A)" : "var(--ui-chip-text,#8A8A8A)", fontWeight: 700}}>
+              <span style={{fontSize: 9, color: hasSavedData ? "var(--ui-saved-text,#70562A)" : "var(--ui-chip-text,#8A8A8A)", fontWeight: 800}}>
                 {hasSavedData ? "Datos guardados" : "Sin datos guardados"}
               </span>
             </div>
           </div>
         </div>
 
-        {activeTrackTools.map((t) => {
-          const C = t.component;
+        {activeTrackTools.map((tool) => {
+          const Component = tool.component;
           return (
-            <div key={`${activeProjectId}-${projectResetToken}-${t.id}`} style={{display: active === t.id ? "block" : "none"}}>
-              <C toolId={t.id} onPrint={() => printTool(t.id)} />
+            <div key={`${activeProjectId}-${projectResetToken}-${tool.id}`} style={{display: active === tool.id ? "block" : "none"}}>
+              <Component toolId={tool.id} onPrint={() => printTool(tool.id)} />
             </div>
           );
         })}
