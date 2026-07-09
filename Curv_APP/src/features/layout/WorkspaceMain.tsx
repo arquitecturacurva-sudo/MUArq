@@ -65,7 +65,7 @@ export default function WorkspaceMain({
   const included = tools.find((tool) => tool.id === active)?.checked;
 
   return (
-    <div style={{flex: 1, overflowY: "auto", padding: "18px 24px 24px", background: UI.bg}}>
+    <div data-workspace-main style={{flex: 1, overflowY: "auto", padding: "18px 24px 24px", background: UI.bg}}>
       <div data-tour-id="workspace" style={{maxWidth: 940, margin: "0 auto"}}>
         <div style={{marginBottom: 14, border: `1px solid ${UI.borderSoft}`, borderRadius: 8, background: UI.card, boxShadow: UI.shadow, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap"}}>
           <div>

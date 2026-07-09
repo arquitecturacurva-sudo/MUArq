@@ -135,12 +135,12 @@ export const diffDateDays = (a: string, b: string) => {
   return Math.round((end - start) / 86400000);
 };
 
-export const si: React.CSSProperties = {width:"100%",padding:"9px 10px",border:`1px solid ${UI.border}`,borderRadius:6,background:"var(--ui-input-bg,#fff)",color:"var(--ui-input-text,var(--ui-text))",fontSize:12,boxSizing:"border-box",outline:"none",fontFamily:"inherit",lineHeight:1.4,boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35)"};
-export const lb: React.CSSProperties = {fontSize:9,fontWeight:800,color:UI.textMuted,textTransform:"uppercase",letterSpacing:"0.9px",marginBottom:5,display:"block"};
+export const si: React.CSSProperties = {width:"100%",minHeight:38,padding:"9px 11px",border:`1px solid ${UI.border}`,borderRadius:6,background:"var(--ui-input-bg,#fff)",color:"var(--ui-input-text,var(--ui-text))",fontSize:12,boxSizing:"border-box",outline:"none",fontFamily:"inherit",lineHeight:1.4,boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35)"};
+export const lb: React.CSSProperties = {fontSize:10,fontWeight:800,color:UI.textMuted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:6,display:"block"};
 export const cardS: React.CSSProperties = {background:UI.card,borderRadius:8,padding:22,border:`1px solid ${UI.borderSoft}`,boxShadow:UI.shadow,marginBottom:16};
 export const panelS: React.CSSProperties = {background:UI.panel,borderRadius:8,border:`1px solid ${UI.border}`,boxShadow:UI.shadow};
-export const badgeS: React.CSSProperties = {display:"inline-flex",alignItems:"center",gap:5,border:`1px solid ${UI.border}`,borderRadius:999,padding:"3px 8px",fontSize:9,fontWeight:800,lineHeight:1.2,whiteSpace:"nowrap"};
-export const metricS: React.CSSProperties = {border:`1px solid ${UI.borderSoft}`,borderRadius:8,padding:"10px 12px",background:"var(--ui-metric-bg,var(--ui-card))"};
+export const badgeS: React.CSSProperties = {display:"inline-flex",alignItems:"center",gap:5,border:`1px solid ${UI.border}`,borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:800,lineHeight:1.2,whiteSpace:"nowrap"};
+export const metricS: React.CSSProperties = {border:`1px solid ${UI.borderSoft}`,borderRadius:8,padding:"12px 13px",background:"var(--ui-metric-bg,var(--ui-card))"};
 
 export const Fld = ({label,children}: FldProps) => <div style={{marginBottom:12}}><label style={lb}>{label}</label>{children}</div>;
 export const Inp = ({value,onChange,type="text",placeholder,min}: InpProps) => <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} min={min} style={si}/>;
@@ -151,7 +151,7 @@ export const Btn = ({children,onClick,v="dk",sm}: BtnProps) => {
     ol:{background:"var(--ui-btn-ol-bg,var(--ui-card))",color:"var(--ui-btn-ol-text,var(--ui-text))",border:"1px solid var(--ui-btn-ol-border,var(--ui-border))"},
     gd:{background:UI.accent,color:"var(--ui-btn-gd-text,#111827)",border:`1px solid ${UI.accent}`},
   };
-  return <button onClick={onClick} style={{...styles[v],padding:sm?"6px 12px":"9px 20px",borderRadius:6,fontSize:sm?10:12,fontWeight:800,cursor:"pointer",letterSpacing:0,transition:"all 0.15s ease",lineHeight:1.25,boxShadow:v==="dk"?"var(--ui-button-shadow,none)":"none"}}>{children}</button>;
+  return <button onClick={onClick} style={{...styles[v],minHeight:sm?34:40,padding:sm?"7px 12px":"10px 18px",borderRadius:6,fontSize:sm?11:12,fontWeight:800,cursor:"pointer",letterSpacing:0,transition:"background 0.15s ease,border-color 0.15s ease,transform 0.15s ease",lineHeight:1.25,boxShadow:v==="dk"?"var(--ui-button-shadow,none)":"none"}}>{children}</button>;
 };
 export const InlineEmptyStateCard = ({title,context,build,first,unlock}: InlineEmptyStateCardProps) => (
   <div style={{background:"var(--ui-empty-bg,#FCFAF5)",border:"1px solid var(--ui-empty-border,#DCCBAA)",borderRadius:8,padding:"11px 12px",marginBottom:12,boxShadow:"var(--ui-empty-shadow,none)"}}>

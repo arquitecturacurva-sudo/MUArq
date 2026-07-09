@@ -121,6 +121,17 @@ export default function LandingView({
           [data-curv-problem-grid] {
             grid-template-columns: 1fr !important;
           }
+          [data-curv-header-inner] {
+            align-items: flex-start !important;
+          }
+          [data-curv-header-actions],
+          [data-curv-hero-actions] {
+            width: 100%;
+          }
+          [data-curv-header-actions] button,
+          [data-curv-hero-actions] button {
+            flex: 1 1 100%;
+          }
           [data-curv-hero-copy] h1 {
             font-size: 32px !important;
           }
@@ -130,12 +141,12 @@ export default function LandingView({
         }
       `}</style>
       <div style={{position: "sticky", top: 0, zIndex: 20, borderBottom: `1px solid ${sectionBorder}`, background: darkMode ? "rgba(11,15,20,0.92)" : "rgba(244,242,238,0.92)", backdropFilter: "blur(14px)"}}>
-        <div style={{maxWidth: 1160, margin: "0 auto", padding: "12px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap"}}>
+        <div data-curv-header-inner style={{maxWidth: 1160, margin: "0 auto", padding: "12px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap"}}>
           <div style={{display: "flex", alignItems: "center", gap: 10}}>
             <Brand dark />
             <span style={{fontSize: 11, color: mutedColor}}>Studio OS para vender y operar proyectos</span>
           </div>
-          <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
+          <div data-curv-header-actions style={{display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end"}}>
             {canContinueWorkspace && <Btn v="ol" sm onClick={continueWorkspace}>Continuar workspace</Btn>}
             <Btn v="ol" sm onClick={openAuth}>Iniciar sesión</Btn>
             <Btn v="ol" sm onClick={() => setDarkMode((value) => !value)}>{darkMode ? "Modo claro" : "Modo oscuro"}</Btn>
@@ -157,7 +168,7 @@ export default function LandingView({
                 <p style={{margin: 0, maxWidth: 720, fontSize: 15, color: bodyColor, lineHeight: 1.65}}>
                   Curv convierte plantillas dispersas en un flujo único: ficha del proyecto, honorarios, entregables, cotización OCR, cronograma, valorización y órdenes de cambio.
                 </p>
-                <div style={{display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20}}>
+                <div data-curv-hero-actions style={{display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20}}>
                   <Btn onClick={() => trackLandingCta("hero_primary")}>Crear propuesta profesional</Btn>
                   <Btn v="ol" onClick={() => openDemo("design-build")}>Ver demo design-build</Btn>
                 </div>

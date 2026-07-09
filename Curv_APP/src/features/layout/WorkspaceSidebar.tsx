@@ -199,7 +199,7 @@ export default function WorkspaceSidebar({
             onClick={() => setDiagnosticsOpen((value) => !value)}
             style={{width: "100%", border: "none", background: "transparent", color: "#C3CDD8", fontSize: 9, fontWeight: 800, padding: "7px 9px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center"}}
           >
-            <span>Eventos locales</span>
+            <span>Diagnostico</span>
             <span style={{color: G}}>{localEvents.length}</span>
           </button>
           {diagnosticsOpen && (
@@ -249,15 +249,18 @@ export default function WorkspaceSidebar({
           const isActive = active === t.id;
           return (
             <div key={t.id} style={{display: "flex", alignItems: "center", background: isActive ? "#151E29" : "transparent", borderLeft: `3px solid ${isActive ? G : "transparent"}`, transition: "background 0.1s"}}>
-              <div
+              <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); toggleCheck(t.id); }}
+                aria-pressed={t.checked}
+                aria-label={`${t.checked ? "Quitar" : "Incluir"} ${t.label} en propuesta`}
                 title={t.checked ? "Quitar de propuesta" : "Incluir en propuesta"}
-                style={{padding: "10px 8px 10px 12px", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0}}
+                style={{padding: "10px 8px 10px 12px", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0, border: "none", background: "transparent"}}
               >
                 <div style={{width: 14, height: 14, border: `1.5px solid ${t.checked ? G : "#3A3A3A"}`, background: t.checked ? G : "transparent", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.1s", flexShrink: 0}}>
                   {t.checked && <span style={{color: "#fff", fontSize: 8, fontWeight: 800, lineHeight: 1}}>✓</span>}
                 </div>
-              </div>
+              </button>
               <button
                 data-tour-id={t.id === "calc" ? "tool-calc" : undefined}
                 onClick={() => setActive(t.id)}

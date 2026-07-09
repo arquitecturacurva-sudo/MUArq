@@ -157,10 +157,24 @@ export default function HomeView({
           [data-home-track-grid] {
             grid-template-columns: 1fr !important;
           }
+          [data-home-header] {
+            align-items: flex-start !important;
+          }
+          [data-home-actions] {
+            width: 100%;
+          }
+          [data-home-actions] button {
+            flex: 1 1 calc(50% - 8px);
+          }
+        }
+        @media (max-width: 460px) {
+          [data-home-actions] button {
+            flex-basis: 100%;
+          }
         }
       `}</style>
       <div style={{maxWidth: 1180, margin: "0 auto"}}>
-        <header style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 10, flexWrap: "wrap"}}>
+        <header data-home-header style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 14, flexWrap: "wrap"}}>
           <div style={{display: "flex", alignItems: "center", gap: 10}}>
             <Brand dark />
             <div>
@@ -168,7 +182,7 @@ export default function HomeView({
               <div style={{fontSize: 10, color: UI.textMuted}}>Pipeline, propuestas y obra desde una sola ficha.</div>
             </div>
           </div>
-          <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
+          <div data-home-actions style={{display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end"}}>
             <Btn onClick={createProject}>Nuevo proyecto</Btn>
             <Btn v="ol" onClick={openDemoHub}>Abrir demos</Btn>
             {onLogout && <Btn v="ol" onClick={onLogout}>Cerrar sesión</Btn>}
@@ -315,7 +329,10 @@ export default function HomeView({
             <Btn v="ol" sm onClick={openDemoHub}>Ver demos verticales</Btn>
           </div>
           {!projectsWithMetrics.length && (
-            <div style={{fontSize: 11, color: UI.textMuted, padding: "8px 0"}}>No hay proyectos aún. Crea el primero para empezar el workflow.</div>
+            <div style={{border: `1px dashed ${UI.border}`, borderRadius: 8, background: UI.panel, padding: "16px 14px", color: UI.textMuted}}>
+              <div style={{fontSize: 13, fontWeight: 900, color: DK, marginBottom: 4}}>Todavía no hay proyectos</div>
+              <div style={{fontSize: 11, lineHeight: 1.5}}>Crea tu primer proyecto con la ficha de la izquierda. Luego podrás abrir el workspace, completar herramientas y exportar la propuesta.</div>
+            </div>
           )}
           <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(310px,1fr))", gap: 10}}>
             {projectsWithMetrics.map(({project, baseMeta, metrics, disenoGantt, obraGantt}) => (

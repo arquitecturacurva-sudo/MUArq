@@ -73,6 +73,17 @@ export default function AuthView({
         padding: "22px 24px 30px",
       }}
     >
+      <style>{`
+        @media (max-width: 760px) {
+          [data-auth-grid] {
+            grid-template-columns: 1fr !important;
+            margin-top: 18px !important;
+          }
+          [data-auth-actions] button {
+            flex: 1 1 100%;
+          }
+        }
+      `}</style>
       <div style={{maxWidth: 1120, margin: "0 auto"}}>
         <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 10, flexWrap: "wrap"}}>
           <div style={{display: "flex", alignItems: "center", gap: 10}}>
@@ -85,8 +96,8 @@ export default function AuthView({
           </div>
         </div>
 
-        <div style={{maxWidth: 920, margin: "36px auto 0", display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 12}}>
-          <section style={{border: `1px solid ${panelBorder}`, borderRadius: 16, background: panelBackground, padding: "20px 18px"}}>
+        <div data-auth-grid style={{maxWidth: 920, margin: "36px auto 0", display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 14, alignItems: "start"}}>
+          <section style={{border: `1px solid ${panelBorder}`, borderRadius: 8, background: panelBackground, padding: "22px 20px"}}>
           <div style={{display: "flex", justifyContent: "center", gap: 8, marginBottom: 14}}>
             <button
               onClick={() => setMode("login")}
@@ -144,7 +155,7 @@ export default function AuthView({
             </div>
           )}
 
-          <div style={{display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap"}}>
+          <div data-auth-actions style={{display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap"}}>
             <button
               onClick={submit}
               disabled={busy}
@@ -166,7 +177,7 @@ export default function AuthView({
           </div>
           </section>
 
-          <aside style={{border: `1px solid ${panelBorder}`, borderRadius: 16, background: helperBackground, padding: "16px 14px"}}>
+          <aside style={{border: `1px solid ${panelBorder}`, borderRadius: 8, background: helperBackground, padding: "16px 14px"}}>
             <div style={{fontSize: 11, fontWeight: 800, color: G, marginBottom: 7}}>Qué ocurre al entrar</div>
             <div style={{fontSize: 11, color: mutedColor, lineHeight: 1.6}}>
               1. Se crea o detecta tu cliente en Firebase.

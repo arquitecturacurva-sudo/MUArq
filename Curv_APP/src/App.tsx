@@ -1030,8 +1030,28 @@ export default function App() {
   }
 
   return (
-    <div data-theme={darkMode?"dark":"light"} style={{...themeVars,display:"flex",height:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:UI.bg,color:DK,overflow:"hidden"}}>
+    <div data-workspace-shell data-theme={darkMode?"dark":"light"} style={{...themeVars,display:"flex",height:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:UI.bg,color:DK,overflow:"hidden"}}>
       <style>{`
+        @media (max-width: 860px) {
+          [data-workspace-shell] {
+            flex-direction: column !important;
+            height: auto !important;
+            min-height: 100vh;
+            overflow: visible !important;
+          }
+          [data-workspace-shell] [data-tour-id="sidebar"] {
+            width: 100% !important;
+            height: auto !important;
+            max-height: 48vh;
+            border-right: 0 !important;
+            border-bottom: 1px solid #1F2733;
+            box-shadow: none !important;
+          }
+          [data-workspace-shell] [data-workspace-main] {
+            overflow: visible !important;
+            padding: 14px 14px 22px !important;
+          }
+        }
         [data-theme="dark"] {
           color-scheme: dark;
         }
