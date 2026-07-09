@@ -574,11 +574,18 @@ export default function App() {
     });
   });
 
-  const runAuthAction = async (action: () => Promise<void>) => {
+  const runAuthAction = async (action: () => Promise<User>) => {
     setAuthBusy(true);
     setAuthError("");
     try {
-      await action();
+      const user = await action();
+      const clientId = await ensureUserHasClient({
+        uid: user.uid,
+        email: user.email || "",
+        displayName: user.displayName || "",
+      });
+      setAuthUser(user);
+      setActiveClientId(clientId);
       setAuthIntent(false);
       setLandingSeen(true);
       setRoute("home");
@@ -591,19 +598,19 @@ export default function App() {
 
   const handleLoginWithEmail = async (email: string, password: string) => {
     await runAuthAction(async () => {
-      await loginWithEmail(email, password);
+      return loginWithEmail(email, password);
     });
   };
 
   const handleRegisterWithEmail = async (input: { displayName: string; email: string; password: string }) => {
     await runAuthAction(async () => {
-      await registerWithEmail(input);
+      return registerWithEmail(input);
     });
   };
 
   const handleLoginWithGoogle = async () => {
     await runAuthAction(async () => {
-      await loginWithGoogle();
+      return loginWithGoogle();
     });
   };
 
