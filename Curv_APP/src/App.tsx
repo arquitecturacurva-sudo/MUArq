@@ -17,6 +17,7 @@ import {
   DK,
   LEGACY_MIGRATION_FLAG_KEY,
   PROJECT_STORAGE_EVENT,
+  PROJECT_SNAPSHOT_UPDATED_AT_KEY,
   SHARED_PROJECT_LOCATION_KEY,
   SHARED_PROJECT_NAME_KEY,
   TRACK_DEFAULT_ORDER,
@@ -26,10 +27,12 @@ import {
   calcDesignMiniGantt,
   calcObraMiniGantt,
   clearProjectStorage,
+  collectProjectSnapshot,
   computeDashboardMetrics,
   createProjectRecord,
   getTrackForTool,
   hasSavedProjectData,
+  hydrateProjectSnapshot,
   isProjectRecordArray,
   isProjectCurrency,
   isString,
@@ -44,6 +47,7 @@ import {
   readStorage,
   readProjectBaseMetadata,
   setActiveStorageProjectId,
+  shouldHydrateRemoteSnapshot,
   trackLocalProductEvent,
   usePersistentState,
   writeProjectBaseMetadata,
@@ -59,7 +63,7 @@ import {
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
 import { createCheckout } from "./lib/billing/billingService";
 import { isDesktopRuntime, openExternalUrl } from "./lib/desktop";
-import { importLocalProjectsOnce, listProjectSnapshotsByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
+import { importLocalProjectsOnce, listProjectSnapshotsByClient, tombstoneProjectByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
@@ -394,11 +398,22 @@ export default function App() {
           clientId: activeClientId,
           projects: localProjects,
           readBaseMetaByProjectId: (projectId) => readProjectBaseMetadata(projectId),
+          readSnapshotByProjectId: (projectId, clientId) => collectProjectSnapshot(projectId, clientId),
         });
         const cloudSnapshots = await listProjectSnapshotsByClient(activeClientId);
         if (cancelled) return;
-        cloudSnapshots.forEach(({project, baseMeta}) => {
+        cloudSnapshots.forEach(({project, baseMeta, snapshot}) => {
           writeProjectBaseMetadata(baseMeta, project.id);
+          if (!snapshot) return;
+          const localUpdatedAt = readStorage<string>(
+            PROJECT_SNAPSHOT_UPDATED_AT_KEY,
+            "",
+            isString,
+            project.id
+          );
+          if (shouldHydrateRemoteSnapshot(localUpdatedAt, snapshot.updatedAt)) {
+            hydrateProjectSnapshot(project.id, snapshot);
+          }
         });
         const cloudProjects = normalizeProjectRecords(cloudSnapshots.map(({project}) => project));
         setProjects(cloudProjects);
@@ -450,7 +465,8 @@ export default function App() {
             activeClientId,
             project,
             readProjectBaseMetadata(project.id),
-            authUser.uid
+            authUser.uid,
+            collectProjectSnapshot(project.id, activeClientId)
           )
         )
       ).catch((error) => {
@@ -717,6 +733,11 @@ export default function App() {
     if (!shouldDelete) return;
 
     clearProjectStorage(project.id);
+    if (authUser && activeClientId) {
+      tombstoneProjectByClient(activeClientId, project.id, authUser.uid).catch((error) => {
+        console.warn("[client-projects] delete failed", error);
+      });
+    }
     const remaining = normalizeProjectRecords(projects).filter((item) => item.id !== project.id);
     setProjects(remaining);
 

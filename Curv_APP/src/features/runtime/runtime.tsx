@@ -1,4 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  PROJECT_SNAPSHOT_TOOL_PREFIXES,
+  collectProjectSnapshotFromStorage,
+  getScopedProjectStorageKeysFromStorage,
+  hydrateProjectSnapshotToStorage,
+  isProjectSnapshotToolKey,
+  shouldHydrateRemoteSnapshot,
+} from "./storage/projectSnapshot";
+import type {
+  ProjectSnapshot as StorageProjectSnapshot,
+  ProjectSnapshotTools,
+} from "./storage/projectSnapshot";
+
+export {
+  PROJECT_SNAPSHOT_TOOL_PREFIXES,
+  isProjectSnapshotToolKey,
+  shouldHydrateRemoteSnapshot,
+};
 
 declare global {
   interface Window {
@@ -328,6 +346,7 @@ export const SHARED_PROJECT_NAME_KEY = "project.name";
 export const SHARED_PROJECT_LOCATION_KEY = "project.location";
 export const SHARED_PROJECT_CODE_KEY = "project.code";
 export const SHARED_PROJECT_CURRENCY_KEY = "project.currency";
+export const PROJECT_SNAPSHOT_UPDATED_AT_KEY = "project.snapshotUpdatedAt";
 
 export const PROJECT_CLIENT_LEGACY_KEYS = ["calc.cl", "matrix.cl", "excl.cl", "cron.cl", "oc.cl", "brief.cl", "cot.cl", "obra.cl", "cronobra.cl", "val.cl"];
 export const PROJECT_NAME_LEGACY_KEYS = ["calc.pr", "matrix.pr", "excl.pr", "cron.pr", "oc.pr", "brief.pr", "cot.pr", "obra.pr", "cronobra.pr", "val.pr"];
@@ -342,6 +361,8 @@ export type ProjectBaseMetadata = {
   code: string;
   currency: ProjectCurrency;
 };
+export type { ProjectSnapshotTools };
+export type ProjectSnapshot = StorageProjectSnapshot<ProjectBaseMetadata>;
 export const isProjectCurrency = (value: unknown): value is ProjectCurrency => (
   value === "PEN" || value === "USD" || value === "MXN"
 );
@@ -387,6 +408,42 @@ export const writeProjectBaseMetadata = (meta: Partial<ProjectBaseMetadata>, sco
   if (typeof meta.location === "string") writeStorage(SHARED_PROJECT_LOCATION_KEY, meta.location, scopeProjectId);
   if (typeof meta.code === "string") writeStorage(SHARED_PROJECT_CODE_KEY, meta.code, scopeProjectId);
   if (isProjectCurrency(meta.currency)) writeStorage(SHARED_PROJECT_CURRENCY_KEY, meta.currency, scopeProjectId);
+};
+
+export const getScopedProjectStorageKeys = (projectId: string) => {
+  if (typeof window === "undefined") return [];
+  try {
+    return getScopedProjectStorageKeysFromStorage({
+      projectId,
+      localStorage: window.localStorage,
+      projectScopePrefix,
+    });
+  } catch {
+    return [];
+  }
+};
+
+export const collectProjectSnapshot = (projectId: string, clientId = ""): ProjectSnapshot => {
+  return collectProjectSnapshotFromStorage({
+    projectId,
+    clientId,
+    getScopedProjectStorageKeys,
+    readStorage: (key, scopeProjectId) => readStorage<unknown>(key, null, undefined, scopeProjectId),
+    readBaseMeta: readProjectBaseMetadata,
+    nowIso,
+  });
+};
+
+export const hydrateProjectSnapshot = (projectId: string, snapshot: ProjectSnapshot) => {
+  if (typeof window === "undefined") return;
+  hydrateProjectSnapshotToStorage({
+    projectId,
+    snapshot,
+    writeBaseMeta: writeProjectBaseMetadata,
+    writeStorage: (key, value, scopeProjectId) => writeStorage(key, value, scopeProjectId),
+    updatedAtKey: PROJECT_SNAPSHOT_UPDATED_AT_KEY,
+    notifyStorageChange,
+  });
 };
 
 export const notifyStorageChange = () => {

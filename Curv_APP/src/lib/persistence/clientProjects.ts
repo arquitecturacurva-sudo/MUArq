@@ -10,6 +10,7 @@ import {
 import type {
   CommercialStatus,
   ProjectBaseMetadata,
+  ProjectSnapshot,
   ProjectCurrency,
   ProjectRecord,
 } from "../../features/runtime/runtime";
@@ -48,12 +49,15 @@ export type UpdateProjectPatch = Partial<
 type ProjectStorageDoc = ProjectDoc & {
   runtime?: ProjectRecord;
   baseMeta?: ProjectBaseMetadata;
+  snapshot?: ProjectSnapshot;
   project?: ProjectRecord;
+  deletedAt?: string;
 };
 
 export type ProjectHydrationSnapshot = {
   project: ProjectRecord;
   baseMeta: ProjectBaseMetadata;
+  snapshot?: ProjectSnapshot;
 };
 
 type ImportLocalProjectsInput = {
@@ -61,6 +65,7 @@ type ImportLocalProjectsInput = {
   clientId: string;
   projects: ProjectRecord[];
   readBaseMetaByProjectId: (projectId: string) => ProjectBaseMetadata;
+  readSnapshotByProjectId?: (projectId: string, clientId: string) => ProjectSnapshot;
 };
 
 const nowIso = () => new Date().toISOString();
@@ -75,6 +80,10 @@ const getStatus = (value: unknown, fallback: CommercialStatus = "Lead"): Commerc
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   typeof value === "object" && value !== null && !Array.isArray(value)
+);
+
+export const isProjectTombstoned = (payload: unknown) => (
+  isRecord(payload) && typeof payload.deletedAt === "string" && payload.deletedAt.trim().length > 0
 );
 
 const normalizeProjectDoc = (
@@ -180,6 +189,50 @@ const projectDocToBaseMeta = (
   };
 };
 
+const normalizeProjectSnapshot = (
+  clientId: string,
+  projectId: string,
+  payload: unknown,
+  fallbackBaseMeta: ProjectBaseMetadata
+): ProjectSnapshot | undefined => {
+  if (!isRecord(payload)) return undefined;
+  const rawSnapshot = isRecord(payload.snapshot) ? payload.snapshot : null;
+  if (!rawSnapshot) return undefined;
+  const rawTools = isRecord(rawSnapshot.tools) ? rawSnapshot.tools : {};
+  const rawBaseMeta = isRecord(rawSnapshot.baseMeta)
+    ? rawSnapshot.baseMeta as Partial<ProjectBaseMetadata>
+    : fallbackBaseMeta;
+  return {
+    projectId:
+      typeof rawSnapshot.projectId === "string" && rawSnapshot.projectId.trim()
+        ? rawSnapshot.projectId
+        : projectId,
+    clientId:
+      typeof rawSnapshot.clientId === "string" && rawSnapshot.clientId.trim()
+        ? rawSnapshot.clientId
+        : clientId,
+    version: 1,
+    updatedAt:
+      typeof rawSnapshot.updatedAt === "string" && rawSnapshot.updatedAt.trim()
+        ? rawSnapshot.updatedAt
+        : typeof payload.updatedAt === "string"
+          ? payload.updatedAt
+          : nowIso(),
+    baseMeta: {
+      client: typeof rawBaseMeta.client === "string" ? rawBaseMeta.client : fallbackBaseMeta.client,
+      projectName:
+        typeof rawBaseMeta.projectName === "string"
+          ? rawBaseMeta.projectName
+          : fallbackBaseMeta.projectName,
+      location:
+        typeof rawBaseMeta.location === "string" ? rawBaseMeta.location : fallbackBaseMeta.location,
+      code: typeof rawBaseMeta.code === "string" ? rawBaseMeta.code : fallbackBaseMeta.code,
+      currency: getCurrency(rawBaseMeta.currency, fallbackBaseMeta.currency),
+    },
+    tools: rawTools,
+  };
+};
+
 const runtimeToProjectDoc = (
   clientId: string,
   ownerUid: string,
@@ -224,7 +277,9 @@ export const getProjects = async (clientId: string) => {
   const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
   const projects: ProjectDoc[] = [];
   snapshot.forEach((docSnapshot) => {
-    const payload = normalizeProjectDoc(clientId, docSnapshot.id, docSnapshot.data());
+    const data = docSnapshot.data();
+    if (isProjectTombstoned(data)) return;
+    const payload = normalizeProjectDoc(clientId, docSnapshot.id, data);
     if (payload) projects.push(payload);
   });
   return projects;
@@ -233,7 +288,9 @@ export const getProjects = async (clientId: string) => {
 export const getProjectById = async (clientId: string, projectId: string) => {
   const snapshot = await getDoc(projectDocRef(clientId, projectId));
   if (!snapshot.exists()) return null;
-  return normalizeProjectDoc(clientId, projectId, snapshot.data());
+  const data = snapshot.data();
+  if (isProjectTombstoned(data)) return null;
+  return normalizeProjectDoc(clientId, projectId, data);
 };
 
 export const updateProject = async (
@@ -258,11 +315,14 @@ export const listProjectSnapshotsByClient = async (clientId: string): Promise<Pr
   const projects: ProjectHydrationSnapshot[] = [];
   snapshot.forEach((docSnapshot) => {
     const rawPayload = docSnapshot.data() as ProjectStorageDoc;
+    if (isProjectTombstoned(rawPayload)) return;
     const canonical = normalizeProjectDoc(clientId, docSnapshot.id, rawPayload);
     if (!canonical) return;
+    const baseMeta = projectDocToBaseMeta(canonical, rawPayload);
     projects.push({
       project: projectDocToRuntimeProject(canonical, rawPayload),
-      baseMeta: projectDocToBaseMeta(canonical, rawPayload),
+      baseMeta,
+      snapshot: normalizeProjectSnapshot(clientId, docSnapshot.id, rawPayload, baseMeta),
     });
   });
   return projects;
@@ -277,13 +337,15 @@ export const upsertProjectByClient = async (
   clientId: string,
   project: ProjectRecord,
   baseMeta: ProjectBaseMetadata,
-  ownerUid: string
+  ownerUid: string,
+  snapshot?: ProjectSnapshot
 ) => {
   const canonical = runtimeToProjectDoc(clientId, ownerUid, project, baseMeta);
   const payload: ProjectStorageDoc = {
     ...canonical,
     runtime: project,
     baseMeta,
+    ...(snapshot ? { snapshot: { ...snapshot, projectId: project.id, clientId } } : {}),
   };
   await setDoc(projectDocRef(clientId, project.id), payload, { merge: true });
 };
@@ -292,7 +354,8 @@ export const batchUpsertProjectsByClient = async (
   clientId: string,
   ownerUid: string,
   projects: ProjectRecord[],
-  readBaseMetaByProjectId: (projectId: string) => ProjectBaseMetadata
+  readBaseMetaByProjectId: (projectId: string) => ProjectBaseMetadata,
+  readSnapshotByProjectId?: (projectId: string, clientId: string) => ProjectSnapshot
 ) => {
   if (!projects.length) return;
   const batch = writeBatch(ensureDb());
@@ -303,6 +366,9 @@ export const batchUpsertProjectsByClient = async (
       ...canonical,
       runtime: project,
       baseMeta,
+      ...(readSnapshotByProjectId
+        ? { snapshot: readSnapshotByProjectId(project.id, clientId) }
+        : {}),
     };
     batch.set(projectDocRef(clientId, project.id), payload, { merge: true });
   });
@@ -314,12 +380,32 @@ export const importLocalProjectsOnce = async ({
   clientId,
   projects,
   readBaseMetaByProjectId,
+  readSnapshotByProjectId,
 }: ImportLocalProjectsInput) => {
   const alreadyMigrated = await hasMigrationFlag(uid, clientId);
   if (alreadyMigrated) return false;
   if (projects.length) {
-    await batchUpsertProjectsByClient(clientId, uid, projects, readBaseMetaByProjectId);
+    await batchUpsertProjectsByClient(clientId, uid, projects, readBaseMetaByProjectId, readSnapshotByProjectId);
   }
   await markMigrationFlag(uid, clientId);
   return true;
+};
+
+export const tombstoneProjectByClient = async (
+  clientId: string,
+  projectId: string,
+  deletedByUid: string
+) => {
+  const deletedAt = nowIso();
+  await setDoc(
+    projectDocRef(clientId, projectId),
+    {
+      id: projectId,
+      clientId,
+      deletedAt,
+      deletedByUid,
+      updatedAt: deletedAt,
+    },
+    { merge: true }
+  );
 };
