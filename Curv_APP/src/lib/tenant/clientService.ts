@@ -347,16 +347,17 @@ export const ensureUserHasClient = async (input: EnsureClientInput) => {
   const timestamp = nowIso();
   const profile = await getUserProfile(input.uid);
   if (profile?.activeClientId) {
+    const clientId = await upsertClientAndMembershipAndUser(input, profile.activeClientId, "BASE");
     await setDoc(
       userDocRef(input.uid),
       {
         uid: input.uid,
-        activeClientId: profile.activeClientId,
+        activeClientId: clientId,
         updatedAt: timestamp,
       },
       { merge: true }
     );
-    return profile.activeClientId;
+    return clientId;
   }
 
   const membershipCandidates = await readDeterministicMembershipCandidates(input.uid);

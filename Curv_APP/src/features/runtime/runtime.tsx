@@ -201,6 +201,7 @@ export const GLOBAL_STORAGE_KEYS = new Set([
   "app.onboardingSeen",
   "app.migrated.multiProject.v1",
   "app.localEvents.v1",
+  "app.deletedProjectIds.v1",
 ]);
 
 export type TrackId = "diseno" | "construccion" | "seguimiento";

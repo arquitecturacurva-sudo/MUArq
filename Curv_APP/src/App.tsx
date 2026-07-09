@@ -62,7 +62,6 @@ import {
 } from "./lib/auth/authService";
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
 import { createCheckout } from "./lib/billing/billingService";
-import { isDesktopRuntime, openExternalUrl } from "./lib/desktop";
 import { importLocalProjectsOnce, listProjectSnapshotsByClient, tombstoneProjectByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
@@ -73,10 +72,13 @@ const FIRESTORE_SMOKE_ENABLED = (
   import.meta.env.VITE_FIREBASE_API_KEY &&
   import.meta.env.VITE_FIREBASE_API_KEY !== "xxx"
 );
-const BILLING_PORTAL_URL = (import.meta.env.VITE_BILLING_PORTAL_URL || "").trim();
+const DELETED_PROJECT_IDS_KEY = "app.deletedProjectIds.v1";
+
+const isStringArray = (value: unknown): value is string[] => (
+  Array.isArray(value) && value.every((item) => typeof item === "string")
+);
 
 export default function App() {
-  const isDesktopApp = isDesktopRuntime();
   const [authUser,setAuthUser]=useState<User | null>(null);
   const [authReady,setAuthReady]=useState(false);
   const [authBusy,setAuthBusy]=useState(false);
@@ -227,6 +229,18 @@ export default function App() {
   const bootstrappedRef = React.useRef(false);
   const cloudHydratedRef = React.useRef(false);
   const forceLandingOnBootRef = React.useRef(false);
+
+  const readDeletedProjectIds = useCallback(() => (
+    new Set(readStorage<string[]>(DELETED_PROJECT_IDS_KEY, [], isStringArray))
+  ), []);
+
+  const markProjectDeletedLocally = useCallback((projectId: string) => {
+    const trimmedProjectId = projectId.trim();
+    if (!trimmedProjectId) return;
+    const deletedProjectIds = readDeletedProjectIds();
+    deletedProjectIds.add(trimmedProjectId);
+    writeStorage(DELETED_PROJECT_IDS_KEY, Array.from(deletedProjectIds).sort());
+  }, [readDeletedProjectIds]);
 
   const mapFirebaseError = (error: unknown) => {
     const raw = error instanceof Error ? error.message : String(error || "Error inesperado");
@@ -404,7 +418,9 @@ export default function App() {
         });
         const cloudSnapshots = await listProjectSnapshotsByClient(activeClientId);
         if (cancelled) return;
+        const deletedProjectIds = readDeletedProjectIds();
         cloudSnapshots.forEach(({project, baseMeta, snapshot}) => {
+          if (deletedProjectIds.has(project.id)) return;
           writeProjectBaseMetadata(baseMeta, project.id);
           if (!snapshot) return;
           const localUpdatedAt = readStorage<string>(
@@ -417,7 +433,11 @@ export default function App() {
             hydrateProjectSnapshot(project.id, snapshot);
           }
         });
-        const cloudProjects = normalizeProjectRecords(cloudSnapshots.map(({project}) => project));
+        const cloudProjects = normalizeProjectRecords(
+          cloudSnapshots
+            .map(({project}) => project)
+            .filter((project) => !deletedProjectIds.has(project.id))
+        );
         setProjects(cloudProjects);
         if (!cloudProjects.length) {
           setActiveProjectId("");
@@ -434,7 +454,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [activeClientId, activeProjectId, authUser, setActiveProjectId, setProjects]);
+  }, [activeClientId, activeProjectId, authUser, readDeletedProjectIds, setActiveProjectId, setProjects]);
 
   useEffect(() => {
     if (!authUser || !activeClientId) return;
@@ -604,22 +624,7 @@ export default function App() {
     }
   };
 
-  const handleOpenBillingPortal = async () => {
-    if (!BILLING_PORTAL_URL) {
-      window.alert("Falta configurar VITE_BILLING_PORTAL_URL para abrir el portal de suscripcion.");
-      return;
-    }
-    const opened = await openExternalUrl(BILLING_PORTAL_URL);
-    if (!opened) {
-      window.alert("No se pudo abrir el portal de pagos en el navegador.");
-    }
-  };
-
   const handleStartCheckout = async (plan: ClientPlan) => {
-    if (isDesktopApp) {
-      await handleOpenBillingPortal();
-      return;
-    }
     if (!authUser || !activeClientId) {
       window.alert("Inicia sesión para continuar con la suscripción.");
       return;
@@ -741,6 +746,7 @@ export default function App() {
     if (!shouldDelete) return;
 
     clearProjectStorage(project.id);
+    markProjectDeletedLocally(project.id);
     if (authUser && activeClientId) {
       tombstoneProjectByClient(activeClientId, project.id, authUser.uid).catch((error) => {
         console.warn("[client-projects] delete failed", error);
@@ -1026,8 +1032,7 @@ export default function App() {
         paywallAccess={clientAccess}
         paywallPlan={clientBilling?.plan || "BASE"}
         onRefreshBilling={() => setBillingRefreshTick((n) => n + 1)}
-        onStartCheckout={!isDesktopApp ? handleStartCheckout : undefined}
-        onOpenBillingPortal={isDesktopApp ? handleOpenBillingPortal : undefined}
+        onStartCheckout={handleStartCheckout}
         checkoutBusyPlan={checkoutBusyPlan}
         newProjectName={newProjectName}
         setNewProjectName={setNewProjectName}
