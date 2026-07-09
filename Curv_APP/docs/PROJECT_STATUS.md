@@ -1,7 +1,7 @@
 # Curv App — Project Status
 
-**Audit date:** 2026-07-07  
-**Auditor role:** Technical lead takeover  
+**Audit date:** 2026-07-09  
+**Auditor role:** Technical / SaaS readiness review  
 **Repository:** `curv-app` v0.0.0
 
 ---
@@ -18,9 +18,32 @@ The product ships as:
 
 Backend concerns are handled mostly by **Firebase** (Auth + Firestore) with **Mercado Pago billing** via a provider-agnostic layer and **Vercel serverless API routes**. There is no dedicated application server.
 
-**Maturity estimate: early beta / late prototype (≈ 60–70%).**
+**Maturity estimate: functional prototype / pre-beta (roughly 45-55%).**
 
-Core domain tools are rich and usable locally. Multi-tenant cloud sync, billing, team roles, and production hardening are **partially implemented** with notable schema gaps, missing tests, and architectural debt centered on a ~4,000-line monolith (`runtime.tsx`).
+This is not production-ready SaaS yet. Core domain tools are substantial and can support local workflows, but the SaaS foundation is still incomplete: tool-level data does not fully sync to the cloud, billing activation is not reliably tied to tenants, team/admin features are partial, and there are no automated tests. The largest technical risk remains the combination of localStorage as the primary tool datastore and a ~4,000-line monolith (`runtime.tsx`) that mixes storage, business logic, UI primitives, and all tools.
+
+For a developer taking over: treat the app as a valuable product prototype with real domain depth, not as a hardened SaaS platform.
+
+### Current reality check - 2026-07-09
+
+- **Usable today:** local project workflows, tool forms/calculations, proposal/PDF export, landing/home/workspace navigation, Firebase auth bootstrap, basic Firestore project shell sync, Mercado Pago checkout/webhook plumbing.
+- **Not reliable enough yet:** cross-device project content, billing-to-tenant activation, multi-user/team workflows, deletion consistency, conflict handling, release automation, regression safety.
+- **Primary data integrity gap:** most tool data still lives only in browser localStorage. Firestore sync currently covers project shell/base metadata much more than the actual working documents.
+- **Primary engineering gap:** almost no automated test coverage, so every change in `runtime.tsx` is high-regression-risk.
+- **Primary SaaS gap:** billing, tenants, roles, and cloud persistence exist as pieces, but not as a fully trustworthy lifecycle.
+
+### Readiness by area - honest assessment
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Domain tools | Medium | Broad feature coverage and usable local flows, but tightly coupled and mostly untested |
+| UX shell | Medium | Landing/Home/Workspace are coherent after recent cleanup; forms still rely heavily on inline styles and some prompt-based edits |
+| Local persistence | Medium | Project-scoped localStorage works and legacy migration exists, but schema is implicit and brittle |
+| Cloud persistence | Low | Project shell/base metadata sync exists; full tool content sync is not implemented |
+| Auth / tenancy | Low-medium | Firebase Auth and tenant docs exist, but provisioning paths and schema still diverge |
+| Billing | Low-medium | Checkout and webhook plumbing work; secure client association is incomplete |
+| Team / roles | Low | Service/rules pieces exist; no complete team management UX or frontend role enforcement |
+| QA / release | Low | Lint/build pass, but no automated tests or visible CI release workflow |
 
 ### Production status update — 2026-07-07
 
@@ -57,6 +80,18 @@ Core domain tools are rich and usable locally. Multi-tenant cloud sync, billing,
 - [x] Refined Workspace chrome with a wider premium sidebar, project status/proposal progress, contextual header, saved-state chips, and export click tracking.
 - [x] Added local events for landing CTA clicks, Home project opens, Workspace export clicks, and tool first-step completion.
 - [x] Verified Landing desktop/mobile without horizontal overflow; Home/Workspace compile and lint cleanly, but browser access remains gated by auth in a fresh session.
+
+### UX/data consistency update - 2026-07-09
+
+- [x] UX cleanup pass was committed and pushed to `origin/master` as `cb05b5f` (`Polish Curv app UX layout`).
+- [x] Removed leftover Vite starter global CSS and normalized root layout, button/input sizing, responsive header actions, Home empty state, and Workspace mobile shell behavior.
+- [x] Added canonical project metadata flow for new projects: Home can now capture `Cliente` and `Codigo de cotizacion` at project creation and write them into `ProjectBaseMetadata`.
+- [x] `useSharedProjectTextField` now listens to project storage events so client/code edits can propagate across mounted tools without a page reload.
+- [x] `Orden de Cambio` now separates `Codigo OC` (`oc.cod`) from the canonical quote/project code (`project.code`), avoiding `OC-01` overwriting `COT-012`.
+- [x] Verified locally: setting ficha base to `GoTo Market` / `COT-012` propagated into tool fields; OC kept `OC-01` while `Cotizacion de referencia` showed `COT-012`.
+- [x] `npm.cmd run lint` and `npm.cmd run build` pass as of this update; Vite still reports the known large chunk warning.
+- [ ] The 2026-07-09 data consistency patch is implemented locally but should be committed/pushed separately after review. Current modified files are `src/App.tsx`, `src/features/layout/HomeView.tsx`, and `src/features/runtime/runtime.tsx`.
+- [ ] This does **not** solve full tool-data cloud sync. It improves metadata consistency inside the active local project scope only.
 
 ---
 
@@ -229,7 +264,8 @@ flowchart LR
 2. `importLocalProjectsOnce` migrates local projects → Firestore (once per client)
 3. `listProjectsByClient` hydrates project list from cloud
 4. Debounced `upsertProjectByClient` pushes project metadata + `baseMeta` + `ProjectRecord`
-5. **Tool field data** (`calc.*`, `matrix.*`, etc.) stays in **localStorage only**
+5. **Base metadata** (`project.client`, `project.code`, `project.name`, `project.location`, `project.currency`) is shared locally and included in project shell sync
+6. **Most tool field data** (`calc.*`, `matrix.*`, `cot.partidas`, etc.) stays in **localStorage only**
 
 ---
 
@@ -274,16 +310,16 @@ flowchart LR
 
 | Feature | Notes |
 |---------|-------|
-| Full cloud sync of tool state | Only project shell + `baseMeta` sync; calculator/matrix/etc. data is device-local |
+| Full cloud sync of tool state | Only project shell + `baseMeta` sync; calculator/matrix/cotizacion line items/etc. data is device-local |
 | Team management UI | `listClientMembers`, role limits exist in code but no invite/manage screens |
 | Role enforcement in UI | Firestore rules enforce roles; frontend does not read member role |
 | EMPRESA plan | Marketed on landing as "PRONTO"; not in `ClientPlan` type |
-| Firestore project delete | Local delete clears localStorage only; cloud doc remains |
+| Firestore project delete | Local delete now writes a Firestore tombstone locally; needs deployed Firestore QA |
 | Client/tenant switcher UI | `setActiveClient` exists; no UI for multiple clients |
 | Real-time sync / conflict resolution | One-shot hydrate + debounced upsert |
 | Hosting / deploy config in repo | No `vercel.json`, no Firebase Hosting block |
 | CI/CD workflow | README references `.github/workflows/release-desktop.yml` — **file missing** |
-| Automated tests | No unit, integration, or e2e tests |
+| Automated tests | Minimal Vitest coverage exists for snapshot, tombstone, and checkout; still no e2e |
 | i18n | Spanish hardcoded throughout |
 | Offline-first cloud queue | Failed syncs only log to console |
 
@@ -293,19 +329,18 @@ flowchart LR
 
 ### Critical / high
 
-1. **Schema mismatch: Cloud Function vs client app** (`functions/src/index.ts`)
-   - Function writes `ownerId`; rules and client expect `ownerUid`
-   - Function writes member field `userId`; client queries `where("uid", "==", …)`
-   - Function omits `id`, `plan`, `limits`, `billing` on client doc
-   - Risk: duplicate/malformed tenants; membership repair queries miss function-created members
+1. **Tenant schema mismatch was corrected locally; deployed data still needs audit** (`functions/src/index.ts`)
+   - Local function code now writes `ownerUid`, member `uid`, `id`, `plan`, `limits`, and `billing`
+   - Existing deployed Firestore documents may still contain `ownerId` / member `userId`
+   - Risk remains until deployed Functions and real tenant documents are verified/migrated
 
-2. **Tool data not synced to Firestore**
-   - Users lose workspace content when switching devices/browsers
-   - Cloud hydration replaces project list but not scoped localStorage keys
+2. **Tool data sync is newly implemented but not production-proven**
+   - Local code now stores a `ProjectSnapshot` with scoped tool keys in project docs
+   - Real multi-device sync, conflict behavior, and Firestore rules need deployed QA
 
-3. **Checkout API has no authentication**
-   - `POST /api/billing/create-checkout` accepts any `clientId`
-   - Attacker could attach payments to arbitrary tenants (billing integrity risk)
+3. **Checkout API auth was corrected locally; production verification pending**
+   - Local code requires Firebase ID token and verifies membership in `clientId`
+   - Still needs deployed Vercel/Firebase/Mercado Pago verification for BASE and PRO
 
 4. **`smoke_persistence` collection blocked by security rules**
    - `readSmokeSnapshot` / `writeSmokeSnapshot` target a collection with **no rule match** → denied for clients
@@ -511,4 +546,4 @@ Bugbot was requested on 2026-07-07 against branch changes. **No diff was availab
 
 ---
 
-*This document reflects repository state at audit time. No application code was modified during this audit.*
+*This document reflects repository and local workspace state at audit time. It is intentionally conservative: several useful workflows exist, but the app should still be treated as pre-beta SaaS until cloud sync, billing integrity, tests, and tenant lifecycle are hardened.*
