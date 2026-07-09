@@ -19,7 +19,10 @@ const createDefaultBilling = (now: string) => ({
   updatedBy: "auth_trigger",
 });
 
-export const onUserCreate = functions.auth.user().onCreate(async (user) => {
+export const onUserCreate = functions
+  .runWith({ failurePolicy: true })
+  .auth.user()
+  .onCreate(async (user) => {
   const db = admin.firestore();
   const now = new Date().toISOString();
 
@@ -78,5 +81,5 @@ export const onUserCreate = functions.auth.user().onCreate(async (user) => {
     { merge: true }
   );
 
-  await batch.commit();
-});
+    await batch.commit();
+  });
