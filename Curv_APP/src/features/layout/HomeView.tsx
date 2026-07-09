@@ -70,6 +70,10 @@ type HomeViewProps = {
   checkoutBusyPlan?: ClientPlan | null;
   newProjectName: string;
   setNewProjectName: (value: string) => void;
+  newProjectClient: string;
+  setNewProjectClient: (value: string) => void;
+  newProjectCode: string;
+  setNewProjectCode: (value: string) => void;
   newProjectType: string;
   setNewProjectType: (value: string) => void;
   newProjectLocation: string;
@@ -104,6 +108,10 @@ export default function HomeView({
   checkoutBusyPlan,
   newProjectName,
   setNewProjectName,
+  newProjectClient,
+  setNewProjectClient,
+  newProjectCode,
+  setNewProjectCode,
   newProjectType,
   setNewProjectType,
   newProjectLocation,
@@ -269,6 +277,10 @@ export default function HomeView({
             <div style={{...lb, color: G, marginBottom: 8}}>Nuevo proyecto</div>
             <div style={{display: "grid", gap: 6}}>
               <Fld label="Nombre del proyecto"><Inp value={newProjectName} onChange={setNewProjectName} placeholder="Ej. Casa Pradera" /></Fld>
+              <div data-home-form-grid style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
+                <Fld label="Cliente"><Inp value={newProjectClient} onChange={setNewProjectClient} placeholder="Ej. GoTo Market" /></Fld>
+                <Fld label="Codigo de cotizacion"><Inp value={newProjectCode} onChange={setNewProjectCode} placeholder="Ej. COT-012" /></Fld>
+              </div>
               <div data-home-form-grid style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
                 <Fld label="Tipo"><Inp value={newProjectType} onChange={setNewProjectType} placeholder="Vivienda / Comercial" /></Fld>
                 <Fld label="Ubicación"><Inp value={newProjectLocation} onChange={setNewProjectLocation} placeholder="Ciudad / distrito" /></Fld>

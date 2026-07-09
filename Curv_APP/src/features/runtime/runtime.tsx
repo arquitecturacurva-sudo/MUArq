@@ -351,7 +351,7 @@ export const PROJECT_SNAPSHOT_UPDATED_AT_KEY = "project.snapshotUpdatedAt";
 export const PROJECT_CLIENT_LEGACY_KEYS = ["calc.cl", "matrix.cl", "excl.cl", "cron.cl", "oc.cl", "brief.cl", "cot.cl", "obra.cl", "cronobra.cl", "val.cl"];
 export const PROJECT_NAME_LEGACY_KEYS = ["calc.pr", "matrix.pr", "excl.pr", "cron.pr", "oc.pr", "brief.pr", "cot.pr", "obra.pr", "cronobra.pr", "val.pr"];
 export const PROJECT_LOCATION_LEGACY_KEYS = ["matrix.ub", "brief.ub", "cot.ub", "obra.ub", "cronobra.ub"];
-export const PROJECT_CODE_LEGACY_KEYS = ["excl.cod", "brief.cod", "oc.cod", "cot.cod", "obra.cod", "cronobra.cod", "val.cod"];
+export const PROJECT_CODE_LEGACY_KEYS = ["cot.cod", "obra.cod", "cronobra.cod", "val.cod", "brief.cod", "excl.cod", "oc.cot"];
 export const PROJECT_CURRENCY_OPTIONS = ["PEN", "USD", "MXN"] as const;
 export type ProjectCurrency = (typeof PROJECT_CURRENCY_OPTIONS)[number];
 export type ProjectBaseMetadata = {
@@ -589,7 +589,8 @@ export const hasSavedProjectData = (scopeProjectId?: string) => {
 export function usePersistentState<T>(
   key: string,
   initialValue: T | (() => T),
-  validate?: (value: unknown) => value is T
+  validate?: (value: unknown) => value is T,
+  preserveInitialValue = false
 ) {
   const initialRef = React.useRef<T>(resolveValue(initialValue));
   const keyRef = React.useRef(key);
@@ -612,7 +613,7 @@ export function usePersistentState<T>(
     }
 
     try {
-      if (JSON.stringify(state) === JSON.stringify(initialRef.current)) {
+      if (!preserveInitialValue && JSON.stringify(state) === JSON.stringify(initialRef.current)) {
         removeStorage(key);
         return;
       }
@@ -621,7 +622,7 @@ export function usePersistentState<T>(
     }
 
     writeStorage(key, state);
-  }, [key, state]);
+  }, [key, preserveInitialValue, state]);
 
   return [state, setState] as const;
 }
@@ -634,7 +635,8 @@ export function useSharedProjectTextField(
   const [value, setValue] = usePersistentState<string>(
     sharedKey,
     () => readSharedProjectTextValue(sharedKey, legacyKeys, initialValue),
-    isString
+    isString,
+    true
   );
   const migratedRef = React.useRef(false);
 
@@ -648,6 +650,19 @@ export function useSharedProjectTextField(
       if (legacyValue.trim()) writeStorage(sharedKey, legacyValue);
     }
   }, [legacyKeys, sharedKey]);
+
+  useEffect(() => {
+    const syncFromStorage = () => {
+      const nextValue = readSharedProjectTextValue(sharedKey, legacyKeys, initialValue);
+      setValue((current) => (current === nextValue ? current : nextValue));
+    };
+    window.addEventListener(PROJECT_STORAGE_EVENT, syncFromStorage);
+    window.addEventListener("storage", syncFromStorage);
+    return () => {
+      window.removeEventListener(PROJECT_STORAGE_EVENT, syncFromStorage);
+      window.removeEventListener("storage", syncFromStorage);
+    };
+  }, [initialValue, legacyKeys, setValue, sharedKey]);
 
   return [value, setValue] as const;
 }
@@ -1633,8 +1648,8 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
   const today=new Date().toISOString().split("T")[0];
   const curr = readProjectBaseMetadata().currency;
   const moneySym = currencySymbol(curr);
-  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [cod,scod]=useSharedProjectTextField(SHARED_PROJECT_CODE_KEY,PROJECT_CODE_LEGACY_KEYS,"OC-01");
-  const [fe,sfe]=usePersistentState("oc.fe",today); const [cot,scot]=usePersistentState("oc.cot",""); const [sol,ssol]=usePersistentState("oc.sol","Cliente");
+  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [cot,scot]=useSharedProjectTextField(SHARED_PROJECT_CODE_KEY,PROJECT_CODE_LEGACY_KEYS);
+  const [cod,scod]=usePersistentState("oc.cod","OC-01"); const [fe,sfe]=usePersistentState("oc.fe",today); const [sol,ssol]=usePersistentState("oc.sol","Cliente");
   const [desc,sdesc]=usePersistentState("oc.desc",""); const [motivo,smotivo]=usePersistentState("oc.motivo","Pedido del cliente"); const [impacto,simpacto]=usePersistentState("oc.impacto","Alcance + Honorarios");
   const [estadoResolucion,sEstadoResolucion]=usePersistentState<OcResolutionStatus>("oc.estadoResolucion","Pendiente",isValidOcResolutionStatus);
   const [docsAfect,sdocsAfect]=usePersistentState("oc.docsAfect","");

@@ -111,6 +111,8 @@ export default function App() {
   const [hasSavedData,setHasSavedData]=useState(() => (activeProjectId ? hasSavedProjectData(activeProjectId) : false));
   const [storageTick,setStorageTick]=useState(0);
   const [newProjectName,setNewProjectName]=useState("");
+  const [newProjectClient,setNewProjectClient]=useState("");
+  const [newProjectCode,setNewProjectCode]=useState("");
   const [newProjectType,setNewProjectType]=useState("");
   const [newProjectLocation,setNewProjectLocation]=useState("");
   const [newProjectCurrency,setNewProjectCurrency]=useState<ProjectCurrency>("PEN");
@@ -668,8 +670,10 @@ export default function App() {
     });
     writeProjectBaseMetadata(
       {
+        client: newProjectClient.trim(),
         projectName: created.name,
         location: created.location,
+        code: newProjectCode.trim(),
         currency: newProjectCurrency,
       },
       created.id
@@ -678,6 +682,8 @@ export default function App() {
     setActiveProjectId(created.id);
     setRoute("workspace");
     setNewProjectName("");
+    setNewProjectClient("");
+    setNewProjectCode("");
     setNewProjectType("");
     setNewProjectLocation("");
     setNewProjectCurrency("PEN");
@@ -1025,6 +1031,10 @@ export default function App() {
         checkoutBusyPlan={checkoutBusyPlan}
         newProjectName={newProjectName}
         setNewProjectName={setNewProjectName}
+        newProjectClient={newProjectClient}
+        setNewProjectClient={setNewProjectClient}
+        newProjectCode={newProjectCode}
+        setNewProjectCode={setNewProjectCode}
         newProjectType={newProjectType}
         setNewProjectType={setNewProjectType}
         newProjectLocation={newProjectLocation}
