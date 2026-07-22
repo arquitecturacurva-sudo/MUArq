@@ -1,7 +1,9 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { normalizePlan, getPreapprovalPlanId, resolvePlanByPreapprovalPlanId } from "./plans.js";
 
 const MP_API_BASE = "https://api.mercadopago.com";
+const MAX_WEBHOOK_AGE_SECONDS = 300;
+const MAX_WEBHOOK_FUTURE_SKEW_SECONDS = 60;
 
 const getAccessToken = () => {
   const token = String(process.env.MP_ACCESS_TOKEN || "").trim();
@@ -139,23 +141,47 @@ const createPendingPreapproval = async (input) => {
  */
 const verifyWebhookSignature = (signature, requestId, resourceId) => {
   const secret = getWebhookSecret();
-  if (!secret) return false;
-  if (!signature || !requestId || !resourceId) return false;
+  if (!secret || !signature || !requestId || !resourceId) return null;
 
   const parts = signature.split(",").map((part) => part.trim());
-  const timestamp = parts.find((part) => part.startsWith("ts="))?.slice(3) || "";
+  const timestampText =
+    parts.find((part) => part.startsWith("ts="))?.slice(3) || "";
   const receivedHash = parts.find((part) => part.startsWith("v1="))?.slice(3) || "";
-  if (!timestamp || !receivedHash) return false;
+  const timestamp = Number(timestampText);
+  if (
+    !Number.isSafeInteger(timestamp) ||
+    timestamp <= 0 ||
+    !/^[a-f0-9]{64}$/i.test(receivedHash)
+  ) {
+    return null;
+  }
 
-  const manifest = `id:${resourceId};request-id:${requestId};ts:${timestamp};`;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (
+    timestamp < nowSeconds - MAX_WEBHOOK_AGE_SECONDS ||
+    timestamp > nowSeconds + MAX_WEBHOOK_FUTURE_SKEW_SECONDS
+  ) {
+    return null;
+  }
+
+  const manifest = `id:${resourceId};request-id:${requestId};ts:${timestampText};`;
   const generatedHash = createHmac("sha256", secret).update(manifest).digest("hex");
 
   try {
-    return timingSafeEqual(Buffer.from(receivedHash), Buffer.from(generatedHash));
+    const valid = timingSafeEqual(
+      Buffer.from(receivedHash, "hex"),
+      Buffer.from(generatedHash, "hex")
+    );
+    return valid ? { timestamp, timestampText } : null;
   } catch {
-    return false;
+    return null;
   }
 };
+
+const buildWebhookEventId = ({ requestId, resourceId, timestampText }) =>
+  createHash("sha256")
+    .update(`mercadopago:${requestId}:${resourceId}:${timestampText}`)
+    .digest("hex");
 
 /**
  * @param {Record<string, unknown>} notification
@@ -190,10 +216,11 @@ const resolveNotificationResourceId = (notification, req) => {
 /**
  * @param {import('./types.js').SubscriptionStatus} status
  */
-const applySubscriptionStatus = async (status) => {
+const applySubscriptionStatus = async (status, event) => {
   if (!status.clientId || !status.subscriptionId) return false;
-  const { updateClientBilling } = await import("./repository.js");
-  await updateClientBilling({
+  const { applyClientBillingWebhookEvent } = await import("./repository.js");
+  return applyClientBillingWebhookEvent({
+    ...event,
     clientId: status.clientId,
     plan: status.plan || "BASE",
     status: status.status,
@@ -202,7 +229,24 @@ const applySubscriptionStatus = async (status) => {
     payerEmail: status.payerEmail || "",
     updatedBy: "mercadopago_webhook",
   });
-  return true;
+};
+
+const formatWebhookApplyResult = (result, processedMessage) => {
+  if (result.applied) {
+    return { handled: true, message: processedMessage };
+  }
+
+  const ignoredMessages = {
+    duplicate: "Ignored duplicate billing event.",
+    stale: "Ignored stale billing event.",
+    subscription_mismatch:
+      "Ignored billing event for a non-current subscription.",
+    client_not_found: "Ignored billing event for an unknown client.",
+  };
+  return {
+    handled: false,
+    message: ignoredMessages[result.reason] || "Ignored billing event.",
+  };
 };
 
 const isMercadoPagoSimulatorPayload = (payload, resourceId) => (
@@ -250,15 +294,28 @@ export const mercadoPagoProvider = {
     const resourceId = resolveNotificationResourceId(payload, req);
     const secret = getWebhookSecret();
 
-    if (isMercadoPagoSimulatorPayload(payload, resourceId)) {
-      return { handled: false, message: "Accepted Mercado Pago webhook simulator payload." };
+    if (!secret) {
+      throw new Error("Mercado Pago webhook secret is not configured.");
     }
 
-    if (secret) {
-      const valid = verifyWebhookSignature(signature, requestId, resourceId);
-      if (!valid) {
-        throw new Error("Invalid Mercado Pago webhook signature.");
-      }
+    const verifiedSignature = verifyWebhookSignature(
+      signature,
+      requestId,
+      resourceId
+    );
+    if (!verifiedSignature) {
+      throw new Error("Invalid or expired Mercado Pago webhook signature.");
+    }
+
+    const eventId = buildWebhookEventId({
+      requestId,
+      resourceId,
+      timestampText: verifiedSignature.timestampText,
+    });
+    const eventTimestamp = verifiedSignature.timestamp;
+
+    if (isMercadoPagoSimulatorPayload(payload, resourceId)) {
+      return { handled: false, message: "Accepted Mercado Pago webhook simulator payload." };
     }
 
     const notificationType = String(payload.type || payload.topic || "").trim();
@@ -269,13 +326,32 @@ export const mercadoPagoProvider = {
       notificationType === "preapproval"
     ) {
       const preapproval = await mpRequest(`/preapproval/${resourceId}`);
+      if (String(preapproval.id || "").trim() !== resourceId) {
+        throw new Error("Mercado Pago resource did not match the signed webhook.");
+      }
       const status = mapPreapprovalToStatus(preapproval);
-      await applySubscriptionStatus(status);
-      return { handled: true, message: `Processed preapproval ${resourceId}` };
+      if (!status.clientId || !status.subscriptionId) {
+        return {
+          handled: false,
+          message: "Ignored preapproval without a client binding.",
+        };
+      }
+      const result = await applySubscriptionStatus(status, {
+        eventId,
+        eventTimestamp,
+        eventType: "preapproval",
+      });
+      return formatWebhookApplyResult(
+        result,
+        `Processed preapproval ${resourceId}`
+      );
     }
 
     if (notificationType === "payment") {
       const payment = await mpRequest(`/v1/payments/${resourceId}`);
+      if (String(payment.id || "").trim() !== resourceId) {
+        throw new Error("Mercado Pago resource did not match the signed webhook.");
+      }
       const metadata = payment.metadata && typeof payment.metadata === "object"
         ? payment.metadata
         : {};
@@ -287,9 +363,19 @@ export const mercadoPagoProvider = {
       const billingStatus = paymentStatus === "approved" ? "active" : "inactive";
       const preapprovalId = String(payment.preapproval_id || metadata.preapproval_id || "").trim();
 
+      if (!preapprovalId) {
+        return {
+          handled: false,
+          message: "Ignored payment without a subscription binding.",
+        };
+      }
+
       if (clientId) {
-        const { updateClientBilling } = await import("./repository.js");
-        await updateClientBilling({
+        const { applyClientBillingWebhookEvent } = await import("./repository.js");
+        const result = await applyClientBillingWebhookEvent({
+          eventId,
+          eventTimestamp,
+          eventType: "payment",
           clientId,
           plan,
           status: billingStatus,
@@ -298,7 +384,10 @@ export const mercadoPagoProvider = {
           payerEmail: String(payment.payer?.email || "").trim(),
           updatedBy: "mercadopago_webhook",
         });
-        return { handled: true, message: `Processed payment ${resourceId}` };
+        return formatWebhookApplyResult(
+          result,
+          `Processed payment ${resourceId}`
+        );
       }
     }
 

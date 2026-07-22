@@ -1,6 +1,8 @@
 import React, { useMemo } from "react";
 import type { ClientAccess } from "../../lib/billing";
 import type { ClientPlan } from "../../lib/tenant/clientService";
+import { DemoCards } from "../demos/DemoCards";
+import type { DemoProjectDefinition } from "../demos/types";
 import type {
   CommercialStatus,
   DashboardMetrics,
@@ -88,7 +90,10 @@ type HomeViewProps = {
   normalizedProjects: ProjectRecord[];
   totalsByTrack: Record<TrackId, Record<TrackState, number>>;
   projectsWithMetrics: ProjectWithMetrics[];
+  demoDefinitions: readonly DemoProjectDefinition[];
   openDemoHub: () => void;
+  openDemo: (definition: DemoProjectDefinition) => void;
+  openBrandSettings: () => void;
   openProject: (projectId: string) => void;
   handleEditProject: (project: ProjectRecord) => void;
   toggleArchiveProject: (project: ProjectRecord) => void;
@@ -126,7 +131,10 @@ export default function HomeView({
   normalizedProjects,
   totalsByTrack,
   projectsWithMetrics,
+  demoDefinitions,
   openDemoHub,
+  openDemo,
+  openBrandSettings,
   openProject,
   handleEditProject,
   toggleArchiveProject,
@@ -193,6 +201,7 @@ export default function HomeView({
           <div data-home-actions style={{display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end"}}>
             <Btn onClick={createProject}>Nuevo proyecto</Btn>
             <Btn v="ol" onClick={openDemoHub}>Abrir demos</Btn>
+            <Btn v="ol" onClick={openBrandSettings}>Identidad del estudio</Btn>
             {onLogout && <Btn v="ol" onClick={onLogout}>Cerrar sesión</Btn>}
             <Btn v="ol" onClick={() => setDarkMode((v) => !v)}>{darkMode ? "Modo claro" : "Modo oscuro"}</Btn>
           </div>
@@ -330,6 +339,17 @@ export default function HomeView({
               <div style={metricS}><div style={{fontSize: 9, color: UI.textMuted}}>Conversión ganado</div><div style={{fontSize: 15, fontWeight: 900}}>{activeProjects.length ? `${Math.round(((pipelineCounts.Ganado || 0) / activeProjects.length) * 100)}%` : "0%"}</div></div>
             </div>
           </div>
+        </section>
+
+        <section style={{...cardS, padding: 18}}>
+          <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap"}}>
+            <div>
+              <div style={{...lb, color: G, marginBottom: 4}}>Proyectos demo</div>
+              <div style={{fontSize: 11, color: UI.textMuted}}>Tres proyectos precargados para explorar el flujo completo sin afectar tus datos.</div>
+            </div>
+            <Btn v="ol" sm onClick={openDemoHub}>Ver galería completa</Btn>
+          </div>
+          <DemoCards definitions={demoDefinitions} onOpenDemo={openDemo} compact />
         </section>
 
         <section style={{...cardS, padding: 18}}>

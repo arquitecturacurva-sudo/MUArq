@@ -3,6 +3,16 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import type { User } from "firebase/auth";
 import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
+import { BrandSettingsView } from "./features/branding/BrandSettingsView";
+import { DemoGallery } from "./features/demos/DemoGallery";
+import { DemoTour } from "./features/demos/DemoTour";
+import { DEMO_DEFINITIONS, getDemoDefinition } from "./features/demos/demoDefinitions";
+import {
+  createDemoDuplicate,
+  createDemoSessionSnapshot,
+  getDemoStorageProjectId,
+} from "./features/demos/demoService";
+import type { DemoProjectDefinition, DemoProjectId, DemoTourStep } from "./features/demos/types";
 import AuthView from "./features/layout/AuthView";
 import LandingView from "./features/layout/LandingView";
 import HomeView from "./features/layout/HomeView";
@@ -47,7 +57,6 @@ import {
   readStorage,
   readProjectBaseMetadata,
   setActiveStorageProjectId,
-  shouldHydrateRemoteSnapshot,
   trackLocalProductEvent,
   usePersistentState,
   writeProjectBaseMetadata,
@@ -62,7 +71,26 @@ import {
 } from "./lib/auth/authService";
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
 import { createCheckout } from "./lib/billing/billingService";
-import { importLocalProjectsOnce, listProjectSnapshotsByClient, tombstoneProjectByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
+import {
+  importLocalProjectsOnce,
+  listProjectSyncEntriesByClient,
+  tombstoneProjectByClient,
+  upsertProjectByClient,
+} from "./lib/persistence/clientProjects";
+import {
+  decideRemoteSnapshotHydration,
+  getProjectSnapshotFingerprint,
+} from "./features/runtime/storage/projectSnapshot";
+import {
+  clearProjectSyncError,
+  clearProjectSyncState,
+  markProjectCloudSaved,
+  markProjectDirty,
+  markProjectHydrated,
+  markProjectSyncError,
+  readProjectSyncState,
+  type ProjectSaveStatus,
+} from "./features/runtime/storage/projectSyncState";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
@@ -73,6 +101,12 @@ const FIRESTORE_SMOKE_ENABLED = (
   import.meta.env.VITE_FIREBASE_API_KEY !== "xxx"
 );
 const DELETED_PROJECT_IDS_KEY = "app.deletedProjectIds.v1";
+type AppRoute = "landing" | "auth" | "home" | "workspace" | "branding" | "demos" | "demo";
+const LANDING_DEMO_IDS: Record<string, DemoProjectId> = {
+  residencial: "casa-ladera",
+  "interiorismo-comercial": "cafe-nerea",
+  "design-build": "oficinas-gotomarket",
+};
 
 const isStringArray = (value: unknown): value is string[] => (
   Array.isArray(value) && value.every((item) => typeof item === "string")
@@ -91,16 +125,24 @@ export default function App() {
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<ClientPlan | null>(null);
   const [projects,setProjects]=usePersistentState<ProjectRecord[]>("app.projects",[],isProjectRecordArray);
   const [activeProjectId,setActiveProjectId]=usePersistentState("app.activeProjectId","",isString);
-  const [route,setRoute]=usePersistentState<"landing"|"auth"|"home"|"workspace">(
+  const [route,setRoute]=usePersistentState<AppRoute>(
     "app.route",
     "landing",
-    (value): value is "landing" | "auth" | "home" | "workspace" => value === "landing" || value === "auth" || value === "home" || value === "workspace"
+    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "branding" || value === "demos" || value === "demo"
   );
   const [,setLandingSeen]=usePersistentState("app.landingSeen", false, (value): value is boolean => typeof value === "boolean");
   const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
   const [onboardingSeen,setOnboardingSeen]=usePersistentState("app.onboardingSeen",false);
-  setActiveStorageProjectId(activeProjectId);
-  const projectScopeKey = activeProjectId || "none";
+  const [activeDemoId,setActiveDemoId]=useState<DemoProjectId | null>(null);
+  const [pendingDemoId,setPendingDemoId]=useState<DemoProjectId | null>(null);
+  const [demoTourRestartToken,setDemoTourRestartToken]=useState(0);
+  const activeDemo = activeDemoId ? getDemoDefinition(activeDemoId) : null;
+  const isDemoWorkspace = route === "demo" && !!activeDemo;
+  const workspaceProjectId = isDemoWorkspace && activeDemo
+    ? getDemoStorageProjectId(activeDemo.id, activeDemo.version)
+    : activeProjectId;
+  setActiveStorageProjectId(workspaceProjectId);
+  const projectScopeKey = workspaceProjectId || "none";
   const [storedTools,setStoredTools]=usePersistentState<PersistedToolState[]>(`app.tools.${projectScopeKey}`,DEFAULT_TOOL_STATES,isValidToolStateArray);
   const [active,setActive]=usePersistentState(`app.active.${projectScopeKey}`,"calc",(value): value is string => (
     typeof value === "string" && DEFAULT_TOOLS.some((tool) => tool.id === value)
@@ -112,6 +154,9 @@ export default function App() {
   const [projectResetToken,setProjectResetToken]=useState(0);
   const [hasSavedData,setHasSavedData]=useState(() => (activeProjectId ? hasSavedProjectData(activeProjectId) : false));
   const [storageTick,setStorageTick]=useState(0);
+  const [syncTick,setSyncTick]=useState(0);
+  const [online,setOnline]=useState(() => typeof navigator === "undefined" || navigator.onLine);
+  const [savingProjectIds,setSavingProjectIds]=useState<Set<string>>(() => new Set());
   const [newProjectName,setNewProjectName]=useState("");
   const [newProjectClient,setNewProjectClient]=useState("");
   const [newProjectCode,setNewProjectCode]=useState("");
@@ -221,14 +266,19 @@ export default function App() {
     () => normalizedProjects.find((project) => project.id === activeProjectId) || null,
     [activeProjectId, normalizedProjects]
   );
+  const workspaceProject = isDemoWorkspace && activeDemo ? activeDemo.project : activeProject;
   const enabledTrackOrder = useMemo(() => {
-    const tracks = activeProject?.tracks || DEFAULT_TRACKS;
+    const tracks = workspaceProject?.tracks || DEFAULT_TRACKS;
     const enabled = TRACK_DEFAULT_ORDER.filter((track) => tracks[track]);
     return (enabled.length ? enabled : ["diseno"]) as TrackId[];
-  }, [activeProject]);
+  }, [workspaceProject]);
   const bootstrappedRef = React.useRef(false);
   const cloudHydratedRef = React.useRef(false);
   const forceLandingOnBootRef = React.useRef(false);
+  const suppressDirtyEventsRef = React.useRef(false);
+  const storageScanQueuedRef = React.useRef(false);
+  const projectFingerprintsRef = React.useRef<Map<string, string>>(new Map());
+  const savingProjectIdsRef = React.useRef<Set<string>>(new Set());
 
   const readDeletedProjectIds = useCallback(() => (
     new Set(readStorage<string[]>(DELETED_PROJECT_IDS_KEY, [], isStringArray))
@@ -241,6 +291,23 @@ export default function App() {
     deletedProjectIds.add(trimmedProjectId);
     writeStorage(DELETED_PROJECT_IDS_KEY, Array.from(deletedProjectIds).sort());
   }, [readDeletedProjectIds]);
+
+  const rememberProjectFingerprint = useCallback((projectId: string) => {
+    const trimmedProjectId = projectId.trim();
+    if (!trimmedProjectId) return;
+    projectFingerprintsRef.current.set(
+      trimmedProjectId,
+      getProjectSnapshotFingerprint(collectProjectSnapshot(trimmedProjectId, activeClientId))
+    );
+  }, [activeClientId]);
+
+  const markProjectLocallyDirty = useCallback((projectId: string) => {
+    const trimmedProjectId = projectId.trim();
+    if (!trimmedProjectId) return;
+    markProjectDirty(trimmedProjectId, nowIso());
+    rememberProjectFingerprint(trimmedProjectId);
+    setSyncTick((value) => value + 1);
+  }, [rememberProjectFingerprint]);
 
   const mapFirebaseError = (error: unknown) => {
     const raw = error instanceof Error ? error.message : String(error || "Error inesperado");
@@ -367,18 +434,46 @@ export default function App() {
   }, [enabledTrackOrder, setWorkspaceTrack, workspaceTrack]);
 
   useEffect(() => {
-    const syncSavedFlag = () => {
-      setHasSavedData(activeProjectId ? hasSavedProjectData(activeProjectId) : false);
-      setStorageTick((n) => n + 1);
-    };
-    syncSavedFlag();
-    window.addEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
-    window.addEventListener("storage", syncSavedFlag);
+    const updateOnlineState = () => setOnline(navigator.onLine);
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
     return () => {
-      window.removeEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
-      window.removeEventListener("storage", syncSavedFlag);
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
     };
-  }, [activeProjectId]);
+  }, []);
+
+  useEffect(() => {
+    const scanActiveProject = () => {
+      setHasSavedData(workspaceProjectId ? hasSavedProjectData(workspaceProjectId) : false);
+      setStorageTick((n) => n + 1);
+      if (!workspaceProjectId) return;
+      const fingerprint = getProjectSnapshotFingerprint(
+        collectProjectSnapshot(workspaceProjectId, isDemoWorkspace ? "" : activeClientId)
+      );
+      const previous = projectFingerprintsRef.current.get(workspaceProjectId);
+      projectFingerprintsRef.current.set(workspaceProjectId, fingerprint);
+      if (isDemoWorkspace) return;
+      if (suppressDirtyEventsRef.current || previous === undefined || previous === fingerprint) return;
+      markProjectDirty(workspaceProjectId, nowIso());
+      setSyncTick((value) => value + 1);
+    };
+    const scheduleScan = () => {
+      if (storageScanQueuedRef.current) return;
+      storageScanQueuedRef.current = true;
+      queueMicrotask(() => {
+        storageScanQueuedRef.current = false;
+        scanActiveProject();
+      });
+    };
+    scanActiveProject();
+    window.addEventListener(PROJECT_STORAGE_EVENT, scheduleScan);
+    window.addEventListener("storage", scheduleScan);
+    return () => {
+      window.removeEventListener(PROJECT_STORAGE_EVENT, scheduleScan);
+      window.removeEventListener("storage", scheduleScan);
+    };
+  }, [activeClientId, isDemoWorkspace, workspaceProjectId]);
 
   useEffect(() => {
     if (!activeProjectId) return;
@@ -416,35 +511,111 @@ export default function App() {
           readBaseMetaByProjectId: (projectId) => readProjectBaseMetadata(projectId),
           readSnapshotByProjectId: (projectId, clientId) => collectProjectSnapshot(projectId, clientId),
         });
-        const cloudSnapshots = await listProjectSnapshotsByClient(activeClientId);
+        const cloudEntries = await listProjectSyncEntriesByClient(activeClientId);
         if (cancelled) return;
         const deletedProjectIds = readDeletedProjectIds();
-        cloudSnapshots.forEach(({project, baseMeta, snapshot}) => {
+        const mergedProjects = new Map(
+          localProjects
+            .filter((project) => !deletedProjectIds.has(project.id))
+            .map((project) => [project.id, project])
+        );
+        const remoteProjectIds = new Set<string>();
+
+        cloudEntries.forEach((entry) => {
+          if (entry.kind === "deleted") {
+            const localSync = readProjectSyncState(entry.projectId);
+            if (localSync.dirty) {
+              markProjectSyncError(
+                entry.projectId,
+                "El proyecto fue eliminado en otro dispositivo. Revisa la copia local antes de reintentar."
+              );
+              return;
+            }
+            if (mergedProjects.has(entry.projectId)) {
+              clearProjectStorage(entry.projectId);
+              clearProjectSyncState(entry.projectId);
+              projectFingerprintsRef.current.delete(entry.projectId);
+              mergedProjects.delete(entry.projectId);
+            }
+            return;
+          }
+
+          const { project, baseMeta, snapshot, revision } = entry.hydration;
           if (deletedProjectIds.has(project.id)) return;
-          writeProjectBaseMetadata(baseMeta, project.id);
-          if (!snapshot) return;
+          remoteProjectIds.add(project.id);
+          const localProject = mergedProjects.get(project.id);
+          const localSync = readProjectSyncState(project.id);
           const localUpdatedAt = readStorage<string>(
             PROJECT_SNAPSHOT_UPDATED_AT_KEY,
-            "",
+            localSync.updatedAt,
             isString,
             project.id
           );
-          if (shouldHydrateRemoteSnapshot(localUpdatedAt, snapshot.updatedAt)) {
-            hydrateProjectSnapshot(project.id, snapshot);
+
+          if (!snapshot) {
+            if (!localSync.dirty && !hasSavedProjectData(project.id)) {
+              writeProjectBaseMetadata(baseMeta, project.id);
+              markProjectHydrated(project.id, revision, project.updatedAt);
+              rememberProjectFingerprint(project.id);
+              mergedProjects.set(project.id, project);
+            } else if (!localProject) {
+              mergedProjects.set(project.id, project);
+            }
+            return;
+          }
+
+          const localSnapshot = {
+            ...collectProjectSnapshot(project.id, activeClientId),
+            revision: localSync.cloudRevision,
+            updatedAt: localSync.updatedAt || localUpdatedAt,
+          };
+          const decision = decideRemoteSnapshotHydration({
+            localSnapshot,
+            remoteSnapshot: snapshot,
+            localDirty: localSync.dirty,
+            localCloudRevision: localSync.cloudRevision,
+            localUpdatedAt,
+            hasLocalData: Boolean(localProject) || hasSavedProjectData(project.id),
+          });
+
+          if (decision === "hydrate") {
+            suppressDirtyEventsRef.current = true;
+            try {
+              clearProjectStorage(project.id);
+              hydrateProjectSnapshot(project.id, snapshot);
+            } finally {
+              suppressDirtyEventsRef.current = false;
+            }
+            markProjectHydrated(project.id, revision, snapshot.updatedAt);
+            projectFingerprintsRef.current.set(project.id, getProjectSnapshotFingerprint(snapshot));
+            mergedProjects.set(project.id, project);
+          } else if (decision === "same") {
+            markProjectHydrated(project.id, revision, snapshot.updatedAt);
+            projectFingerprintsRef.current.set(project.id, getProjectSnapshotFingerprint(localSnapshot));
+            mergedProjects.set(project.id, project);
+          } else if (decision === "conflict") {
+            markProjectSyncError(
+              project.id,
+              "Hay dos copias diferentes con la misma revision. Se conservo la copia local."
+            );
           }
         });
-        const cloudProjects = normalizeProjectRecords(
-          cloudSnapshots
-            .map(({project}) => project)
-            .filter((project) => !deletedProjectIds.has(project.id))
-        );
-        setProjects(cloudProjects);
-        if (!cloudProjects.length) {
-          setActiveProjectId("");
-        } else if (!cloudProjects.some((project) => project.id === activeProjectId)) {
-          setActiveProjectId(cloudProjects[0].id);
-        }
+
+        mergedProjects.forEach((project) => {
+          if (remoteProjectIds.has(project.id) || readProjectSyncState(project.id).dirty) return;
+          markProjectDirty(project.id, project.updatedAt || nowIso());
+          rememberProjectFingerprint(project.id);
+        });
+
+        const nextProjects = normalizeProjectRecords(Array.from(mergedProjects.values()));
+        setProjects(nextProjects);
+        setActiveProjectId((currentProjectId) => (
+          nextProjects.some((project) => project.id === currentProjectId)
+            ? currentProjectId
+            : nextProjects[0]?.id || ""
+        ));
         cloudHydratedRef.current = true;
+        setSyncTick((value) => value + 1);
       } catch (error) {
         if (cancelled) return;
         console.warn("[client-projects] hydrate failed", error);
@@ -454,7 +625,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [activeClientId, activeProjectId, authUser, readDeletedProjectIds, setActiveProjectId, setProjects]);
+  }, [activeClientId, authUser, readDeletedProjectIds, rememberProjectFingerprint, setActiveProjectId, setProjects]);
 
   useEffect(() => {
     if (!authUser || !activeClientId) return;
@@ -479,28 +650,86 @@ export default function App() {
   }, [activeClientId, authUser, billingRefreshTick]);
 
   useEffect(() => {
-    if (!authUser || !activeClientId || !cloudHydratedRef.current) return;
+    if (!authUser || !activeClientId || !cloudHydratedRef.current || !online) return;
+    const dirtyProjects = normalizedProjects.filter((project) => {
+      const syncState = readProjectSyncState(project.id);
+      return syncState.dirty && !syncState.lastError && !savingProjectIdsRef.current.has(project.id);
+    });
+    if (!dirtyProjects.length) return;
     const timer = window.setTimeout(() => {
-      Promise.all(
-        normalizedProjects.map((project) =>
-          upsertProjectByClient(
+      dirtyProjects.forEach((project) => {
+        if (savingProjectIdsRef.current.has(project.id)) return;
+        const syncState = readProjectSyncState(project.id);
+        if (!syncState.dirty || syncState.lastError) return;
+        savingProjectIdsRef.current.add(project.id);
+        setSavingProjectIds(new Set(savingProjectIdsRef.current));
+        const snapshot = {
+          ...collectProjectSnapshot(project.id, activeClientId),
+          revision: syncState.cloudRevision,
+          updatedAt: syncState.updatedAt || project.updatedAt,
+        };
+        void upsertProjectByClient(
             activeClientId,
             project,
             readProjectBaseMetadata(project.id),
             authUser.uid,
-            collectProjectSnapshot(project.id, activeClientId)
-          )
-        )
-      ).catch((error) => {
-        console.warn("[client-projects] sync failed", error);
+            snapshot,
+            syncState.cloudRevision
+          ).then((commit) => {
+            markProjectCloudSaved(
+              project.id,
+              syncState.localRevision,
+              commit.revision,
+              commit.updatedAt
+            );
+            rememberProjectFingerprint(project.id);
+          }).catch((error) => {
+            const message = error instanceof Error ? error.message : "No se pudo guardar en la nube.";
+            markProjectSyncError(project.id, message);
+            console.warn("[client-projects] sync failed", error);
+          }).finally(() => {
+            savingProjectIdsRef.current.delete(project.id);
+            setSavingProjectIds(new Set(savingProjectIdsRef.current));
+            setSyncTick((value) => value + 1);
+          });
       });
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [activeClientId, authUser, normalizedProjects, storageTick]);
+  }, [activeClientId, authUser, normalizedProjects, online, rememberProjectFingerprint, syncTick]);
+
+  const activeProjectSyncState = readProjectSyncState(activeProjectId);
+  const activeSaveState: { status: ProjectSaveStatus; label: string; detail: string } = (() => {
+    if (isDemoWorkspace) {
+      return {
+        status: "saved_local",
+        label: "Proyecto demo",
+        detail: "Esta demo permanece aislada y no se sincroniza con tu cuenta.",
+      };
+    }
+    if (savingProjectIds.has(activeProjectId)) {
+      return { status: "saving", label: "Guardando...", detail: "Enviando cambios a la nube." };
+    }
+    if (activeProjectSyncState.lastError) {
+      return { status: "error", label: "Error al guardar", detail: activeProjectSyncState.lastError };
+    }
+    if (authUser && activeClientId && !online) {
+      return { status: "offline", label: "Sin conexion", detail: "Los cambios estan guardados en este dispositivo." };
+    }
+    if (authUser && activeClientId && !activeProjectSyncState.dirty && activeProjectSyncState.cloudUpdatedAt) {
+      return { status: "saved_cloud", label: "Guardado en la nube", detail: "La nube tiene la ultima version." };
+    }
+    return { status: "saved_local", label: "Guardado local", detail: "Los cambios estan seguros en este dispositivo." };
+  })();
+
+  const retryActiveProjectSave = useCallback(() => {
+    if (!activeProjectId || isDemoWorkspace) return;
+    clearProjectSyncError(activeProjectId);
+    setSyncTick((value) => value + 1);
+  }, [activeProjectId, isDemoWorkspace]);
 
   useEffect(() => {
     if (!FIRESTORE_SMOKE_ENABLED) return;
-    if (!activeProjectId) return;
+    if (!activeProjectId || route !== "workspace") return;
     let cancelled = false;
     (async () => {
       try {
@@ -512,7 +741,7 @@ export default function App() {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeProjectId]);
+  }, [activeProjectId, route]);
 
   useEffect(() => {
     document.body.style.background = darkMode ? "#0D1117" : "#F5F3EF";
@@ -534,8 +763,15 @@ export default function App() {
     }));
   }, [storedTools]);
   const activeTrackTools = useMemo(
-    () => tools.filter((tool) => TRACK_TOOLS[workspaceTrack].includes(tool.id) && (activeProject?.tracks?.[getTrackForTool(tool.id)] ?? true)),
-    [activeProject, tools, workspaceTrack]
+    () => tools.filter((tool) => TRACK_TOOLS[workspaceTrack].includes(tool.id) && (workspaceProject?.tracks?.[getTrackForTool(tool.id)] ?? true)),
+    [tools, workspaceProject, workspaceTrack]
+  );
+  const demoRenderedTools = useMemo(
+    () => tools.filter((tool) => (
+      (workspaceProject?.tracks?.[getTrackForTool(tool.id)] ?? true)
+      && (tool.checked || tool.id === active)
+    )),
+    [active, tools, workspaceProject]
   );
   const projectsWithMetrics = useMemo(
     () => {
@@ -574,6 +810,139 @@ export default function App() {
     });
   });
 
+  const hydrateDemoWorkspace = (definition: DemoProjectDefinition) => {
+    const scopeProjectId = getDemoStorageProjectId(definition.id, definition.version);
+    const snapshot = createDemoSessionSnapshot(definition);
+    const firstStep = definition.tourSteps[0];
+    clearProjectStorage(scopeProjectId);
+    hydrateProjectSnapshot(scopeProjectId, snapshot);
+    if (firstStep) {
+      writeStorage(`app.active.${scopeProjectId}`, firstStep.toolId, scopeProjectId);
+      writeStorage(`app.track.${scopeProjectId}`, firstStep.track, scopeProjectId);
+    }
+    projectFingerprintsRef.current.set(scopeProjectId, getProjectSnapshotFingerprint(snapshot));
+    return { scopeProjectId, snapshot, firstStep };
+  };
+
+  const openDemo = (definition: DemoProjectDefinition) => {
+    const { firstStep } = hydrateDemoWorkspace(definition);
+    setActiveDemoId(definition.id);
+    setProjectResetToken((value) => value + 1);
+    setDemoTourRestartToken((value) => value + 1);
+    setHasSavedData(true);
+    setRoute("demo");
+    trackLocalProductEvent({
+      name: "demo_opened",
+      payload: { demoId: definition.id, version: definition.version },
+    });
+    if (firstStep) {
+      setWorkspaceTrack(firstStep.track);
+      setActive(firstStep.toolId);
+    }
+  };
+
+  const openLandingDemo = (landingDemoId: string) => {
+    const demoId = LANDING_DEMO_IDS[landingDemoId];
+    const definition = demoId ? getDemoDefinition(demoId) : undefined;
+    if (!definition) return;
+    if (authUser) {
+      openDemo(definition);
+      return;
+    }
+    setPendingDemoId(demoId);
+    setAuthIntent(true);
+    setLandingSeen(true);
+    setRoute("auth");
+  };
+
+  const resetActiveDemo = () => {
+    if (!activeDemo) return;
+    const shouldReset = window.confirm("Se restaurarán todos los datos originales de esta demo. ¿Deseas continuar?");
+    if (!shouldReset) return;
+    const { snapshot, scopeProjectId, firstStep } = hydrateDemoWorkspace(activeDemo);
+    const selectedTools = snapshot.tools[`app.tools.${scopeProjectId}`];
+    if (isValidToolStateArray(selectedTools)) setStoredTools(selectedTools);
+    if (firstStep) {
+      setWorkspaceTrack(firstStep.track);
+      setActive(firstStep.toolId);
+    }
+    setProjectResetToken((value) => value + 1);
+    setDemoTourRestartToken((value) => value + 1);
+    setHasSavedData(true);
+  };
+
+  const activateDemoTourStep = (step: DemoTourStep) => {
+    setWorkspaceTrack(step.track);
+    setActive(step.toolId);
+  };
+
+  const trackDemoStepCompleted = (step: DemoTourStep, stepIndex: number) => {
+    if (!activeDemo) return;
+    trackLocalProductEvent({
+      name: "demo_step_completed",
+      toolId: step.toolId,
+      payload: { demoId: activeDemo.id, stepId: step.id, stepNumber: stepIndex + 1 },
+    });
+  };
+
+  const trackDemoCompleted = () => {
+    if (!activeDemo) return;
+    trackLocalProductEvent({
+      name: "demo_completed",
+      payload: { demoId: activeDemo.id, version: activeDemo.version },
+    });
+  };
+
+  const duplicateActiveDemo = () => {
+    if (!activeDemo) return;
+    if (!activeClientId || !cloudHydratedRef.current) {
+      window.alert("Tu cuenta todavía se está preparando. Espera unos segundos e inténtalo nuevamente.");
+      return;
+    }
+    try {
+      const demoScopeProjectId = getDemoStorageProjectId(activeDemo.id, activeDemo.version);
+      const currentSnapshot = collectProjectSnapshot(demoScopeProjectId, "");
+      const { project, snapshot } = createDemoDuplicate(
+        activeDemo,
+        activeClientId,
+        new Date(),
+        undefined,
+        currentSnapshot,
+      );
+      clearProjectStorage(project.id);
+      hydrateProjectSnapshot(project.id, snapshot);
+      const firstStep = activeDemo.tourSteps[0];
+      if (firstStep) {
+        writeStorage(`app.active.${project.id}`, firstStep.toolId, project.id);
+        writeStorage(`app.track.${project.id}`, firstStep.track, project.id);
+      }
+      setProjects((previous) => [project, ...normalizeProjectRecords(previous)]);
+      setActiveProjectId(project.id);
+      markProjectLocallyDirty(project.id);
+      setActiveDemoId(null);
+      setProjectResetToken((value) => value + 1);
+      setRoute("workspace");
+      trackLocalProductEvent({
+        name: "demo_duplicated",
+        projectId: project.id,
+        payload: { demoId: activeDemo.id, version: activeDemo.version },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo duplicar la demo.";
+      window.alert(message);
+    }
+  };
+
+  const createProjectFromScratch = () => {
+    setActiveDemoId(null);
+    setRoute("home");
+  };
+
+  const returnToDemoGallery = () => {
+    setActiveDemoId(null);
+    setRoute("demos");
+  };
+
   const runAuthAction = async (action: () => Promise<User>) => {
     setAuthBusy(true);
     setAuthError("");
@@ -588,7 +957,10 @@ export default function App() {
       setActiveClientId(clientId);
       setAuthIntent(false);
       setLandingSeen(true);
-      setRoute("home");
+      const requestedDemo = pendingDemoId ? getDemoDefinition(pendingDemoId) : undefined;
+      setPendingDemoId(null);
+      if (requestedDemo) openDemo(requestedDemo);
+      else setRoute("home");
     } catch (error) {
       setAuthError(mapFirebaseError(error));
     } finally {
@@ -623,6 +995,8 @@ export default function App() {
       setLandingSeen(false);
       setProjects([]);
       setActiveProjectId("");
+      setActiveDemoId(null);
+      setPendingDemoId(null);
       setAuthError("");
     } catch (error) {
       setAuthError(mapFirebaseError(error));
@@ -690,8 +1064,10 @@ export default function App() {
       },
       created.id
     );
+    markProjectLocallyDirty(created.id);
     setProjects((prev) => [created, ...normalizeProjectRecords(prev)]);
     setActiveProjectId(created.id);
+    setActiveDemoId(null);
     setRoute("workspace");
     setNewProjectName("");
     setNewProjectClient("");
@@ -718,6 +1094,7 @@ export default function App() {
     if (typeof patch.name === "string") basePatch.projectName = patch.name.trim();
     if (typeof patch.location === "string") basePatch.location = patch.location.trim();
     if (Object.keys(basePatch).length) writeProjectBaseMetadata(basePatch, projectId);
+    markProjectLocallyDirty(projectId);
   };
 
   const handleEditProject = (project: ProjectRecord) => {
@@ -747,18 +1124,42 @@ export default function App() {
     updateProject(project.id, {archived: !project.archived});
   };
 
-  const handleDeleteProject = (project: ProjectRecord) => {
+  const handleDeleteProject = async (project: ProjectRecord) => {
     const projectName = readProjectBaseMetadata(project.id).projectName.trim() || project.name;
     const shouldDelete = window.confirm(`Se eliminará el proyecto "${projectName}" y sus datos guardados. ¿Deseas continuar?`);
     if (!shouldDelete) return;
 
-    clearProjectStorage(project.id);
-    markProjectDeletedLocally(project.id);
     if (authUser && activeClientId) {
-      tombstoneProjectByClient(activeClientId, project.id, authUser.uid).catch((error) => {
+      if (!navigator.onLine) {
+        window.alert("No se puede confirmar la eliminacion sin conexion. El proyecto sigue disponible localmente.");
+        return;
+      }
+      const syncState = readProjectSyncState(project.id);
+      savingProjectIdsRef.current.add(project.id);
+      setSavingProjectIds(new Set(savingProjectIdsRef.current));
+      try {
+        await tombstoneProjectByClient(
+          activeClientId,
+          project.id,
+          authUser.uid,
+          syncState.cloudRevision
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "No se pudo eliminar el proyecto en la nube.";
+        markProjectSyncError(project.id, message);
         console.warn("[client-projects] delete failed", error);
-      });
+        setSyncTick((value) => value + 1);
+        window.alert(`${message} El proyecto no fue eliminado localmente.`);
+        return;
+      } finally {
+        savingProjectIdsRef.current.delete(project.id);
+        setSavingProjectIds(new Set(savingProjectIdsRef.current));
+      }
     }
+    clearProjectStorage(project.id);
+    clearProjectSyncState(project.id);
+    projectFingerprintsRef.current.delete(project.id);
+    markProjectDeletedLocally(project.id);
     const remaining = normalizeProjectRecords(projects).filter((item) => item.id !== project.id);
     setProjects(remaining);
 
@@ -775,10 +1176,15 @@ export default function App() {
       payload: {from: "home"},
     });
     setActiveProjectId(projectId);
+    setActiveDemoId(null);
     setRoute("workspace");
   };
 
   const handleResetActiveProject = () => {
+    if (isDemoWorkspace) {
+      resetActiveDemo();
+      return;
+    }
     if (!activeProjectId) return;
     const shouldReset = window.confirm("Se limpiará todo el proyecto activo y se eliminarán los datos guardados. ¿Deseas continuar?");
     if (!shouldReset) return;
@@ -790,6 +1196,7 @@ export default function App() {
     setTourTargetRect(null);
     setProjectResetToken((n) => n + 1);
     setHasSavedData(false);
+    markProjectLocallyDirty(activeProjectId);
   };
   const shouldShowAutoTour = route==="workspace" && !!activeProject && !hasSavedData && !onboardingSeen;
   useEffect(() => {
@@ -815,6 +1222,10 @@ export default function App() {
     setTourTargetRect(null);
   };
   const openOnboarding = () => {
+    if (isDemoWorkspace) {
+      setDemoTourRestartToken((value) => value + 1);
+      return;
+    }
     setTourOpen(true);
     setTourStepIndex(0);
   };
@@ -937,14 +1348,14 @@ export default function App() {
       const img = canvas.toDataURL("image/png");
       pdf.addImage(img, "PNG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
 
-      const fallbackName = activeProject?.name?.trim() || "propuesta";
-      const explicitName = activeProject ? readProjectBaseMetadata(activeProject.id).projectName.trim() : "";
+      const fallbackName = workspaceProject?.name?.trim() || "propuesta";
+      const explicitName = workspaceProjectId ? readProjectBaseMetadata(workspaceProjectId).projectName.trim() : "";
       const rawName = explicitName || fallbackName;
       const safeName = rawName.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "propuesta";
       pdf.save(`${safeName}.pdf`);
       trackLocalProductEvent({
         name: "proposal.exported",
-        projectId: activeProjectId,
+        projectId: workspaceProjectId,
         payload: {sectionCount: docNodes.length, missingCount: missing.length},
       });
     } catch (error) {
@@ -960,7 +1371,7 @@ export default function App() {
 
   useEffect(() => {
     if (!FIRESTORE_SMOKE_ENABLED) return;
-    if (!activeProjectId) return;
+    if (!activeProjectId || route !== "workspace") return;
     const timer = window.setTimeout(() => {
       const baseMeta = readProjectBaseMetadata(activeProjectId);
       const checkedToolIds = tools.filter((tool) => tool.checked).map((tool) => tool.id);
@@ -999,6 +1410,7 @@ export default function App() {
         error={authError}
         onBackLanding={() => {
           setAuthIntent(false);
+          setPendingDemoId(null);
           setRoute("landing");
         }}
         onLoginWithEmail={handleLoginWithEmail}
@@ -1017,10 +1429,12 @@ export default function App() {
         hasProjects={normalizedProjects.length > 0}
         canContinueWorkspace={!!authUser && !!activeProject}
         openAuth={() => {
+          setPendingDemoId(null);
           setAuthIntent(true);
           setLandingSeen(true);
           setRoute("auth");
         }}
+        openDemo={openLandingDemo}
         continueWorkspace={() => {
           setLandingSeen(true);
           setRoute("workspace");
@@ -1029,7 +1443,41 @@ export default function App() {
     );
   }
 
-  if (route === "home" || !activeProject) {
+  if (route === "branding") {
+    if (!activeClientId) {
+      return (
+        <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", background: UI.bg, color: UI.textMuted}}>
+          Preparando la identidad del estudio…
+        </div>
+      );
+    }
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={themeVars}>
+        <BrandSettingsView
+          key={activeClientId}
+          clientId={activeClientId}
+          ownerUid={authUser.uid}
+          userDisplayName={authUser.displayName || undefined}
+          userEmail={authUser.email || undefined}
+          onBack={() => setRoute("home")}
+        />
+      </div>
+    );
+  }
+
+  if (route === "demos") {
+    return (
+      <DemoGallery
+        definitions={DEMO_DEFINITIONS}
+        onOpenDemo={openDemo}
+        onBackHome={() => setRoute("home")}
+        darkMode={darkMode}
+        themeVars={themeVars}
+      />
+    );
+  }
+
+  if (route === "home" || (route === "workspace" && !activeProject) || (route === "demo" && !activeDemo)) {
     return (
       <HomeView
         darkMode={darkMode}
@@ -1061,16 +1509,29 @@ export default function App() {
         normalizedProjects={normalizedProjects}
         totalsByTrack={totalsByTrack}
         projectsWithMetrics={projectsWithMetrics}
+        demoDefinitions={DEMO_DEFINITIONS}
         openDemoHub={() => {
           trackLocalProductEvent({name: "landing.cta_clicked", payload: {source: "home_demo_hub"}});
-          setLandingSeen(true);
-          setRoute("landing");
+          setRoute("demos");
+        }}
+        openDemo={openDemo}
+        openBrandSettings={() => {
+          trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "dashboard"}});
+          setRoute("branding");
         }}
         openProject={openProject}
         handleEditProject={handleEditProject}
         toggleArchiveProject={toggleArchiveProject}
         handleDeleteProject={handleDeleteProject}
       />
+    );
+  }
+
+  if (!workspaceProject || !workspaceProjectId) {
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", background: UI.bg, color: UI.textMuted}}>
+        Preparando el espacio de trabajo…
+      </div>
     );
   }
 
@@ -1230,12 +1691,20 @@ export default function App() {
         }
       `}</style>
       <WorkspaceSidebar
-        activeProject={activeProject}
-        activeProjectId={activeProjectId}
+        activeProject={workspaceProject}
+        activeProjectId={workspaceProjectId}
+        isDemo={isDemoWorkspace}
+        demoStatusLabel={activeDemo?.displayStatus}
+        onBackToDemos={returnToDemoGallery}
         enabledTrackOrder={enabledTrackOrder}
         workspaceTrack={workspaceTrack}
         setWorkspaceTrack={setWorkspaceTrack}
-        setRoute={(nextRoute: "home" | "workspace") => setRoute(nextRoute)}
+        setRoute={(nextRoute: "home" | "workspace" | "branding") => {
+          if (nextRoute === "branding") {
+            trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "workspace"}});
+          }
+          setRoute(nextRoute);
+        }}
         onLogout={handleLogout}
         activeTrackTools={activeTrackTools}
         active={active}
@@ -1254,22 +1723,39 @@ export default function App() {
         tools={tools}
         active={active}
         hasSavedData={hasSavedData}
+        saveState={activeSaveState}
+        onRetrySave={retryActiveProjectSave}
         activeTrackTools={activeTrackTools}
-        activeProjectId={activeProjectId}
-        activeProject={activeProject}
+        renderedTools={isDemoWorkspace ? demoRenderedTools : undefined}
+        activeProjectId={workspaceProjectId}
+        activeProject={workspaceProject}
         projectResetToken={projectResetToken}
         printTool={printTool}
         current={current}
       />
 
-      <OnboardingTour
-        tourOpen={tourOpen}
-        closeTour={closeTour}
-        tourTargetRect={tourTargetRect}
-        tourStepIndex={tourStepIndex}
-        goPrevTourStep={goPrevTourStep}
-        goNextTourStep={goNextTourStep}
-      />
+      {!isDemoWorkspace && (
+        <OnboardingTour
+          tourOpen={tourOpen}
+          closeTour={closeTour}
+          tourTargetRect={tourTargetRect}
+          tourStepIndex={tourStepIndex}
+          goPrevTourStep={goPrevTourStep}
+          goNextTourStep={goNextTourStep}
+        />
+      )}
+      {isDemoWorkspace && activeDemo && (
+        <DemoTour
+          definition={activeDemo}
+          restartToken={demoTourRestartToken}
+          onActivateTool={activateDemoTourStep}
+          onStepCompleted={trackDemoStepCompleted}
+          onCompleted={trackDemoCompleted}
+          onDuplicate={duplicateActiveDemo}
+          onCreateFromScratch={createProjectFromScratch}
+          onBackToDemos={returnToDemoGallery}
+        />
+      )}
     </div>
   );
 }

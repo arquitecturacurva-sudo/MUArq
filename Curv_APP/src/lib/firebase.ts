@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -29,6 +30,7 @@ export const firebaseConfigured = missingFirebaseKeys.length === 0;
 let appInstance: ReturnType<typeof initializeApp> | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
+let functionsInstance: Functions | null = null;
 
 export let firebaseInitError = "";
 
@@ -37,6 +39,7 @@ if (firebaseConfigured) {
     appInstance = initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
     dbInstance = getFirestore(appInstance);
+    functionsInstance = getFunctions(appInstance);
   } catch (error) {
     firebaseInitError = error instanceof Error ? error.message : String(error);
     console.error("[firebase] init failed", error);
@@ -49,6 +52,7 @@ if (firebaseConfigured) {
 export const app = appInstance;
 export const auth = authInstance as Auth;
 export const db = dbInstance as Firestore;
+export const functions = functionsInstance as Functions;
 
 export const ensureAuth = () => {
   if (!authInstance) {
@@ -62,4 +66,11 @@ export const ensureDb = () => {
     throw new Error(firebaseInitError || "Firebase Firestore no está configurado.");
   }
   return dbInstance;
+};
+
+export const ensureFunctions = () => {
+  if (!functionsInstance) {
+    throw new Error(firebaseInitError || "Firebase Functions no está configurado.");
+  }
+  return functionsInstance;
 };

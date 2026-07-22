@@ -36,6 +36,102 @@ service cloud.firestore {
         || existsAfter(/databases/$(database)/documents/clients/$(clientId)/members/$(userId));
     }
 
+    function validBrandFont(data) {
+      return (
+        data.fontPresetId == "technical"
+        && data.headingFont == "Inter"
+        && data.bodyFont == "Inter"
+      ) || (
+        data.fontPresetId == "studio"
+        && data.headingFont == "Manrope"
+        && data.bodyFont == "Inter"
+      ) || (
+        data.fontPresetId == "commercial"
+        && data.headingFont == "Montserrat"
+        && data.bodyFont == "Source Sans 3"
+      ) || (
+        data.fontPresetId == "editorial"
+        && data.headingFont == "Lora"
+        && data.bodyFont == "Inter"
+      ) || (
+        data.fontPresetId == "contemporary"
+        && data.headingFont == "DM Sans"
+        && data.bodyFont == "DM Sans"
+      );
+    }
+
+    function validBrandProfile(clientId) {
+      return request.resource.data.keys().hasOnly([
+          "id", "ownerUid", "companyName", "legalName", "taxId",
+          "logoUrl", "logoStoragePath", "email", "phone", "address",
+          "website", "footerText", "backgroundColor", "accentColor",
+          "primaryTextColor", "fontPresetId", "headingFont", "bodyFont",
+          "logoPosition", "showGeneratedWithCurv", "createdAt", "updatedAt",
+          "profileRevision", "schemaVersion"
+        ])
+        && request.resource.data.keys().hasAll([
+          "id", "ownerUid", "companyName", "backgroundColor", "accentColor",
+          "primaryTextColor", "fontPresetId", "headingFont", "bodyFont",
+          "logoPosition", "showGeneratedWithCurv", "createdAt", "updatedAt",
+          "profileRevision", "schemaVersion"
+        ])
+        && request.resource.data.id == "brand"
+        && request.resource.data.ownerUid == get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid
+        && request.resource.data.companyName is string
+        && request.resource.data.companyName.size() <= 160
+        && (!("legalName" in request.resource.data) || (request.resource.data.legalName is string && request.resource.data.legalName.size() <= 160))
+        && (!("taxId" in request.resource.data) || (request.resource.data.taxId is string && request.resource.data.taxId.size() <= 32))
+        && (!("email" in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 254))
+        && (!("phone" in request.resource.data) || (request.resource.data.phone is string && request.resource.data.phone.size() <= 64))
+        && (!("address" in request.resource.data) || (request.resource.data.address is string && request.resource.data.address.size() <= 300))
+        && (!("website" in request.resource.data) || (request.resource.data.website is string && request.resource.data.website.size() <= 300))
+        && (!("footerText" in request.resource.data) || (request.resource.data.footerText is string && request.resource.data.footerText.size() <= 500))
+        && (!("logoUrl" in request.resource.data) || (request.resource.data.logoUrl is string && request.resource.data.logoUrl.size() <= 2048))
+        && (!("logoStoragePath" in request.resource.data) || (request.resource.data.logoStoragePath is string && request.resource.data.logoStoragePath.size() <= 512))
+        && request.resource.data.backgroundColor is string
+        && request.resource.data.backgroundColor.matches('^#[0-9A-Fa-f]{6}$')
+        && request.resource.data.accentColor is string
+        && request.resource.data.accentColor.matches('^#[0-9A-Fa-f]{6}$')
+        && request.resource.data.primaryTextColor in ["#111111", "#FFFFFF"]
+        && validBrandFont(request.resource.data)
+        && request.resource.data.logoPosition in ["left", "center", "right"]
+        && request.resource.data.showGeneratedWithCurv is bool
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.profileRevision is int
+        && request.resource.data.profileRevision >= 0
+        && request.resource.data.schemaVersion == 1;
+    }
+
+    function validBootstrapClient(clientId) {
+      return clientId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "id", "name", "plan", "limits", "createdAt", "ownerUid", "status", "billing"
+        ])
+        && request.resource.data.id == clientId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 160
+        && request.resource.data.plan == "BASE"
+        && request.resource.data.status == "active"
+        && request.resource.data.createdAt is string
+        && request.resource.data.limits is map
+        && request.resource.data.limits.keys().hasOnly(["editorsLimit", "viewersLimit"])
+        && request.resource.data.limits.editorsLimit == 3
+        && request.resource.data.limits.viewersLimit == 25
+        && request.resource.data.billing is map
+        && request.resource.data.billing.keys().hasOnly([
+          "plan", "status", "trialEndsAt", "updatedAt", "updatedBy"
+        ])
+        && request.resource.data.billing.plan == "BASE"
+        && request.resource.data.billing.status == "trialing"
+        && request.resource.data.billing.trialEndsAt is string
+        && request.resource.data.billing.updatedAt is string
+        && request.resource.data.billing.updatedBy == "system";
+    }
+
     function hasValidActiveClientOnWrite(userId) {
       return !("activeClientId" in request.resource.data)
         || (
@@ -62,13 +158,14 @@ service cloud.firestore {
             || resource.data.ownerId == request.auth.uid
           )
         );
-      allow create: if signedIn()
-        && request.resource.data.id == clientId
-        && request.resource.data.name is string
-        && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && validBootstrapClient(clientId);
       allow update: if isAdmin(clientId)
         && request.resource.data.id == clientId
-        && (!("id" in resource.data) || resource.data.id == clientId);
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 160
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name"]);
       allow delete: if false;
     }
 
@@ -108,6 +205,28 @@ service cloud.firestore {
         && request.resource.data.id == projectId
         && request.resource.data.clientId == clientId;
       allow delete: if isAdmin(clientId);
+    }
+
+    match /clients/{clientId}/settings/{settingId} {
+      allow read: if settingId == "brand" && isMember(clientId);
+      allow create: if settingId == "brand"
+        && isAdmin(clientId)
+        && validBrandProfile(clientId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.profileRevision == 1
+        && !("logoUrl" in request.resource.data)
+        && !("logoStoragePath" in request.resource.data);
+      allow update: if settingId == "brand"
+        && isAdmin(clientId)
+        && validBrandProfile(clientId)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.profileRevision == (
+          ("profileRevision" in resource.data) ? resource.data.profileRevision + 1 : 1
+        )
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "id", "ownerUid", "createdAt", "logoUrl", "logoStoragePath"
+        ]);
+      allow delete: if false;
     }
   }
 }

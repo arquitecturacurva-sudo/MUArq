@@ -4,10 +4,14 @@ export type ProjectSnapshot<BaseMeta = unknown> = {
   projectId: string;
   clientId: string;
   version: 1;
+  /** Cloud revision. Missing on legacy snapshots and therefore treated as revision 0. */
+  revision?: number;
   updatedAt: string;
   baseMeta: BaseMeta;
   tools: ProjectSnapshotTools;
 };
+
+export type RemoteSnapshotDecision = "hydrate" | "same" | "keep-local" | "conflict";
 
 export const PROJECT_SNAPSHOT_TOOL_PREFIXES = [
   "project.",
@@ -36,6 +40,65 @@ export const shouldHydrateRemoteSnapshot = (localUpdatedAt?: string, remoteUpdat
   if (!Number.isFinite(remoteTime)) return false;
   if (!Number.isFinite(localTime)) return true;
   return remoteTime > localTime;
+};
+
+export const getProjectSnapshotRevision = (snapshot?: Pick<ProjectSnapshot, "revision"> | null) => {
+  const revision = snapshot?.revision;
+  return typeof revision === "number" && Number.isSafeInteger(revision) && revision >= 0
+    ? revision
+    : 0;
+};
+
+const stableValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, stableValue(entry)])
+  );
+};
+
+/** Content-only fingerprint: timestamps and revisions never make a project look dirty. */
+export const getProjectSnapshotFingerprint = (
+  snapshot: Pick<ProjectSnapshot, "baseMeta" | "tools">
+) => JSON.stringify(stableValue({ baseMeta: snapshot.baseMeta, tools: snapshot.tools || {} }));
+
+export const decideRemoteSnapshotHydration = <BaseMeta>({
+  localSnapshot,
+  remoteSnapshot,
+  localDirty,
+  localCloudRevision,
+  localUpdatedAt,
+  hasLocalData,
+}: {
+  localSnapshot: ProjectSnapshot<BaseMeta>;
+  remoteSnapshot: ProjectSnapshot<BaseMeta>;
+  localDirty: boolean;
+  localCloudRevision: number;
+  localUpdatedAt?: string;
+  hasLocalData: boolean;
+}): RemoteSnapshotDecision => {
+  // Dirty also covers ProjectRecord-only edits, which intentionally do not affect the snapshot
+  // fingerprint. Never acknowledge those edits as synced merely because tool data is equal.
+  if (localDirty) return "keep-local";
+  if (getProjectSnapshotFingerprint(localSnapshot) === getProjectSnapshotFingerprint(remoteSnapshot)) {
+    return "same";
+  }
+
+  const remoteRevision = getProjectSnapshotRevision(remoteSnapshot);
+  const normalizedLocalRevision = Number.isSafeInteger(localCloudRevision) && localCloudRevision >= 0
+    ? localCloudRevision
+    : 0;
+  if (remoteRevision > normalizedLocalRevision) return "hydrate";
+  if (remoteRevision < normalizedLocalRevision) return "keep-local";
+  if (remoteRevision > 0) return "conflict";
+
+  // Legacy snapshots have no revision. Preserve unknown local data unless the old timestamp gate
+  // proves that the remote snapshot is newer.
+  if (!hasLocalData) return "hydrate";
+  if (shouldHydrateRemoteSnapshot(localUpdatedAt, remoteSnapshot.updatedAt)) return "hydrate";
+  return localUpdatedAt ? "keep-local" : "conflict";
 };
 
 export const getScopedProjectStorageKeysFromStorage = ({
