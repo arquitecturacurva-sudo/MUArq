@@ -28,6 +28,9 @@ type SidebarTool = {
 type WorkspaceSidebarProps = {
   activeProject: ProjectRecord;
   activeProjectId: string;
+  isDemo?: boolean;
+  demoStatusLabel?: string;
+  onBackToDemos?: () => void;
   enabledTrackOrder: TrackId[];
   workspaceTrack: TrackId;
   setWorkspaceTrack: (track: TrackId) => void;
@@ -46,6 +49,9 @@ type WorkspaceSidebarProps = {
 export default function WorkspaceSidebar({
   activeProject,
   activeProjectId,
+  isDemo = false,
+  demoStatusLabel,
+  onBackToDemos,
   enabledTrackOrder,
   workspaceTrack,
   setWorkspaceTrack,
@@ -145,25 +151,32 @@ export default function WorkspaceSidebar({
         <Brand />
         <div style={{display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10}}>
           <span style={{border: "1px solid #2B3645", borderRadius: 999, padding: "3px 8px", color: G, fontSize: 8, fontWeight: 900, textTransform: "uppercase"}}>
-            {activeProject.commercialStatus}
+            {isDemo ? "Proyecto demo" : activeProject.commercialStatus}
           </span>
+          {isDemo && (
+            <span style={{border: "1px solid #2B3645", borderRadius: 999, padding: "3px 8px", color: "#AAB3BE", fontSize: 8, fontWeight: 800}}>
+              {demoStatusLabel || activeProject.commercialStatus}
+            </span>
+          )}
           <span style={{border: "1px solid #2B3645", borderRadius: 999, padding: "3px 8px", color: "#AAB3BE", fontSize: 8, fontWeight: 800}}>
             {nChecked}/{tools.length} propuesta
           </span>
         </div>
         <button
-          onClick={() => setRoute("home")}
+          onClick={() => isDemo && onBackToDemos ? onBackToDemos() : setRoute("home")}
           style={{marginTop: 10, width: "100%", padding: "8px 10px", background: "#111923", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 800, cursor: "pointer"}}
         >
-          ← Volver al Home
+          {isDemo ? "← Volver a las demos" : "← Volver al Home"}
         </button>
-        <button
-          type="button"
-          onClick={() => setRoute("branding")}
-          style={{marginTop: 7, width: "100%", padding: "7px 10px", background: "transparent", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 750, cursor: "pointer"}}
-        >
-          Configuración · Identidad
-        </button>
+        {!isDemo && (
+          <button
+            type="button"
+            onClick={() => setRoute("branding")}
+            style={{marginTop: 7, width: "100%", padding: "7px 10px", background: "transparent", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 750, cursor: "pointer"}}
+          >
+            Configuración · Identidad
+          </button>
+        )}
         <button
           onClick={onLogout}
           style={{marginTop: 7, width: "100%", padding: "7px 10px", background: "transparent", border: "1px solid #3A3A3A", borderRadius: 6, color: "#AAB3BE", fontSize: 10, fontWeight: 700, cursor: "pointer"}}
@@ -292,13 +305,15 @@ export default function WorkspaceSidebar({
           </svg>
           Exportar Propuesta
         </button>
-        <button
-          type="button"
-          onClick={() => setRoute("branding")}
-          style={{width: "100%", padding: "8px 0", marginTop: 8, background: "#111923", color: "#C3CDD8", border: "1px solid #2B3645", borderRadius: 6, fontSize: 9, fontWeight: 800, cursor: "pointer"}}
-        >
-          Identidad aplicada · Configurar
-        </button>
+        {!isDemo && (
+          <button
+            type="button"
+            onClick={() => setRoute("branding")}
+            style={{width: "100%", padding: "8px 0", marginTop: 8, background: "#111923", color: "#C3CDD8", border: "1px solid #2B3645", borderRadius: 6, fontSize: 9, fontWeight: 800, cursor: "pointer"}}
+          >
+            Identidad aplicada · Configurar
+          </button>
+        )}
         <div style={{fontSize: 9, color: "#7E8794", textAlign: "center", marginTop: 7, lineHeight: 1.4}}>
           <span style={{color: nChecked > 0 ? G : "#3A3A3A", fontWeight: 700}}>{nChecked}</span>
           <span> de {tools.length} secciones seleccionadas</span>
@@ -307,7 +322,7 @@ export default function WorkspaceSidebar({
           onClick={handleResetActiveProject}
           style={{width: "100%", padding: "9px 0", marginTop: 10, background: "transparent", color: "#A7A7A7", border: "1px solid #3A3A3A", borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: "pointer", letterSpacing: "0.4px"}}
         >
-          Limpiar proyecto
+          {isDemo ? "Reiniciar demo" : "Limpiar proyecto"}
         </button>
       </div>
     </div>

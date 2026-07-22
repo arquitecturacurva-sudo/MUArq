@@ -28,6 +28,7 @@ type WorkspaceMainProps = {
   saveState: { status: ProjectSaveStatus; label: string; detail: string };
   onRetrySave: () => void;
   activeTrackTools: WorkspaceTool[];
+  renderedTools?: WorkspaceTool[];
   activeProjectId: string;
   activeProject: ProjectRecord;
   projectResetToken: number;
@@ -45,6 +46,7 @@ export default function WorkspaceMain({
   saveState,
   onRetrySave,
   activeTrackTools,
+  renderedTools,
   activeProjectId,
   activeProject,
   projectResetToken,
@@ -52,6 +54,7 @@ export default function WorkspaceMain({
   current,
 }: WorkspaceMainProps) {
   const baseMeta = readProjectBaseMetadata(activeProjectId);
+  const mountedTools = renderedTools || activeTrackTools;
   const completedToolRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
@@ -136,7 +139,7 @@ export default function WorkspaceMain({
           </div>
         </div>
 
-        {activeTrackTools.map((tool) => {
+        {mountedTools.map((tool) => {
           const Component = tool.component;
           return (
             <div key={`${activeProjectId}-${projectResetToken}-${tool.id}`} style={{display: active === tool.id ? "block" : "none"}}>

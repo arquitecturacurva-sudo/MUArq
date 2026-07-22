@@ -4,6 +4,15 @@ import { jsPDF } from "jspdf";
 import type { User } from "firebase/auth";
 import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
 import { BrandSettingsView } from "./features/branding/BrandSettingsView";
+import { DemoGallery } from "./features/demos/DemoGallery";
+import { DemoTour } from "./features/demos/DemoTour";
+import { DEMO_DEFINITIONS, getDemoDefinition } from "./features/demos/demoDefinitions";
+import {
+  createDemoDuplicate,
+  createDemoSessionSnapshot,
+  getDemoStorageProjectId,
+} from "./features/demos/demoService";
+import type { DemoProjectDefinition, DemoProjectId, DemoTourStep } from "./features/demos/types";
 import AuthView from "./features/layout/AuthView";
 import LandingView from "./features/layout/LandingView";
 import HomeView from "./features/layout/HomeView";
@@ -92,7 +101,12 @@ const FIRESTORE_SMOKE_ENABLED = (
   import.meta.env.VITE_FIREBASE_API_KEY !== "xxx"
 );
 const DELETED_PROJECT_IDS_KEY = "app.deletedProjectIds.v1";
-type AppRoute = "landing" | "auth" | "home" | "workspace" | "branding";
+type AppRoute = "landing" | "auth" | "home" | "workspace" | "branding" | "demos" | "demo";
+const LANDING_DEMO_IDS: Record<string, DemoProjectId> = {
+  residencial: "casa-ladera",
+  "interiorismo-comercial": "cafe-nerea",
+  "design-build": "oficinas-gotomarket",
+};
 
 const isStringArray = (value: unknown): value is string[] => (
   Array.isArray(value) && value.every((item) => typeof item === "string")
@@ -114,13 +128,21 @@ export default function App() {
   const [route,setRoute]=usePersistentState<AppRoute>(
     "app.route",
     "landing",
-    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "branding"
+    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "branding" || value === "demos" || value === "demo"
   );
   const [,setLandingSeen]=usePersistentState("app.landingSeen", false, (value): value is boolean => typeof value === "boolean");
   const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
   const [onboardingSeen,setOnboardingSeen]=usePersistentState("app.onboardingSeen",false);
-  setActiveStorageProjectId(activeProjectId);
-  const projectScopeKey = activeProjectId || "none";
+  const [activeDemoId,setActiveDemoId]=useState<DemoProjectId | null>(null);
+  const [pendingDemoId,setPendingDemoId]=useState<DemoProjectId | null>(null);
+  const [demoTourRestartToken,setDemoTourRestartToken]=useState(0);
+  const activeDemo = activeDemoId ? getDemoDefinition(activeDemoId) : null;
+  const isDemoWorkspace = route === "demo" && !!activeDemo;
+  const workspaceProjectId = isDemoWorkspace && activeDemo
+    ? getDemoStorageProjectId(activeDemo.id, activeDemo.version)
+    : activeProjectId;
+  setActiveStorageProjectId(workspaceProjectId);
+  const projectScopeKey = workspaceProjectId || "none";
   const [storedTools,setStoredTools]=usePersistentState<PersistedToolState[]>(`app.tools.${projectScopeKey}`,DEFAULT_TOOL_STATES,isValidToolStateArray);
   const [active,setActive]=usePersistentState(`app.active.${projectScopeKey}`,"calc",(value): value is string => (
     typeof value === "string" && DEFAULT_TOOLS.some((tool) => tool.id === value)
@@ -244,11 +266,12 @@ export default function App() {
     () => normalizedProjects.find((project) => project.id === activeProjectId) || null,
     [activeProjectId, normalizedProjects]
   );
+  const workspaceProject = isDemoWorkspace && activeDemo ? activeDemo.project : activeProject;
   const enabledTrackOrder = useMemo(() => {
-    const tracks = activeProject?.tracks || DEFAULT_TRACKS;
+    const tracks = workspaceProject?.tracks || DEFAULT_TRACKS;
     const enabled = TRACK_DEFAULT_ORDER.filter((track) => tracks[track]);
     return (enabled.length ? enabled : ["diseno"]) as TrackId[];
-  }, [activeProject]);
+  }, [workspaceProject]);
   const bootstrappedRef = React.useRef(false);
   const cloudHydratedRef = React.useRef(false);
   const forceLandingOnBootRef = React.useRef(false);
@@ -422,16 +445,17 @@ export default function App() {
 
   useEffect(() => {
     const scanActiveProject = () => {
-      setHasSavedData(activeProjectId ? hasSavedProjectData(activeProjectId) : false);
+      setHasSavedData(workspaceProjectId ? hasSavedProjectData(workspaceProjectId) : false);
       setStorageTick((n) => n + 1);
-      if (!activeProjectId) return;
+      if (!workspaceProjectId) return;
       const fingerprint = getProjectSnapshotFingerprint(
-        collectProjectSnapshot(activeProjectId, activeClientId)
+        collectProjectSnapshot(workspaceProjectId, isDemoWorkspace ? "" : activeClientId)
       );
-      const previous = projectFingerprintsRef.current.get(activeProjectId);
-      projectFingerprintsRef.current.set(activeProjectId, fingerprint);
+      const previous = projectFingerprintsRef.current.get(workspaceProjectId);
+      projectFingerprintsRef.current.set(workspaceProjectId, fingerprint);
+      if (isDemoWorkspace) return;
       if (suppressDirtyEventsRef.current || previous === undefined || previous === fingerprint) return;
-      markProjectDirty(activeProjectId, nowIso());
+      markProjectDirty(workspaceProjectId, nowIso());
       setSyncTick((value) => value + 1);
     };
     const scheduleScan = () => {
@@ -449,7 +473,7 @@ export default function App() {
       window.removeEventListener(PROJECT_STORAGE_EVENT, scheduleScan);
       window.removeEventListener("storage", scheduleScan);
     };
-  }, [activeClientId, activeProjectId]);
+  }, [activeClientId, isDemoWorkspace, workspaceProjectId]);
 
   useEffect(() => {
     if (!activeProjectId) return;
@@ -675,6 +699,13 @@ export default function App() {
 
   const activeProjectSyncState = readProjectSyncState(activeProjectId);
   const activeSaveState: { status: ProjectSaveStatus; label: string; detail: string } = (() => {
+    if (isDemoWorkspace) {
+      return {
+        status: "saved_local",
+        label: "Proyecto demo",
+        detail: "Esta demo permanece aislada y no se sincroniza con tu cuenta.",
+      };
+    }
     if (savingProjectIds.has(activeProjectId)) {
       return { status: "saving", label: "Guardando...", detail: "Enviando cambios a la nube." };
     }
@@ -691,14 +722,14 @@ export default function App() {
   })();
 
   const retryActiveProjectSave = useCallback(() => {
-    if (!activeProjectId) return;
+    if (!activeProjectId || isDemoWorkspace) return;
     clearProjectSyncError(activeProjectId);
     setSyncTick((value) => value + 1);
-  }, [activeProjectId]);
+  }, [activeProjectId, isDemoWorkspace]);
 
   useEffect(() => {
     if (!FIRESTORE_SMOKE_ENABLED) return;
-    if (!activeProjectId) return;
+    if (!activeProjectId || route !== "workspace") return;
     let cancelled = false;
     (async () => {
       try {
@@ -710,7 +741,7 @@ export default function App() {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeProjectId]);
+  }, [activeProjectId, route]);
 
   useEffect(() => {
     document.body.style.background = darkMode ? "#0D1117" : "#F5F3EF";
@@ -732,8 +763,15 @@ export default function App() {
     }));
   }, [storedTools]);
   const activeTrackTools = useMemo(
-    () => tools.filter((tool) => TRACK_TOOLS[workspaceTrack].includes(tool.id) && (activeProject?.tracks?.[getTrackForTool(tool.id)] ?? true)),
-    [activeProject, tools, workspaceTrack]
+    () => tools.filter((tool) => TRACK_TOOLS[workspaceTrack].includes(tool.id) && (workspaceProject?.tracks?.[getTrackForTool(tool.id)] ?? true)),
+    [tools, workspaceProject, workspaceTrack]
+  );
+  const demoRenderedTools = useMemo(
+    () => tools.filter((tool) => (
+      (workspaceProject?.tracks?.[getTrackForTool(tool.id)] ?? true)
+      && (tool.checked || tool.id === active)
+    )),
+    [active, tools, workspaceProject]
   );
   const projectsWithMetrics = useMemo(
     () => {
@@ -772,6 +810,139 @@ export default function App() {
     });
   });
 
+  const hydrateDemoWorkspace = (definition: DemoProjectDefinition) => {
+    const scopeProjectId = getDemoStorageProjectId(definition.id, definition.version);
+    const snapshot = createDemoSessionSnapshot(definition);
+    const firstStep = definition.tourSteps[0];
+    clearProjectStorage(scopeProjectId);
+    hydrateProjectSnapshot(scopeProjectId, snapshot);
+    if (firstStep) {
+      writeStorage(`app.active.${scopeProjectId}`, firstStep.toolId, scopeProjectId);
+      writeStorage(`app.track.${scopeProjectId}`, firstStep.track, scopeProjectId);
+    }
+    projectFingerprintsRef.current.set(scopeProjectId, getProjectSnapshotFingerprint(snapshot));
+    return { scopeProjectId, snapshot, firstStep };
+  };
+
+  const openDemo = (definition: DemoProjectDefinition) => {
+    const { firstStep } = hydrateDemoWorkspace(definition);
+    setActiveDemoId(definition.id);
+    setProjectResetToken((value) => value + 1);
+    setDemoTourRestartToken((value) => value + 1);
+    setHasSavedData(true);
+    setRoute("demo");
+    trackLocalProductEvent({
+      name: "demo_opened",
+      payload: { demoId: definition.id, version: definition.version },
+    });
+    if (firstStep) {
+      setWorkspaceTrack(firstStep.track);
+      setActive(firstStep.toolId);
+    }
+  };
+
+  const openLandingDemo = (landingDemoId: string) => {
+    const demoId = LANDING_DEMO_IDS[landingDemoId];
+    const definition = demoId ? getDemoDefinition(demoId) : undefined;
+    if (!definition) return;
+    if (authUser) {
+      openDemo(definition);
+      return;
+    }
+    setPendingDemoId(demoId);
+    setAuthIntent(true);
+    setLandingSeen(true);
+    setRoute("auth");
+  };
+
+  const resetActiveDemo = () => {
+    if (!activeDemo) return;
+    const shouldReset = window.confirm("Se restaurarán todos los datos originales de esta demo. ¿Deseas continuar?");
+    if (!shouldReset) return;
+    const { snapshot, scopeProjectId, firstStep } = hydrateDemoWorkspace(activeDemo);
+    const selectedTools = snapshot.tools[`app.tools.${scopeProjectId}`];
+    if (isValidToolStateArray(selectedTools)) setStoredTools(selectedTools);
+    if (firstStep) {
+      setWorkspaceTrack(firstStep.track);
+      setActive(firstStep.toolId);
+    }
+    setProjectResetToken((value) => value + 1);
+    setDemoTourRestartToken((value) => value + 1);
+    setHasSavedData(true);
+  };
+
+  const activateDemoTourStep = (step: DemoTourStep) => {
+    setWorkspaceTrack(step.track);
+    setActive(step.toolId);
+  };
+
+  const trackDemoStepCompleted = (step: DemoTourStep, stepIndex: number) => {
+    if (!activeDemo) return;
+    trackLocalProductEvent({
+      name: "demo_step_completed",
+      toolId: step.toolId,
+      payload: { demoId: activeDemo.id, stepId: step.id, stepNumber: stepIndex + 1 },
+    });
+  };
+
+  const trackDemoCompleted = () => {
+    if (!activeDemo) return;
+    trackLocalProductEvent({
+      name: "demo_completed",
+      payload: { demoId: activeDemo.id, version: activeDemo.version },
+    });
+  };
+
+  const duplicateActiveDemo = () => {
+    if (!activeDemo) return;
+    if (!activeClientId || !cloudHydratedRef.current) {
+      window.alert("Tu cuenta todavía se está preparando. Espera unos segundos e inténtalo nuevamente.");
+      return;
+    }
+    try {
+      const demoScopeProjectId = getDemoStorageProjectId(activeDemo.id, activeDemo.version);
+      const currentSnapshot = collectProjectSnapshot(demoScopeProjectId, "");
+      const { project, snapshot } = createDemoDuplicate(
+        activeDemo,
+        activeClientId,
+        new Date(),
+        undefined,
+        currentSnapshot,
+      );
+      clearProjectStorage(project.id);
+      hydrateProjectSnapshot(project.id, snapshot);
+      const firstStep = activeDemo.tourSteps[0];
+      if (firstStep) {
+        writeStorage(`app.active.${project.id}`, firstStep.toolId, project.id);
+        writeStorage(`app.track.${project.id}`, firstStep.track, project.id);
+      }
+      setProjects((previous) => [project, ...normalizeProjectRecords(previous)]);
+      setActiveProjectId(project.id);
+      markProjectLocallyDirty(project.id);
+      setActiveDemoId(null);
+      setProjectResetToken((value) => value + 1);
+      setRoute("workspace");
+      trackLocalProductEvent({
+        name: "demo_duplicated",
+        projectId: project.id,
+        payload: { demoId: activeDemo.id, version: activeDemo.version },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo duplicar la demo.";
+      window.alert(message);
+    }
+  };
+
+  const createProjectFromScratch = () => {
+    setActiveDemoId(null);
+    setRoute("home");
+  };
+
+  const returnToDemoGallery = () => {
+    setActiveDemoId(null);
+    setRoute("demos");
+  };
+
   const runAuthAction = async (action: () => Promise<User>) => {
     setAuthBusy(true);
     setAuthError("");
@@ -786,7 +957,10 @@ export default function App() {
       setActiveClientId(clientId);
       setAuthIntent(false);
       setLandingSeen(true);
-      setRoute("home");
+      const requestedDemo = pendingDemoId ? getDemoDefinition(pendingDemoId) : undefined;
+      setPendingDemoId(null);
+      if (requestedDemo) openDemo(requestedDemo);
+      else setRoute("home");
     } catch (error) {
       setAuthError(mapFirebaseError(error));
     } finally {
@@ -821,6 +995,8 @@ export default function App() {
       setLandingSeen(false);
       setProjects([]);
       setActiveProjectId("");
+      setActiveDemoId(null);
+      setPendingDemoId(null);
       setAuthError("");
     } catch (error) {
       setAuthError(mapFirebaseError(error));
@@ -891,6 +1067,7 @@ export default function App() {
     markProjectLocallyDirty(created.id);
     setProjects((prev) => [created, ...normalizeProjectRecords(prev)]);
     setActiveProjectId(created.id);
+    setActiveDemoId(null);
     setRoute("workspace");
     setNewProjectName("");
     setNewProjectClient("");
@@ -999,10 +1176,15 @@ export default function App() {
       payload: {from: "home"},
     });
     setActiveProjectId(projectId);
+    setActiveDemoId(null);
     setRoute("workspace");
   };
 
   const handleResetActiveProject = () => {
+    if (isDemoWorkspace) {
+      resetActiveDemo();
+      return;
+    }
     if (!activeProjectId) return;
     const shouldReset = window.confirm("Se limpiará todo el proyecto activo y se eliminarán los datos guardados. ¿Deseas continuar?");
     if (!shouldReset) return;
@@ -1040,6 +1222,10 @@ export default function App() {
     setTourTargetRect(null);
   };
   const openOnboarding = () => {
+    if (isDemoWorkspace) {
+      setDemoTourRestartToken((value) => value + 1);
+      return;
+    }
     setTourOpen(true);
     setTourStepIndex(0);
   };
@@ -1162,14 +1348,14 @@ export default function App() {
       const img = canvas.toDataURL("image/png");
       pdf.addImage(img, "PNG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
 
-      const fallbackName = activeProject?.name?.trim() || "propuesta";
-      const explicitName = activeProject ? readProjectBaseMetadata(activeProject.id).projectName.trim() : "";
+      const fallbackName = workspaceProject?.name?.trim() || "propuesta";
+      const explicitName = workspaceProjectId ? readProjectBaseMetadata(workspaceProjectId).projectName.trim() : "";
       const rawName = explicitName || fallbackName;
       const safeName = rawName.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "propuesta";
       pdf.save(`${safeName}.pdf`);
       trackLocalProductEvent({
         name: "proposal.exported",
-        projectId: activeProjectId,
+        projectId: workspaceProjectId,
         payload: {sectionCount: docNodes.length, missingCount: missing.length},
       });
     } catch (error) {
@@ -1185,7 +1371,7 @@ export default function App() {
 
   useEffect(() => {
     if (!FIRESTORE_SMOKE_ENABLED) return;
-    if (!activeProjectId || route === "branding") return;
+    if (!activeProjectId || route !== "workspace") return;
     const timer = window.setTimeout(() => {
       const baseMeta = readProjectBaseMetadata(activeProjectId);
       const checkedToolIds = tools.filter((tool) => tool.checked).map((tool) => tool.id);
@@ -1224,6 +1410,7 @@ export default function App() {
         error={authError}
         onBackLanding={() => {
           setAuthIntent(false);
+          setPendingDemoId(null);
           setRoute("landing");
         }}
         onLoginWithEmail={handleLoginWithEmail}
@@ -1242,10 +1429,12 @@ export default function App() {
         hasProjects={normalizedProjects.length > 0}
         canContinueWorkspace={!!authUser && !!activeProject}
         openAuth={() => {
+          setPendingDemoId(null);
           setAuthIntent(true);
           setLandingSeen(true);
           setRoute("auth");
         }}
+        openDemo={openLandingDemo}
         continueWorkspace={() => {
           setLandingSeen(true);
           setRoute("workspace");
@@ -1276,7 +1465,19 @@ export default function App() {
     );
   }
 
-  if (route === "home" || !activeProject) {
+  if (route === "demos") {
+    return (
+      <DemoGallery
+        definitions={DEMO_DEFINITIONS}
+        onOpenDemo={openDemo}
+        onBackHome={() => setRoute("home")}
+        darkMode={darkMode}
+        themeVars={themeVars}
+      />
+    );
+  }
+
+  if (route === "home" || (route === "workspace" && !activeProject) || (route === "demo" && !activeDemo)) {
     return (
       <HomeView
         darkMode={darkMode}
@@ -1308,11 +1509,12 @@ export default function App() {
         normalizedProjects={normalizedProjects}
         totalsByTrack={totalsByTrack}
         projectsWithMetrics={projectsWithMetrics}
+        demoDefinitions={DEMO_DEFINITIONS}
         openDemoHub={() => {
           trackLocalProductEvent({name: "landing.cta_clicked", payload: {source: "home_demo_hub"}});
-          setLandingSeen(true);
-          setRoute("landing");
+          setRoute("demos");
         }}
+        openDemo={openDemo}
         openBrandSettings={() => {
           trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "dashboard"}});
           setRoute("branding");
@@ -1322,6 +1524,14 @@ export default function App() {
         toggleArchiveProject={toggleArchiveProject}
         handleDeleteProject={handleDeleteProject}
       />
+    );
+  }
+
+  if (!workspaceProject || !workspaceProjectId) {
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", background: UI.bg, color: UI.textMuted}}>
+        Preparando el espacio de trabajo…
+      </div>
     );
   }
 
@@ -1481,8 +1691,11 @@ export default function App() {
         }
       `}</style>
       <WorkspaceSidebar
-        activeProject={activeProject}
-        activeProjectId={activeProjectId}
+        activeProject={workspaceProject}
+        activeProjectId={workspaceProjectId}
+        isDemo={isDemoWorkspace}
+        demoStatusLabel={activeDemo?.displayStatus}
+        onBackToDemos={returnToDemoGallery}
         enabledTrackOrder={enabledTrackOrder}
         workspaceTrack={workspaceTrack}
         setWorkspaceTrack={setWorkspaceTrack}
@@ -1513,21 +1726,36 @@ export default function App() {
         saveState={activeSaveState}
         onRetrySave={retryActiveProjectSave}
         activeTrackTools={activeTrackTools}
-        activeProjectId={activeProjectId}
-        activeProject={activeProject}
+        renderedTools={isDemoWorkspace ? demoRenderedTools : undefined}
+        activeProjectId={workspaceProjectId}
+        activeProject={workspaceProject}
         projectResetToken={projectResetToken}
         printTool={printTool}
         current={current}
       />
 
-      <OnboardingTour
-        tourOpen={tourOpen}
-        closeTour={closeTour}
-        tourTargetRect={tourTargetRect}
-        tourStepIndex={tourStepIndex}
-        goPrevTourStep={goPrevTourStep}
-        goNextTourStep={goNextTourStep}
-      />
+      {!isDemoWorkspace && (
+        <OnboardingTour
+          tourOpen={tourOpen}
+          closeTour={closeTour}
+          tourTargetRect={tourTargetRect}
+          tourStepIndex={tourStepIndex}
+          goPrevTourStep={goPrevTourStep}
+          goNextTourStep={goNextTourStep}
+        />
+      )}
+      {isDemoWorkspace && activeDemo && (
+        <DemoTour
+          definition={activeDemo}
+          restartToken={demoTourRestartToken}
+          onActivateTool={activateDemoTourStep}
+          onStepCompleted={trackDemoStepCompleted}
+          onCompleted={trackDemoCompleted}
+          onDuplicate={duplicateActiveDemo}
+          onCreateFromScratch={createProjectFromScratch}
+          onBackToDemos={returnToDemoGallery}
+        />
+      )}
     </div>
   );
 }

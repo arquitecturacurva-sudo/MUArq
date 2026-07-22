@@ -8,6 +8,7 @@ type LandingViewProps = {
   hasProjects: boolean;
   canContinueWorkspace: boolean;
   openAuth: () => void;
+  openDemo: (demoId: string) => void;
   continueWorkspace: () => void;
 };
 
@@ -83,6 +84,7 @@ export default function LandingView({
   hasProjects,
   canContinueWorkspace,
   openAuth,
+  openDemo: requestDemo,
   continueWorkspace,
 }: LandingViewProps) {
   const titleColor = darkMode ? "#F4F7FB" : DK;
@@ -99,7 +101,7 @@ export default function LandingView({
 
   const openDemo = (demoId: string) => {
     trackLocalProductEvent({name: "landing.demo_clicked", payload: {demoId}});
-    openAuth();
+    requestDemo(demoId);
   };
 
   return (
