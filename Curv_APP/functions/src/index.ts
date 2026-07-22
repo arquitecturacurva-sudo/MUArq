@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
-admin.initializeApp();
+if (!admin.apps.length) admin.initializeApp();
 
 const BASE_LIMITS = { editorsLimit: 3, viewersLimit: 25 };
 
@@ -83,3 +83,5 @@ export const onUserCreate = functions
 
     await batch.commit();
   });
+
+export { deleteBrandLogo, getBrandLogo, upsertBrandLogo } from "./branding/logoHandlers.js";

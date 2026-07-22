@@ -1,0 +1,24 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(clientId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/clients/$(clientId)/members/$(request.auth.uid));
+    }
+
+    match /clients/{clientId}/branding/logo/{filename} {
+      allow read: if isMember(clientId);
+      // Logo mutations only pass through authenticated callable functions.
+      allow create, update, delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

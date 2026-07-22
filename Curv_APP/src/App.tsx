@@ -3,6 +3,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import type { User } from "firebase/auth";
 import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
+import { BrandSettingsView } from "./features/branding/BrandSettingsView";
 import AuthView from "./features/layout/AuthView";
 import LandingView from "./features/layout/LandingView";
 import HomeView from "./features/layout/HomeView";
@@ -47,7 +48,6 @@ import {
   readStorage,
   readProjectBaseMetadata,
   setActiveStorageProjectId,
-  shouldHydrateRemoteSnapshot,
   trackLocalProductEvent,
   usePersistentState,
   writeProjectBaseMetadata,
@@ -62,7 +62,26 @@ import {
 } from "./lib/auth/authService";
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
 import { createCheckout } from "./lib/billing/billingService";
-import { importLocalProjectsOnce, listProjectSnapshotsByClient, tombstoneProjectByClient, upsertProjectByClient } from "./lib/persistence/clientProjects";
+import {
+  importLocalProjectsOnce,
+  listProjectSyncEntriesByClient,
+  tombstoneProjectByClient,
+  upsertProjectByClient,
+} from "./lib/persistence/clientProjects";
+import {
+  decideRemoteSnapshotHydration,
+  getProjectSnapshotFingerprint,
+} from "./features/runtime/storage/projectSnapshot";
+import {
+  clearProjectSyncError,
+  clearProjectSyncState,
+  markProjectCloudSaved,
+  markProjectDirty,
+  markProjectHydrated,
+  markProjectSyncError,
+  readProjectSyncState,
+  type ProjectSaveStatus,
+} from "./features/runtime/storage/projectSyncState";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
@@ -73,6 +92,7 @@ const FIRESTORE_SMOKE_ENABLED = (
   import.meta.env.VITE_FIREBASE_API_KEY !== "xxx"
 );
 const DELETED_PROJECT_IDS_KEY = "app.deletedProjectIds.v1";
+type AppRoute = "landing" | "auth" | "home" | "workspace" | "branding";
 
 const isStringArray = (value: unknown): value is string[] => (
   Array.isArray(value) && value.every((item) => typeof item === "string")
@@ -91,10 +111,10 @@ export default function App() {
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<ClientPlan | null>(null);
   const [projects,setProjects]=usePersistentState<ProjectRecord[]>("app.projects",[],isProjectRecordArray);
   const [activeProjectId,setActiveProjectId]=usePersistentState("app.activeProjectId","",isString);
-  const [route,setRoute]=usePersistentState<"landing"|"auth"|"home"|"workspace">(
+  const [route,setRoute]=usePersistentState<AppRoute>(
     "app.route",
     "landing",
-    (value): value is "landing" | "auth" | "home" | "workspace" => value === "landing" || value === "auth" || value === "home" || value === "workspace"
+    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "branding"
   );
   const [,setLandingSeen]=usePersistentState("app.landingSeen", false, (value): value is boolean => typeof value === "boolean");
   const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
@@ -112,6 +132,9 @@ export default function App() {
   const [projectResetToken,setProjectResetToken]=useState(0);
   const [hasSavedData,setHasSavedData]=useState(() => (activeProjectId ? hasSavedProjectData(activeProjectId) : false));
   const [storageTick,setStorageTick]=useState(0);
+  const [syncTick,setSyncTick]=useState(0);
+  const [online,setOnline]=useState(() => typeof navigator === "undefined" || navigator.onLine);
+  const [savingProjectIds,setSavingProjectIds]=useState<Set<string>>(() => new Set());
   const [newProjectName,setNewProjectName]=useState("");
   const [newProjectClient,setNewProjectClient]=useState("");
   const [newProjectCode,setNewProjectCode]=useState("");
@@ -229,6 +252,10 @@ export default function App() {
   const bootstrappedRef = React.useRef(false);
   const cloudHydratedRef = React.useRef(false);
   const forceLandingOnBootRef = React.useRef(false);
+  const suppressDirtyEventsRef = React.useRef(false);
+  const storageScanQueuedRef = React.useRef(false);
+  const projectFingerprintsRef = React.useRef<Map<string, string>>(new Map());
+  const savingProjectIdsRef = React.useRef<Set<string>>(new Set());
 
   const readDeletedProjectIds = useCallback(() => (
     new Set(readStorage<string[]>(DELETED_PROJECT_IDS_KEY, [], isStringArray))
@@ -241,6 +268,23 @@ export default function App() {
     deletedProjectIds.add(trimmedProjectId);
     writeStorage(DELETED_PROJECT_IDS_KEY, Array.from(deletedProjectIds).sort());
   }, [readDeletedProjectIds]);
+
+  const rememberProjectFingerprint = useCallback((projectId: string) => {
+    const trimmedProjectId = projectId.trim();
+    if (!trimmedProjectId) return;
+    projectFingerprintsRef.current.set(
+      trimmedProjectId,
+      getProjectSnapshotFingerprint(collectProjectSnapshot(trimmedProjectId, activeClientId))
+    );
+  }, [activeClientId]);
+
+  const markProjectLocallyDirty = useCallback((projectId: string) => {
+    const trimmedProjectId = projectId.trim();
+    if (!trimmedProjectId) return;
+    markProjectDirty(trimmedProjectId, nowIso());
+    rememberProjectFingerprint(trimmedProjectId);
+    setSyncTick((value) => value + 1);
+  }, [rememberProjectFingerprint]);
 
   const mapFirebaseError = (error: unknown) => {
     const raw = error instanceof Error ? error.message : String(error || "Error inesperado");
@@ -367,18 +411,45 @@ export default function App() {
   }, [enabledTrackOrder, setWorkspaceTrack, workspaceTrack]);
 
   useEffect(() => {
-    const syncSavedFlag = () => {
+    const updateOnlineState = () => setOnline(navigator.onLine);
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const scanActiveProject = () => {
       setHasSavedData(activeProjectId ? hasSavedProjectData(activeProjectId) : false);
       setStorageTick((n) => n + 1);
+      if (!activeProjectId) return;
+      const fingerprint = getProjectSnapshotFingerprint(
+        collectProjectSnapshot(activeProjectId, activeClientId)
+      );
+      const previous = projectFingerprintsRef.current.get(activeProjectId);
+      projectFingerprintsRef.current.set(activeProjectId, fingerprint);
+      if (suppressDirtyEventsRef.current || previous === undefined || previous === fingerprint) return;
+      markProjectDirty(activeProjectId, nowIso());
+      setSyncTick((value) => value + 1);
     };
-    syncSavedFlag();
-    window.addEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
-    window.addEventListener("storage", syncSavedFlag);
+    const scheduleScan = () => {
+      if (storageScanQueuedRef.current) return;
+      storageScanQueuedRef.current = true;
+      queueMicrotask(() => {
+        storageScanQueuedRef.current = false;
+        scanActiveProject();
+      });
+    };
+    scanActiveProject();
+    window.addEventListener(PROJECT_STORAGE_EVENT, scheduleScan);
+    window.addEventListener("storage", scheduleScan);
     return () => {
-      window.removeEventListener(PROJECT_STORAGE_EVENT, syncSavedFlag);
-      window.removeEventListener("storage", syncSavedFlag);
+      window.removeEventListener(PROJECT_STORAGE_EVENT, scheduleScan);
+      window.removeEventListener("storage", scheduleScan);
     };
-  }, [activeProjectId]);
+  }, [activeClientId, activeProjectId]);
 
   useEffect(() => {
     if (!activeProjectId) return;
@@ -416,35 +487,111 @@ export default function App() {
           readBaseMetaByProjectId: (projectId) => readProjectBaseMetadata(projectId),
           readSnapshotByProjectId: (projectId, clientId) => collectProjectSnapshot(projectId, clientId),
         });
-        const cloudSnapshots = await listProjectSnapshotsByClient(activeClientId);
+        const cloudEntries = await listProjectSyncEntriesByClient(activeClientId);
         if (cancelled) return;
         const deletedProjectIds = readDeletedProjectIds();
-        cloudSnapshots.forEach(({project, baseMeta, snapshot}) => {
+        const mergedProjects = new Map(
+          localProjects
+            .filter((project) => !deletedProjectIds.has(project.id))
+            .map((project) => [project.id, project])
+        );
+        const remoteProjectIds = new Set<string>();
+
+        cloudEntries.forEach((entry) => {
+          if (entry.kind === "deleted") {
+            const localSync = readProjectSyncState(entry.projectId);
+            if (localSync.dirty) {
+              markProjectSyncError(
+                entry.projectId,
+                "El proyecto fue eliminado en otro dispositivo. Revisa la copia local antes de reintentar."
+              );
+              return;
+            }
+            if (mergedProjects.has(entry.projectId)) {
+              clearProjectStorage(entry.projectId);
+              clearProjectSyncState(entry.projectId);
+              projectFingerprintsRef.current.delete(entry.projectId);
+              mergedProjects.delete(entry.projectId);
+            }
+            return;
+          }
+
+          const { project, baseMeta, snapshot, revision } = entry.hydration;
           if (deletedProjectIds.has(project.id)) return;
-          writeProjectBaseMetadata(baseMeta, project.id);
-          if (!snapshot) return;
+          remoteProjectIds.add(project.id);
+          const localProject = mergedProjects.get(project.id);
+          const localSync = readProjectSyncState(project.id);
           const localUpdatedAt = readStorage<string>(
             PROJECT_SNAPSHOT_UPDATED_AT_KEY,
-            "",
+            localSync.updatedAt,
             isString,
             project.id
           );
-          if (shouldHydrateRemoteSnapshot(localUpdatedAt, snapshot.updatedAt)) {
-            hydrateProjectSnapshot(project.id, snapshot);
+
+          if (!snapshot) {
+            if (!localSync.dirty && !hasSavedProjectData(project.id)) {
+              writeProjectBaseMetadata(baseMeta, project.id);
+              markProjectHydrated(project.id, revision, project.updatedAt);
+              rememberProjectFingerprint(project.id);
+              mergedProjects.set(project.id, project);
+            } else if (!localProject) {
+              mergedProjects.set(project.id, project);
+            }
+            return;
+          }
+
+          const localSnapshot = {
+            ...collectProjectSnapshot(project.id, activeClientId),
+            revision: localSync.cloudRevision,
+            updatedAt: localSync.updatedAt || localUpdatedAt,
+          };
+          const decision = decideRemoteSnapshotHydration({
+            localSnapshot,
+            remoteSnapshot: snapshot,
+            localDirty: localSync.dirty,
+            localCloudRevision: localSync.cloudRevision,
+            localUpdatedAt,
+            hasLocalData: Boolean(localProject) || hasSavedProjectData(project.id),
+          });
+
+          if (decision === "hydrate") {
+            suppressDirtyEventsRef.current = true;
+            try {
+              clearProjectStorage(project.id);
+              hydrateProjectSnapshot(project.id, snapshot);
+            } finally {
+              suppressDirtyEventsRef.current = false;
+            }
+            markProjectHydrated(project.id, revision, snapshot.updatedAt);
+            projectFingerprintsRef.current.set(project.id, getProjectSnapshotFingerprint(snapshot));
+            mergedProjects.set(project.id, project);
+          } else if (decision === "same") {
+            markProjectHydrated(project.id, revision, snapshot.updatedAt);
+            projectFingerprintsRef.current.set(project.id, getProjectSnapshotFingerprint(localSnapshot));
+            mergedProjects.set(project.id, project);
+          } else if (decision === "conflict") {
+            markProjectSyncError(
+              project.id,
+              "Hay dos copias diferentes con la misma revision. Se conservo la copia local."
+            );
           }
         });
-        const cloudProjects = normalizeProjectRecords(
-          cloudSnapshots
-            .map(({project}) => project)
-            .filter((project) => !deletedProjectIds.has(project.id))
-        );
-        setProjects(cloudProjects);
-        if (!cloudProjects.length) {
-          setActiveProjectId("");
-        } else if (!cloudProjects.some((project) => project.id === activeProjectId)) {
-          setActiveProjectId(cloudProjects[0].id);
-        }
+
+        mergedProjects.forEach((project) => {
+          if (remoteProjectIds.has(project.id) || readProjectSyncState(project.id).dirty) return;
+          markProjectDirty(project.id, project.updatedAt || nowIso());
+          rememberProjectFingerprint(project.id);
+        });
+
+        const nextProjects = normalizeProjectRecords(Array.from(mergedProjects.values()));
+        setProjects(nextProjects);
+        setActiveProjectId((currentProjectId) => (
+          nextProjects.some((project) => project.id === currentProjectId)
+            ? currentProjectId
+            : nextProjects[0]?.id || ""
+        ));
         cloudHydratedRef.current = true;
+        setSyncTick((value) => value + 1);
       } catch (error) {
         if (cancelled) return;
         console.warn("[client-projects] hydrate failed", error);
@@ -454,7 +601,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [activeClientId, activeProjectId, authUser, readDeletedProjectIds, setActiveProjectId, setProjects]);
+  }, [activeClientId, authUser, readDeletedProjectIds, rememberProjectFingerprint, setActiveProjectId, setProjects]);
 
   useEffect(() => {
     if (!authUser || !activeClientId) return;
@@ -479,24 +626,75 @@ export default function App() {
   }, [activeClientId, authUser, billingRefreshTick]);
 
   useEffect(() => {
-    if (!authUser || !activeClientId || !cloudHydratedRef.current) return;
+    if (!authUser || !activeClientId || !cloudHydratedRef.current || !online) return;
+    const dirtyProjects = normalizedProjects.filter((project) => {
+      const syncState = readProjectSyncState(project.id);
+      return syncState.dirty && !syncState.lastError && !savingProjectIdsRef.current.has(project.id);
+    });
+    if (!dirtyProjects.length) return;
     const timer = window.setTimeout(() => {
-      Promise.all(
-        normalizedProjects.map((project) =>
-          upsertProjectByClient(
+      dirtyProjects.forEach((project) => {
+        if (savingProjectIdsRef.current.has(project.id)) return;
+        const syncState = readProjectSyncState(project.id);
+        if (!syncState.dirty || syncState.lastError) return;
+        savingProjectIdsRef.current.add(project.id);
+        setSavingProjectIds(new Set(savingProjectIdsRef.current));
+        const snapshot = {
+          ...collectProjectSnapshot(project.id, activeClientId),
+          revision: syncState.cloudRevision,
+          updatedAt: syncState.updatedAt || project.updatedAt,
+        };
+        void upsertProjectByClient(
             activeClientId,
             project,
             readProjectBaseMetadata(project.id),
             authUser.uid,
-            collectProjectSnapshot(project.id, activeClientId)
-          )
-        )
-      ).catch((error) => {
-        console.warn("[client-projects] sync failed", error);
+            snapshot,
+            syncState.cloudRevision
+          ).then((commit) => {
+            markProjectCloudSaved(
+              project.id,
+              syncState.localRevision,
+              commit.revision,
+              commit.updatedAt
+            );
+            rememberProjectFingerprint(project.id);
+          }).catch((error) => {
+            const message = error instanceof Error ? error.message : "No se pudo guardar en la nube.";
+            markProjectSyncError(project.id, message);
+            console.warn("[client-projects] sync failed", error);
+          }).finally(() => {
+            savingProjectIdsRef.current.delete(project.id);
+            setSavingProjectIds(new Set(savingProjectIdsRef.current));
+            setSyncTick((value) => value + 1);
+          });
       });
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [activeClientId, authUser, normalizedProjects, storageTick]);
+  }, [activeClientId, authUser, normalizedProjects, online, rememberProjectFingerprint, syncTick]);
+
+  const activeProjectSyncState = readProjectSyncState(activeProjectId);
+  const activeSaveState: { status: ProjectSaveStatus; label: string; detail: string } = (() => {
+    if (savingProjectIds.has(activeProjectId)) {
+      return { status: "saving", label: "Guardando...", detail: "Enviando cambios a la nube." };
+    }
+    if (activeProjectSyncState.lastError) {
+      return { status: "error", label: "Error al guardar", detail: activeProjectSyncState.lastError };
+    }
+    if (authUser && activeClientId && !online) {
+      return { status: "offline", label: "Sin conexion", detail: "Los cambios estan guardados en este dispositivo." };
+    }
+    if (authUser && activeClientId && !activeProjectSyncState.dirty && activeProjectSyncState.cloudUpdatedAt) {
+      return { status: "saved_cloud", label: "Guardado en la nube", detail: "La nube tiene la ultima version." };
+    }
+    return { status: "saved_local", label: "Guardado local", detail: "Los cambios estan seguros en este dispositivo." };
+  })();
+
+  const retryActiveProjectSave = useCallback(() => {
+    if (!activeProjectId) return;
+    clearProjectSyncError(activeProjectId);
+    setSyncTick((value) => value + 1);
+  }, [activeProjectId]);
 
   useEffect(() => {
     if (!FIRESTORE_SMOKE_ENABLED) return;
@@ -690,6 +888,7 @@ export default function App() {
       },
       created.id
     );
+    markProjectLocallyDirty(created.id);
     setProjects((prev) => [created, ...normalizeProjectRecords(prev)]);
     setActiveProjectId(created.id);
     setRoute("workspace");
@@ -718,6 +917,7 @@ export default function App() {
     if (typeof patch.name === "string") basePatch.projectName = patch.name.trim();
     if (typeof patch.location === "string") basePatch.location = patch.location.trim();
     if (Object.keys(basePatch).length) writeProjectBaseMetadata(basePatch, projectId);
+    markProjectLocallyDirty(projectId);
   };
 
   const handleEditProject = (project: ProjectRecord) => {
@@ -747,18 +947,42 @@ export default function App() {
     updateProject(project.id, {archived: !project.archived});
   };
 
-  const handleDeleteProject = (project: ProjectRecord) => {
+  const handleDeleteProject = async (project: ProjectRecord) => {
     const projectName = readProjectBaseMetadata(project.id).projectName.trim() || project.name;
     const shouldDelete = window.confirm(`Se eliminará el proyecto "${projectName}" y sus datos guardados. ¿Deseas continuar?`);
     if (!shouldDelete) return;
 
-    clearProjectStorage(project.id);
-    markProjectDeletedLocally(project.id);
     if (authUser && activeClientId) {
-      tombstoneProjectByClient(activeClientId, project.id, authUser.uid).catch((error) => {
+      if (!navigator.onLine) {
+        window.alert("No se puede confirmar la eliminacion sin conexion. El proyecto sigue disponible localmente.");
+        return;
+      }
+      const syncState = readProjectSyncState(project.id);
+      savingProjectIdsRef.current.add(project.id);
+      setSavingProjectIds(new Set(savingProjectIdsRef.current));
+      try {
+        await tombstoneProjectByClient(
+          activeClientId,
+          project.id,
+          authUser.uid,
+          syncState.cloudRevision
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "No se pudo eliminar el proyecto en la nube.";
+        markProjectSyncError(project.id, message);
         console.warn("[client-projects] delete failed", error);
-      });
+        setSyncTick((value) => value + 1);
+        window.alert(`${message} El proyecto no fue eliminado localmente.`);
+        return;
+      } finally {
+        savingProjectIdsRef.current.delete(project.id);
+        setSavingProjectIds(new Set(savingProjectIdsRef.current));
+      }
     }
+    clearProjectStorage(project.id);
+    clearProjectSyncState(project.id);
+    projectFingerprintsRef.current.delete(project.id);
+    markProjectDeletedLocally(project.id);
     const remaining = normalizeProjectRecords(projects).filter((item) => item.id !== project.id);
     setProjects(remaining);
 
@@ -790,6 +1014,7 @@ export default function App() {
     setTourTargetRect(null);
     setProjectResetToken((n) => n + 1);
     setHasSavedData(false);
+    markProjectLocallyDirty(activeProjectId);
   };
   const shouldShowAutoTour = route==="workspace" && !!activeProject && !hasSavedData && !onboardingSeen;
   useEffect(() => {
@@ -960,7 +1185,7 @@ export default function App() {
 
   useEffect(() => {
     if (!FIRESTORE_SMOKE_ENABLED) return;
-    if (!activeProjectId) return;
+    if (!activeProjectId || route === "branding") return;
     const timer = window.setTimeout(() => {
       const baseMeta = readProjectBaseMetadata(activeProjectId);
       const checkedToolIds = tools.filter((tool) => tool.checked).map((tool) => tool.id);
@@ -1029,6 +1254,28 @@ export default function App() {
     );
   }
 
+  if (route === "branding") {
+    if (!activeClientId) {
+      return (
+        <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", background: UI.bg, color: UI.textMuted}}>
+          Preparando la identidad del estudio…
+        </div>
+      );
+    }
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={themeVars}>
+        <BrandSettingsView
+          key={activeClientId}
+          clientId={activeClientId}
+          ownerUid={authUser.uid}
+          userDisplayName={authUser.displayName || undefined}
+          userEmail={authUser.email || undefined}
+          onBack={() => setRoute("home")}
+        />
+      </div>
+    );
+  }
+
   if (route === "home" || !activeProject) {
     return (
       <HomeView
@@ -1065,6 +1312,10 @@ export default function App() {
           trackLocalProductEvent({name: "landing.cta_clicked", payload: {source: "home_demo_hub"}});
           setLandingSeen(true);
           setRoute("landing");
+        }}
+        openBrandSettings={() => {
+          trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "dashboard"}});
+          setRoute("branding");
         }}
         openProject={openProject}
         handleEditProject={handleEditProject}
@@ -1235,7 +1486,12 @@ export default function App() {
         enabledTrackOrder={enabledTrackOrder}
         workspaceTrack={workspaceTrack}
         setWorkspaceTrack={setWorkspaceTrack}
-        setRoute={(nextRoute: "home" | "workspace") => setRoute(nextRoute)}
+        setRoute={(nextRoute: "home" | "workspace" | "branding") => {
+          if (nextRoute === "branding") {
+            trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "workspace"}});
+          }
+          setRoute(nextRoute);
+        }}
         onLogout={handleLogout}
         activeTrackTools={activeTrackTools}
         active={active}
@@ -1254,6 +1510,8 @@ export default function App() {
         tools={tools}
         active={active}
         hasSavedData={hasSavedData}
+        saveState={activeSaveState}
+        onRetrySave={retryActiveProjectSave}
         activeTrackTools={activeTrackTools}
         activeProjectId={activeProjectId}
         activeProject={activeProject}

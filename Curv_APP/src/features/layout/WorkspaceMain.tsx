@@ -1,5 +1,6 @@
 import React from "react";
 import InfoBubble from "../ui/InfoBubble";
+import type { ProjectSaveStatus } from "../runtime/storage/projectSyncState";
 import {
   G,
   IconCalc,
@@ -24,6 +25,8 @@ type WorkspaceMainProps = {
   tools: WorkspaceTool[];
   active: string;
   hasSavedData: boolean;
+  saveState: { status: ProjectSaveStatus; label: string; detail: string };
+  onRetrySave: () => void;
   activeTrackTools: WorkspaceTool[];
   activeProjectId: string;
   activeProject: ProjectRecord;
@@ -39,6 +42,8 @@ export default function WorkspaceMain({
   tools,
   active,
   hasSavedData,
+  saveState,
+  onRetrySave,
   activeTrackTools,
   activeProjectId,
   activeProject,
@@ -63,6 +68,13 @@ export default function WorkspaceMain({
   }, [active, activeProjectId, hasSavedData]);
 
   const included = tools.find((tool) => tool.id === active)?.checked;
+  const saveDotColor: Record<ProjectSaveStatus, string> = {
+    saving: "var(--ui-warning,#B8831B)",
+    saved_local: "var(--ui-info,#3F6F9E)",
+    saved_cloud: "var(--ui-saved-dot,#5A8F22)",
+    offline: "var(--ui-warning,#B8831B)",
+    error: "var(--ui-danger,#B55345)",
+  };
 
   return (
     <div data-workspace-main style={{flex: 1, overflowY: "auto", padding: "18px 24px 24px", background: UI.bg}}>
@@ -101,11 +113,25 @@ export default function WorkspaceMain({
               <div style={{width: 8, height: 8, borderRadius: "50%", background: included ? G : "var(--ui-muted-dot,#9AA3AE)"}}/>
               <span style={{fontSize: 9, color: UI.textMuted, fontWeight: 800}}>{included ? "Incluida en propuesta" : "No incluida"}</span>
             </div>
-            <div data-tour-id="saved-state" style={{display: "flex", alignItems: "center", gap: 6, padding: "5px 9px", borderRadius: 999, border: "1px solid var(--ui-saved-border,#D6C299)", background: "var(--ui-saved-bg,#FBF7EF)"}}>
-              <div style={{width: 7, height: 7, borderRadius: "50%", background: hasSavedData ? "var(--ui-saved-dot,#5A8F22)" : "var(--ui-muted-dot,#9AA3AE)"}}/>
-              <span style={{fontSize: 9, color: hasSavedData ? "var(--ui-saved-text,#70562A)" : "var(--ui-chip-text,#8A8A8A)", fontWeight: 800}}>
-                {hasSavedData ? "Datos guardados" : "Sin datos guardados"}
+            <div
+              data-tour-id="saved-state"
+              aria-live="polite"
+              title={saveState.detail}
+              style={{display: "flex", alignItems: "center", gap: 6, padding: "5px 9px", borderRadius: 999, border: "1px solid var(--ui-saved-border,#D6C299)", background: "var(--ui-saved-bg,#FBF7EF)"}}
+            >
+              <div style={{width: 7, height: 7, borderRadius: "50%", background: saveDotColor[saveState.status]}}/>
+              <span style={{fontSize: 9, color: "var(--ui-saved-text,#70562A)", fontWeight: 800}}>
+                {saveState.label}
               </span>
+              {(saveState.status === "error" || saveState.status === "offline") && (
+                <button
+                  type="button"
+                  onClick={onRetrySave}
+                  style={{border: 0, padding: 0, background: "transparent", color: "inherit", fontSize: 9, fontWeight: 900, textDecoration: "underline", cursor: "pointer"}}
+                >
+                  Reintentar
+                </button>
+              )}
             </div>
           </div>
         </div>

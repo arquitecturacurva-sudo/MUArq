@@ -89,6 +89,7 @@ type HomeViewProps = {
   totalsByTrack: Record<TrackId, Record<TrackState, number>>;
   projectsWithMetrics: ProjectWithMetrics[];
   openDemoHub: () => void;
+  openBrandSettings: () => void;
   openProject: (projectId: string) => void;
   handleEditProject: (project: ProjectRecord) => void;
   toggleArchiveProject: (project: ProjectRecord) => void;
@@ -127,6 +128,7 @@ export default function HomeView({
   totalsByTrack,
   projectsWithMetrics,
   openDemoHub,
+  openBrandSettings,
   openProject,
   handleEditProject,
   toggleArchiveProject,
@@ -193,6 +195,7 @@ export default function HomeView({
           <div data-home-actions style={{display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end"}}>
             <Btn onClick={createProject}>Nuevo proyecto</Btn>
             <Btn v="ol" onClick={openDemoHub}>Abrir demos</Btn>
+            <Btn v="ol" onClick={openBrandSettings}>Identidad del estudio</Btn>
             {onLogout && <Btn v="ol" onClick={onLogout}>Cerrar sesión</Btn>}
             <Btn v="ol" onClick={() => setDarkMode((v) => !v)}>{darkMode ? "Modo claro" : "Modo oscuro"}</Btn>
           </div>

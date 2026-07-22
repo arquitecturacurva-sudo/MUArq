@@ -10,6 +10,11 @@ import {
   writeProjectBaseMetadata,
   writeStorage,
 } from "./runtime";
+import {
+  decideRemoteSnapshotHydration,
+  getProjectSnapshotFingerprint,
+  type ProjectSnapshot,
+} from "./storage/projectSnapshot";
 
 class MemoryStorage {
   private values = new Map<string, string>();
@@ -192,5 +197,57 @@ describe("project snapshot storage", () => {
     writeStorage("cot.cod", "COT-012", "project-a");
 
     expect(readProjectBaseMetadata("project-a").code).toBe("COT-012");
+  });
+
+  it("gates base metadata and tools with the same revision decision", () => {
+    const local: ProjectSnapshot = {
+      projectId: "project-a",
+      clientId: "client-a",
+      version: 1,
+      revision: 2,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      baseMeta: { projectName: "Local" },
+      tools: { "calc.area": 100 },
+    };
+    const remote: ProjectSnapshot = {
+      ...local,
+      revision: 3,
+      updatedAt: "2026-07-09T16:01:00.000Z",
+      baseMeta: { projectName: "Remote" },
+      tools: { "calc.area": 200 },
+    };
+
+    expect(decideRemoteSnapshotHydration({
+      localSnapshot: local,
+      remoteSnapshot: remote,
+      localDirty: false,
+      localCloudRevision: 2,
+      hasLocalData: true,
+    })).toBe("hydrate");
+    expect(decideRemoteSnapshotHydration({
+      localSnapshot: local,
+      remoteSnapshot: remote,
+      localDirty: true,
+      localCloudRevision: 2,
+      hasLocalData: true,
+    })).toBe("keep-local");
+  });
+
+  it("uses a content fingerprint that ignores revision and timestamp", () => {
+    const snapshot: ProjectSnapshot = {
+      projectId: "project-a",
+      clientId: "client-a",
+      version: 1,
+      revision: 1,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      baseMeta: { projectName: "A" },
+      tools: { "calc.area": 100 },
+    };
+    const retimedSnapshot: ProjectSnapshot = {
+      ...snapshot,
+      revision: 99,
+      updatedAt: "2030-01-01T00:00:00.000Z",
+    };
+    expect(getProjectSnapshotFingerprint(snapshot)).toBe(getProjectSnapshotFingerprint(retimedSnapshot));
   });
 });

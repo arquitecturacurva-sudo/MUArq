@@ -31,7 +31,7 @@ type WorkspaceSidebarProps = {
   enabledTrackOrder: TrackId[];
   workspaceTrack: TrackId;
   setWorkspaceTrack: (track: TrackId) => void;
-  setRoute: (route: "home" | "workspace") => void;
+  setRoute: (route: "home" | "workspace" | "branding") => void;
   onLogout: () => void;
   activeTrackTools: SidebarTool[];
   active: string;
@@ -156,6 +156,13 @@ export default function WorkspaceSidebar({
           style={{marginTop: 10, width: "100%", padding: "8px 10px", background: "#111923", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 800, cursor: "pointer"}}
         >
           ← Volver al Home
+        </button>
+        <button
+          type="button"
+          onClick={() => setRoute("branding")}
+          style={{marginTop: 7, width: "100%", padding: "7px 10px", background: "transparent", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 750, cursor: "pointer"}}
+        >
+          Configuración · Identidad
         </button>
         <button
           onClick={onLogout}
@@ -284,6 +291,13 @@ export default function WorkspaceSidebar({
             <path d="M8 2v9M4 7l4 4 4-4"/><line x1="2" y1="14" x2="14" y2="14"/>
           </svg>
           Exportar Propuesta
+        </button>
+        <button
+          type="button"
+          onClick={() => setRoute("branding")}
+          style={{width: "100%", padding: "8px 0", marginTop: 8, background: "#111923", color: "#C3CDD8", border: "1px solid #2B3645", borderRadius: 6, fontSize: 9, fontWeight: 800, cursor: "pointer"}}
+        >
+          Identidad aplicada · Configurar
         </button>
         <div style={{fontSize: 9, color: "#7E8794", textAlign: "center", marginTop: 7, lineHeight: 1.4}}>
           <span style={{color: nChecked > 0 ? G : "#3A3A3A", fontWeight: 700}}>{nChecked}</span>

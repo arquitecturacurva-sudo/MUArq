@@ -3,9 +3,9 @@ import {
   doc,
   getDoc,
   getDocs,
+  runTransaction,
   setDoc,
   updateDoc,
-  writeBatch,
 } from "firebase/firestore";
 import type {
   CommercialStatus,
@@ -52,13 +52,32 @@ type ProjectStorageDoc = ProjectDoc & {
   snapshot?: ProjectSnapshot;
   project?: ProjectRecord;
   deletedAt?: string;
+  deletedByUid?: string;
+  syncRevision?: number;
 };
 
 export type ProjectHydrationSnapshot = {
   project: ProjectRecord;
   baseMeta: ProjectBaseMetadata;
   snapshot?: ProjectSnapshot;
+  revision: number;
 };
+
+export type ProjectSyncEntry =
+  | { kind: "active"; projectId: string; revision: number; hydration: ProjectHydrationSnapshot }
+  | { kind: "deleted"; projectId: string; revision: number; deletedAt: string };
+
+export type ProjectSyncCommit = { revision: number; updatedAt: string };
+
+export class ProjectRevisionConflictError extends Error {
+  readonly remoteRevision: number;
+
+  constructor(remoteRevision: number) {
+    super(`La copia en la nube cambio (revision ${remoteRevision}). Recarga antes de reintentar.`);
+    this.name = "ProjectRevisionConflictError";
+    this.remoteRevision = remoteRevision;
+  }
+}
 
 type ImportLocalProjectsInput = {
   uid: string;
@@ -81,6 +100,19 @@ const getStatus = (value: unknown, fallback: CommercialStatus = "Lead"): Commerc
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   typeof value === "object" && value !== null && !Array.isArray(value)
 );
+
+export const getStoredProjectRevision = (payload: unknown) => {
+  if (!isRecord(payload)) return 0;
+  const topLevelRevision = payload.syncRevision;
+  if (typeof topLevelRevision === "number" && Number.isSafeInteger(topLevelRevision) && topLevelRevision >= 0) {
+    return topLevelRevision;
+  }
+  const snapshot = isRecord(payload.snapshot) ? payload.snapshot : {};
+  const snapshotRevision = snapshot.revision;
+  return typeof snapshotRevision === "number" && Number.isSafeInteger(snapshotRevision) && snapshotRevision >= 0
+    ? snapshotRevision
+    : 0;
+};
 
 export const isProjectTombstoned = (payload: unknown) => (
   isRecord(payload) && typeof payload.deletedAt === "string" && payload.deletedAt.trim().length > 0
@@ -155,10 +187,10 @@ const projectDocToRuntimeProject = (
   if (payload && typeof payload === "object") {
     const data = payload as Record<string, unknown>;
     if ("runtime" in data && data.runtime && typeof data.runtime === "object") {
-      return createProjectRecord(data.runtime as Partial<ProjectRecord>);
+      return createProjectRecord({ ...(data.runtime as Partial<ProjectRecord>), id: projectDoc.id });
     }
     if ("project" in data && data.project && typeof data.project === "object") {
-      return createProjectRecord(data.project as Partial<ProjectRecord>);
+      return createProjectRecord({ ...(data.project as Partial<ProjectRecord>), id: projectDoc.id });
     }
   }
 
@@ -203,15 +235,10 @@ const normalizeProjectSnapshot = (
     ? rawSnapshot.baseMeta as Partial<ProjectBaseMetadata>
     : fallbackBaseMeta;
   return {
-    projectId:
-      typeof rawSnapshot.projectId === "string" && rawSnapshot.projectId.trim()
-        ? rawSnapshot.projectId
-        : projectId,
-    clientId:
-      typeof rawSnapshot.clientId === "string" && rawSnapshot.clientId.trim()
-        ? rawSnapshot.clientId
-        : clientId,
+    projectId,
+    clientId,
     version: 1,
+    revision: getStoredProjectRevision(payload),
     updatedAt:
       typeof rawSnapshot.updatedAt === "string" && rawSnapshot.updatedAt.trim()
         ? rawSnapshot.updatedAt
@@ -237,7 +264,8 @@ const runtimeToProjectDoc = (
   clientId: string,
   ownerUid: string,
   project: ProjectRecord,
-  baseMeta: ProjectBaseMetadata
+  baseMeta: ProjectBaseMetadata,
+  updatedAt = nowIso()
 ): ProjectDoc => ({
   id: project.id,
   clientId,
@@ -249,7 +277,7 @@ const runtimeToProjectDoc = (
   currency: getCurrency(baseMeta.currency, "PEN"),
   status: getStatus(project.commercialStatus, "Lead"),
   createdAt: project.createdAt || nowIso(),
-  updatedAt: nowIso(),
+  updatedAt,
 });
 
 export const createProject = async (clientId: string, input: CreateProjectInput) => {
@@ -310,22 +338,42 @@ export const updateProject = async (
   await updateDoc(projectDocRef(clientId, projectId), payload);
 };
 
-export const listProjectSnapshotsByClient = async (clientId: string): Promise<ProjectHydrationSnapshot[]> => {
+export const listProjectSyncEntriesByClient = async (clientId: string): Promise<ProjectSyncEntry[]> => {
   const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
-  const projects: ProjectHydrationSnapshot[] = [];
+  const projects: ProjectSyncEntry[] = [];
   snapshot.forEach((docSnapshot) => {
     const rawPayload = docSnapshot.data() as ProjectStorageDoc;
-    if (isProjectTombstoned(rawPayload)) return;
+    const revision = getStoredProjectRevision(rawPayload);
+    if (isProjectTombstoned(rawPayload)) {
+      projects.push({
+        kind: "deleted",
+        projectId: docSnapshot.id,
+        revision,
+        deletedAt: rawPayload.deletedAt || "",
+      });
+      return;
+    }
     const canonical = normalizeProjectDoc(clientId, docSnapshot.id, rawPayload);
     if (!canonical) return;
     const baseMeta = projectDocToBaseMeta(canonical, rawPayload);
     projects.push({
-      project: projectDocToRuntimeProject(canonical, rawPayload),
-      baseMeta,
-      snapshot: normalizeProjectSnapshot(clientId, docSnapshot.id, rawPayload, baseMeta),
+      kind: "active",
+      projectId: docSnapshot.id,
+      revision,
+      hydration: {
+        project: projectDocToRuntimeProject(canonical, rawPayload),
+        baseMeta,
+        snapshot: normalizeProjectSnapshot(clientId, docSnapshot.id, rawPayload, baseMeta),
+        revision,
+      },
     });
   });
   return projects;
+};
+
+export const listProjectSnapshotsByClient = async (clientId: string): Promise<ProjectHydrationSnapshot[]> => {
+  const entries = await listProjectSyncEntriesByClient(clientId);
+  return entries.flatMap((entry) => entry.kind === "active" ? [entry.hydration] : []);
 };
 
 export const listProjectsByClient = async (clientId: string) => {
@@ -338,16 +386,41 @@ export const upsertProjectByClient = async (
   project: ProjectRecord,
   baseMeta: ProjectBaseMetadata,
   ownerUid: string,
-  snapshot?: ProjectSnapshot
-) => {
-  const canonical = runtimeToProjectDoc(clientId, ownerUid, project, baseMeta);
-  const payload: ProjectStorageDoc = {
-    ...canonical,
-    runtime: project,
-    baseMeta,
-    ...(snapshot ? { snapshot: { ...snapshot, projectId: project.id, clientId } } : {}),
-  };
-  await setDoc(projectDocRef(clientId, project.id), payload, { merge: true });
+  snapshot?: ProjectSnapshot,
+  expectedRevision?: number
+): Promise<ProjectSyncCommit> => {
+  const db = ensureDb();
+  const ref = projectDocRef(clientId, project.id);
+  return runTransaction(db, async (transaction) => {
+    const currentSnapshot = await transaction.get(ref);
+    const currentPayload = currentSnapshot.exists() ? currentSnapshot.data() : undefined;
+    const currentRevision = getStoredProjectRevision(currentPayload);
+    if (typeof expectedRevision === "number" && currentRevision !== expectedRevision) {
+      throw new ProjectRevisionConflictError(currentRevision);
+    }
+    if (isProjectTombstoned(currentPayload)) throw new ProjectRevisionConflictError(currentRevision);
+
+    const revision = currentRevision + 1;
+    const updatedAt = nowIso();
+    const canonical = runtimeToProjectDoc(clientId, ownerUid, project, baseMeta, updatedAt);
+    const payload: ProjectStorageDoc = {
+      ...canonical,
+      runtime: { ...project, id: project.id, updatedAt },
+      baseMeta,
+      syncRevision: revision,
+      ...(snapshot ? {
+        snapshot: {
+          ...snapshot,
+          projectId: project.id,
+          clientId,
+          revision,
+          updatedAt,
+        },
+      } : {}),
+    };
+    transaction.set(ref, payload, { merge: true });
+    return { revision, updatedAt };
+  });
 };
 
 export const batchUpsertProjectsByClient = async (
@@ -358,21 +431,26 @@ export const batchUpsertProjectsByClient = async (
   readSnapshotByProjectId?: (projectId: string, clientId: string) => ProjectSnapshot
 ) => {
   if (!projects.length) return;
-  const batch = writeBatch(ensureDb());
-  projects.forEach((project) => {
+  const db = ensureDb();
+  await Promise.all(projects.map((project) => runTransaction(db, async (transaction) => {
+    const ref = projectDocRef(clientId, project.id);
+    const existing = await transaction.get(ref);
+    if (existing.exists()) return;
     const baseMeta = readBaseMetaByProjectId(project.id);
-    const canonical = runtimeToProjectDoc(clientId, ownerUid, project, baseMeta);
+    const updatedAt = project.updatedAt || nowIso();
+    const canonical = runtimeToProjectDoc(clientId, ownerUid, project, baseMeta, updatedAt);
+    const rawSnapshot = readSnapshotByProjectId?.(project.id, clientId);
     const payload: ProjectStorageDoc = {
       ...canonical,
-      runtime: project,
+      runtime: { ...project, id: project.id },
       baseMeta,
-      ...(readSnapshotByProjectId
-        ? { snapshot: readSnapshotByProjectId(project.id, clientId) }
-        : {}),
+      syncRevision: 0,
+      ...(rawSnapshot ? {
+        snapshot: { ...rawSnapshot, projectId: project.id, clientId, revision: 0 },
+      } : {}),
     };
-    batch.set(projectDocRef(clientId, project.id), payload, { merge: true });
-  });
-  await batch.commit();
+    transaction.set(ref, payload);
+  })));
 };
 
 export const importLocalProjectsOnce = async ({
@@ -394,18 +472,36 @@ export const importLocalProjectsOnce = async ({
 export const tombstoneProjectByClient = async (
   clientId: string,
   projectId: string,
-  deletedByUid: string
-) => {
-  const deletedAt = nowIso();
-  await setDoc(
-    projectDocRef(clientId, projectId),
-    {
+  deletedByUid: string,
+  expectedRevision?: number
+): Promise<ProjectSyncCommit> => {
+  const db = ensureDb();
+  const ref = projectDocRef(clientId, projectId);
+  return runTransaction(db, async (transaction) => {
+    const currentSnapshot = await transaction.get(ref);
+    const currentPayload = currentSnapshot.exists() ? currentSnapshot.data() : undefined;
+    const currentRevision = getStoredProjectRevision(currentPayload);
+    if (isProjectTombstoned(currentPayload)) {
+      return {
+        revision: currentRevision,
+        updatedAt: isRecord(currentPayload) && typeof currentPayload.deletedAt === "string"
+          ? currentPayload.deletedAt
+          : nowIso(),
+      };
+    }
+    if (typeof expectedRevision === "number" && currentRevision !== expectedRevision) {
+      throw new ProjectRevisionConflictError(currentRevision);
+    }
+    const deletedAt = nowIso();
+    const revision = currentRevision + 1;
+    transaction.set(ref, {
       id: projectId,
       clientId,
       deletedAt,
       deletedByUid,
       updatedAt: deletedAt,
-    },
-    { merge: true }
-  );
+      syncRevision: revision,
+    }, { merge: true });
+    return { revision, updatedAt: deletedAt };
+  });
 };
