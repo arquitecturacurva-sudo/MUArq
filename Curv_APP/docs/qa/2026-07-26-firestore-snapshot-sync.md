@@ -15,9 +15,9 @@
 - [x] Full suite passed: 18 files, 94 tests.
 - [x] ESLint passed.
 - [x] Production build passed; only the previously known large-chunk warning remains.
-- [ ] Exact commit recorded after publication.
+- [x] Implementation commit recorded after publication.
 - [x] Local Firestore rules SHA-256 recorded.
-- [ ] Rules deployment to `curv-app-ce938` recorded.
+- [x] Rules deployment to `curv-app-ce938` recorded.
 - [ ] Vercel Preview confirmed to use `curv-app-ce938`.
 - [ ] Complete multi-profile matrix passed on that exact Preview artifact.
 - [ ] Same validated artifact promoted to production.
@@ -70,11 +70,11 @@ Direct localStorage inspection is intentionally manual. All other checks should 
 
 | Evidence | Value |
 |---|---|
-| Commit | Pending |
+| Implementation commit | `e8da2d8405fbb0df70dc91034a0114df81b22f65` |
 | Firestore rules SHA-256 | `AB43CAACD234B4B0BC240FBAB8AB6BF00287AC5387771150E8732AC417BCE262` |
-| Rules deploy result | Pending |
-| Vercel Preview URL | Pending |
-| Preview deployment/artifact ID | Pending |
+| Rules deploy result | 2026-07-26: compiled successfully, already current, and released to `curv-app-ce938` |
+| Vercel Preview URL | `https://mu-frm5hixt6-curvas-projects-299d745e.vercel.app` |
+| Preview deployment/artifact ID | GitHub deployment `5613303532`; Vercel status succeeded |
 | Production deployment URL/ID | Pending |
 | Rollback alias/deployment | Pending |
 
