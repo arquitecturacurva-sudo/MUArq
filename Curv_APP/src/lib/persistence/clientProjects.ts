@@ -338,37 +338,55 @@ export const updateProject = async (
   await updateDoc(projectDocRef(clientId, projectId), payload);
 };
 
+const toProjectSyncEntry = (
+  clientId: string,
+  projectId: string,
+  rawPayload: ProjectStorageDoc
+): ProjectSyncEntry | null => {
+  const revision = getStoredProjectRevision(rawPayload);
+  if (isProjectTombstoned(rawPayload)) {
+    return {
+      kind: "deleted",
+      projectId,
+      revision,
+      deletedAt: rawPayload.deletedAt || "",
+    };
+  }
+  const canonical = normalizeProjectDoc(clientId, projectId, rawPayload);
+  if (!canonical) return null;
+  const baseMeta = projectDocToBaseMeta(canonical, rawPayload);
+  return {
+    kind: "active",
+    projectId,
+    revision,
+    hydration: {
+      project: projectDocToRuntimeProject(canonical, rawPayload),
+      baseMeta,
+      snapshot: normalizeProjectSnapshot(clientId, projectId, rawPayload, baseMeta),
+      revision,
+    },
+  };
+};
+
+export const getProjectSyncEntryByClient = async (
+  clientId: string,
+  projectId: string
+): Promise<ProjectSyncEntry | null> => {
+  const snapshot = await getDoc(projectDocRef(clientId, projectId));
+  if (!snapshot.exists()) return null;
+  return toProjectSyncEntry(clientId, snapshot.id, snapshot.data() as ProjectStorageDoc);
+};
+
 export const listProjectSyncEntriesByClient = async (clientId: string): Promise<ProjectSyncEntry[]> => {
   const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
-  const projects: ProjectSyncEntry[] = [];
-  snapshot.forEach((docSnapshot) => {
-    const rawPayload = docSnapshot.data() as ProjectStorageDoc;
-    const revision = getStoredProjectRevision(rawPayload);
-    if (isProjectTombstoned(rawPayload)) {
-      projects.push({
-        kind: "deleted",
-        projectId: docSnapshot.id,
-        revision,
-        deletedAt: rawPayload.deletedAt || "",
-      });
-      return;
-    }
-    const canonical = normalizeProjectDoc(clientId, docSnapshot.id, rawPayload);
-    if (!canonical) return;
-    const baseMeta = projectDocToBaseMeta(canonical, rawPayload);
-    projects.push({
-      kind: "active",
-      projectId: docSnapshot.id,
-      revision,
-      hydration: {
-        project: projectDocToRuntimeProject(canonical, rawPayload),
-        baseMeta,
-        snapshot: normalizeProjectSnapshot(clientId, docSnapshot.id, rawPayload, baseMeta),
-        revision,
-      },
-    });
+  return snapshot.docs.flatMap((docSnapshot) => {
+    const entry = toProjectSyncEntry(
+      clientId,
+      docSnapshot.id,
+      docSnapshot.data() as ProjectStorageDoc
+    );
+    return entry ? [entry] : [];
   });
-  return projects;
 };
 
 export const listProjectSnapshotsByClient = async (clientId: string): Promise<ProjectHydrationSnapshot[]> => {
