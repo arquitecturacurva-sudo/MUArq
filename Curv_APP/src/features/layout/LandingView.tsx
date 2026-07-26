@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 import { Brand, Btn, DK, G, UI, badgeS, trackLocalProductEvent } from "../runtime/runtime";
+import LandingHero from "./LandingHero";
+import LandingProblems from "./LandingProblems";
 
 type LandingViewProps = {
   darkMode: boolean;
@@ -142,6 +144,9 @@ export default function LandingView({
           }
         }
       `}</style>
+      <LandingHero openAuth={openAuth} />
+      <LandingProblems />
+
       <div style={{position: "sticky", top: 0, zIndex: 20, borderBottom: `1px solid ${sectionBorder}`, background: darkMode ? "rgba(11,15,20,0.92)" : "rgba(244,242,238,0.92)", backdropFilter: "blur(14px)"}}>
         <div data-curv-header-inner style={{maxWidth: 1160, margin: "0 auto", padding: "12px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap"}}>
           <div style={{display: "flex", alignItems: "center", gap: 10}}>
@@ -221,7 +226,7 @@ export default function LandingView({
           </div>
         </section>
 
-        <section style={{maxWidth: 1160, margin: "0 auto", padding: "24px 22px 8px"}}>
+        <section id="curv-problema" style={{maxWidth: 1160, margin: "0 auto", padding: "24px 22px 8px"}}>
           <div data-curv-problem-grid style={{display: "grid", gridTemplateColumns: "1fr 1.35fr", gap: 14}}>
             <div style={{border: `1px solid ${sectionBorder}`, borderRadius: 8, background: sectionBg, padding: 16}}>
               <div style={{fontSize: 11, fontWeight: 900, color: G, marginBottom: 8}}>El problema</div>
@@ -238,7 +243,7 @@ export default function LandingView({
           </div>
         </section>
 
-        <section style={{maxWidth: 1160, margin: "0 auto", padding: "12px 22px"}}>
+        <section id="curv-demos" style={{maxWidth: 1160, margin: "0 auto", padding: "12px 22px"}}>
           <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 14, marginBottom: 10, flexWrap: "wrap"}}>
             <div>
               <div style={{fontSize: 10, fontWeight: 900, color: G, textTransform: "uppercase", letterSpacing: "0.8px"}}>Demos por tipo de estudio</div>
