@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useDocumentBrandTheme } from "../../lib/branding/documentBranding";
 import {
   PROJECT_SNAPSHOT_UPDATED_AT_KEY,
   PROJECT_SNAPSHOT_TOOL_PREFIXES,
@@ -847,14 +848,33 @@ export const Brand = ({dark=false,sm=false}: {dark?: boolean; sm?: boolean}) => 
   </div>
 );
 
-export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: string; fe: string}) => (
-  <div style={{borderBottom:"2px solid "+G,paddingBottom:13,marginBottom:18}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-      <div><Brand dark/><div style={{fontSize:9,color:"#888",textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{title}</div></div>
-      <div style={{textAlign:"right",fontSize:11,color:"#555",lineHeight:1.6}}><b>{cl||"—"}</b><br/>{pr||"—"}<br/><span style={{color:"#888",fontSize:10}}>{fDate(fe)}</span></div>
+export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: string; fe: string}) => {
+  const brandTheme = useDocumentBrandTheme();
+  const alignment = brandTheme?.logoPosition === "center"
+    ? "center"
+    : brandTheme?.logoPosition === "right"
+      ? "flex-end"
+      : "flex-start";
+  return (
+    <div data-brand-document-header style={{borderBottom:`2px solid ${brandTheme?.accent || G}`,paddingBottom:13,marginBottom:18}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:20}}>
+        <div style={{minWidth:0,flex:1}}>
+          <div data-brand-document-identity style={{display:"flex",justifyContent:alignment}}>
+            {brandTheme?.logoUrl ? (
+              <img src={brandTheme.logoUrl} alt={`Logo de ${brandTheme.companyName}`} style={{display:"block",maxWidth:170,maxHeight:52,objectFit:"contain"}} />
+            ) : brandTheme ? (
+              <strong style={{color:brandTheme.text,fontFamily:`'${brandTheme.headingFont}', Inter, sans-serif`,fontSize:20,letterSpacing:"-0.02em"}}>{brandTheme.companyName}</strong>
+            ) : (
+              <Brand dark/>
+            )}
+          </div>
+          <div data-brand-document-title style={{fontSize:9,color:brandTheme?.mutedText || "#888",textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{title}</div>
+        </div>
+        <div style={{textAlign:"right",fontSize:11,color:brandTheme?.mutedText || "#555",lineHeight:1.6}}><b style={{color:brandTheme?.text}}>{cl||"—"}</b><br/>{pr||"—"}<br/><span style={{fontSize:10}}>{fDate(fe)}</span></div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ══ CALCULADORA ═══════════════════════════════════════════════════════
 // ── BRIEF CONSTANTES ──────────────────────────────────────────────────

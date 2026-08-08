@@ -4,6 +4,15 @@ import { jsPDF } from "jspdf";
 import type { User } from "firebase/auth";
 import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
 import { BrandSettingsView } from "./features/branding/BrandSettingsView";
+import {
+  cloneDocumentWithBranding,
+  DocumentBrandThemeProvider,
+  getDocumentBrandingCss,
+  waitForDocumentImages,
+} from "./lib/branding/documentBranding";
+import { loadBrandProfile } from "./lib/branding/brandProfileService";
+import { brandProfileToDocumentTheme } from "./lib/branding/brandProfileToDocumentTheme";
+import type { BrandProfileDraft, DocumentTheme } from "./lib/branding/types";
 import { DemoGallery } from "./features/demos/DemoGallery";
 import { DemoTour } from "./features/demos/DemoTour";
 import { DEMO_DEFINITIONS, getDemoDefinition } from "./features/demos/demoDefinitions";
@@ -126,6 +135,7 @@ export default function App() {
   const [authError,setAuthError]=useState("");
   const [authIntent,setAuthIntent]=useState(false);
   const [activeClientId,setActiveClientId]=useState("");
+  const [documentTheme,setDocumentTheme]=useState<DocumentTheme | null>(null);
   const [clientBilling,setClientBilling]=useState<ClientBilling | null>(null);
   const [clientAccess,setClientAccess]=useState<ClientAccess>(() => resolveClientAccess(null));
   const [billingRefreshTick,setBillingRefreshTick]=useState(0);
@@ -303,6 +313,48 @@ export default function App() {
   const activeProjectIdRef = React.useRef(activeProjectId);
   authContextRef.current = { uid: authUser?.uid || "", clientId: activeClientId };
   activeProjectIdRef.current = activeProjectId;
+
+  const applyBrandProfile = useCallback((profile: BrandProfileDraft) => {
+    const fallbackName = authUser?.displayName || authUser?.email?.split("@")[0] || "Mi estudio";
+    const nextTheme = brandProfileToDocumentTheme(profile, fallbackName);
+    setDocumentTheme(nextTheme);
+    return nextTheme;
+  }, [authUser?.displayName, authUser?.email]);
+
+  const loadActiveDocumentTheme = useCallback(async () => {
+    if (!activeClientId || !authUser) return null;
+    const result = await loadBrandProfile(activeClientId, {
+      ownerUid: authUser.uid,
+      displayName: authUser.displayName || undefined,
+      email: authUser.email || undefined,
+    });
+    return applyBrandProfile(result.profile);
+  }, [activeClientId, applyBrandProfile, authUser]);
+
+  useEffect(() => {
+    let active = true;
+    if (!activeClientId || !authUser) {
+      setDocumentTheme(null);
+      return () => {
+        active = false;
+      };
+    }
+    void loadBrandProfile(activeClientId, {
+      ownerUid: authUser.uid,
+      displayName: authUser.displayName || undefined,
+      email: authUser.email || undefined,
+    })
+      .then((result) => {
+        if (active) applyBrandProfile(result.profile);
+      })
+      .catch((error) => {
+        console.error("[branding] document theme could not be loaded", error);
+        if (active) setDocumentTheme(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeClientId, applyBrandProfile, authUser]);
 
   const readDeletedProjectIds = useCallback(() => (
     new Set(readStorage<string[]>(DELETED_PROJECT_IDS_KEY, [], isStringArray))
@@ -1796,18 +1848,45 @@ export default function App() {
     };
   }, [goToCalcFromTour, tourOpen, tourStepIndex]);
 
-  const printTool=(id: string)=>{
+  const printTool=async (id: string)=>{
+    let exportTheme = documentTheme;
+    if (activeClientId && authUser) {
+      try {
+        exportTheme = await loadActiveDocumentTheme();
+        await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+      } catch (error) {
+        console.error("[branding] document theme could not be refreshed", error);
+        alert("No pudimos cargar la identidad del producto. No se generó el PDF para evitar exportarlo sin marca.");
+        return;
+      }
+    }
     const el=document.querySelector(`[data-doc-id="${id}"]`);
     if(!el){
       alert('El documento para esta herramienta aún no está disponible.\nCompleta el formulario hasta ver la vista de documento.');
       return;
     }
-    openPrint(el.outerHTML);
+    if (!(el instanceof HTMLElement) || !exportTheme) {
+      openPrint(el.outerHTML);
+      return;
+    }
+    const branded = cloneDocumentWithBranding(el, exportTheme);
+    openPrint(`<style>${getDocumentBrandingCss(exportTheme)}</style>${branded.outerHTML}`);
   };
 
   const exportProposal=async ()=>{
     const checked=tools.filter(t=>t.checked);
     if(!checked.length){alert('Selecciona al menos una sección en el checklist del panel izquierdo.');return;}
+    let exportTheme = documentTheme;
+    if (activeClientId && authUser) {
+      try {
+        exportTheme = await loadActiveDocumentTheme();
+        await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+      } catch (error) {
+        console.error("[branding] document theme could not be refreshed", error);
+        alert("No pudimos cargar la identidad del producto. No se generó el PDF para evitar exportarlo sin marca.");
+        return;
+      }
+    }
     const docNodes: HTMLElement[]=[]; const missing: string[]=[];
     checked.forEach(t=>{
       const el=document.querySelector(`[data-doc-id="${t.id}"]`);
@@ -1845,23 +1924,25 @@ export default function App() {
       [data-export-proposal-root="true"] .__export_section__ + .__export_section__ {
         margin-top: 12px;
       }
+      ${exportTheme ? getDocumentBrandingCss(exportTheme) : ""}
     `;
     exportRoot.appendChild(exportStyle);
     docNodes.forEach((node) => {
       const section = document.createElement("section");
       section.className = "__export_section__";
-      section.innerHTML = node.outerHTML;
+      section.appendChild(exportTheme ? cloneDocumentWithBranding(node, exportTheme) : node.cloneNode(true));
       exportRoot.appendChild(section);
     });
     document.body.appendChild(exportRoot);
 
     try {
       if (document.fonts?.ready) await document.fonts.ready;
+      await waitForDocumentImages(exportRoot);
       await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
       const canvas = await html2canvas(exportRoot, {
         scale: 2,
         useCORS: true,
-        backgroundColor: "#ffffff",
+        backgroundColor: exportTheme?.background || "#ffffff",
         logging: false,
         windowWidth: exportRoot.scrollWidth,
         windowHeight: exportRoot.scrollHeight,
@@ -1963,7 +2044,12 @@ export default function App() {
           ownerUid={authUser.uid}
           userDisplayName={authUser.displayName || undefined}
           userEmail={authUser.email || undefined}
-          onBack={() => setRoute("home")}
+          onProfileSaved={applyBrandProfile}
+          onBack={() => {
+            void loadActiveDocumentTheme()
+              .catch((error) => console.error("[branding] document theme could not be refreshed", error))
+              .finally(() => setRoute("home"));
+          }}
         />
       </div>
     );
@@ -2220,7 +2306,8 @@ export default function App() {
         handleResetActiveProject={handleResetActiveProject}
       />
 
-      <WorkspaceMain
+      <DocumentBrandThemeProvider theme={documentTheme}>
+        <WorkspaceMain
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         openOnboarding={openOnboarding}
@@ -2239,7 +2326,8 @@ export default function App() {
         projectResetToken={projectResetToken}
         printTool={printTool}
         current={current}
-      />
+        />
+      </DocumentBrandThemeProvider>
 
       {!isDemoWorkspace && (
         <OnboardingTour
