@@ -49,7 +49,12 @@ export const getProjectSnapshotRevision = (snapshot?: Pick<ProjectSnapshot, "rev
     : 0;
 };
 
-const stableValue = (value: unknown): unknown => {
+/**
+ * Recursive key-sorting canonicalizer. Exported so per-tool fingerprints
+ * (projectToolPartition.ts) use the identical encoding as the whole-snapshot fingerprint —
+ * divergence would make the reassembly guard in fetchProjectSnapshotByClient fire spuriously.
+ */
+export const stableValue = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(stableValue);
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(
@@ -63,6 +68,55 @@ const stableValue = (value: unknown): unknown => {
 export const getProjectSnapshotFingerprint = (
   snapshot: Pick<ProjectSnapshot, "baseMeta" | "tools">
 ) => JSON.stringify(stableValue({ baseMeta: snapshot.baseMeta, tools: snapshot.tools || {} }));
+
+const normalizeRevision = (revision: number) => (
+  Number.isSafeInteger(revision) && revision >= 0 ? revision : 0
+);
+
+/**
+ * The hydration decision, expressed over fingerprints instead of whole snapshots.
+ *
+ * This is what lets the project list stay metadata-only: the remote fingerprint, revision and
+ * timestamp all live on the parent project document, so "same" / "keep-local" / "conflict" are
+ * decidable without fetching any tool data. Tool documents are read only when the answer is
+ * "hydrate".
+ */
+export const decideRemoteSnapshotHydrationByFingerprint = ({
+  localFingerprint,
+  remoteFingerprint,
+  remoteRevision,
+  remoteUpdatedAt,
+  localDirty,
+  localCloudRevision,
+  localUpdatedAt,
+  hasLocalData,
+}: {
+  localFingerprint: string;
+  remoteFingerprint: string;
+  remoteRevision: number;
+  remoteUpdatedAt?: string;
+  localDirty: boolean;
+  localCloudRevision: number;
+  localUpdatedAt?: string;
+  hasLocalData: boolean;
+}): RemoteSnapshotDecision => {
+  // Dirty also covers ProjectRecord-only edits, which intentionally do not affect the snapshot
+  // fingerprint. Never acknowledge those edits as synced merely because tool data is equal.
+  if (localDirty) return "keep-local";
+  if (localFingerprint === remoteFingerprint) return "same";
+
+  const normalizedRemoteRevision = normalizeRevision(remoteRevision);
+  const normalizedLocalRevision = normalizeRevision(localCloudRevision);
+  if (normalizedRemoteRevision > normalizedLocalRevision) return "hydrate";
+  if (normalizedRemoteRevision < normalizedLocalRevision) return "keep-local";
+  if (normalizedRemoteRevision > 0) return "conflict";
+
+  // Legacy snapshots have no revision. Preserve unknown local data unless the old timestamp gate
+  // proves that the remote snapshot is newer.
+  if (!hasLocalData) return "hydrate";
+  if (shouldHydrateRemoteSnapshot(localUpdatedAt, remoteUpdatedAt)) return "hydrate";
+  return localUpdatedAt ? "keep-local" : "conflict";
+};
 
 export const decideRemoteSnapshotHydration = <BaseMeta>({
   localSnapshot,
@@ -78,28 +132,16 @@ export const decideRemoteSnapshotHydration = <BaseMeta>({
   localCloudRevision: number;
   localUpdatedAt?: string;
   hasLocalData: boolean;
-}): RemoteSnapshotDecision => {
-  // Dirty also covers ProjectRecord-only edits, which intentionally do not affect the snapshot
-  // fingerprint. Never acknowledge those edits as synced merely because tool data is equal.
-  if (localDirty) return "keep-local";
-  if (getProjectSnapshotFingerprint(localSnapshot) === getProjectSnapshotFingerprint(remoteSnapshot)) {
-    return "same";
-  }
-
-  const remoteRevision = getProjectSnapshotRevision(remoteSnapshot);
-  const normalizedLocalRevision = Number.isSafeInteger(localCloudRevision) && localCloudRevision >= 0
-    ? localCloudRevision
-    : 0;
-  if (remoteRevision > normalizedLocalRevision) return "hydrate";
-  if (remoteRevision < normalizedLocalRevision) return "keep-local";
-  if (remoteRevision > 0) return "conflict";
-
-  // Legacy snapshots have no revision. Preserve unknown local data unless the old timestamp gate
-  // proves that the remote snapshot is newer.
-  if (!hasLocalData) return "hydrate";
-  if (shouldHydrateRemoteSnapshot(localUpdatedAt, remoteSnapshot.updatedAt)) return "hydrate";
-  return localUpdatedAt ? "keep-local" : "conflict";
-};
+}): RemoteSnapshotDecision => decideRemoteSnapshotHydrationByFingerprint({
+  localFingerprint: getProjectSnapshotFingerprint(localSnapshot),
+  remoteFingerprint: getProjectSnapshotFingerprint(remoteSnapshot),
+  remoteRevision: getProjectSnapshotRevision(remoteSnapshot),
+  remoteUpdatedAt: remoteSnapshot.updatedAt,
+  localDirty,
+  localCloudRevision,
+  localUpdatedAt,
+  hasLocalData,
+});
 
 export const getScopedProjectStorageKeysFromStorage = ({
   projectId,

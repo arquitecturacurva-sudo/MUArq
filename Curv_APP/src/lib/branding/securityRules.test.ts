@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import firestoreRules from "../../../firestore.rules?raw";
-import storageRules from "../../../storage.rules?raw";
-import logoHandlers from "../../../functions/src/branding/logoHandlers.ts?raw";
+import rawFirestoreRules from "../../../firestore.rules?raw";
+import rawStorageRules from "../../../storage.rules?raw";
+import rawLogoHandlers from "../../../functions/src/branding/logoHandlers.ts?raw";
+
+// git checks these out with CRLF wherever core.autocrlf is on (the default on Windows), which
+// silently breaks every multi-line containment assertion. Normalize so the contracts below assert
+// rule content rather than the contributor's checkout settings.
+const normalize = (source: string) => source.replace(/\r\n/g, "\n");
+const firestoreRules = normalize(rawFirestoreRules);
+const storageRules = normalize(rawStorageRules);
+const logoHandlers = normalize(rawLogoHandlers);
 
 describe("branding security rule contracts", () => {
   it("scopes BrandProfile reads to workspace members and writes to admins", () => {

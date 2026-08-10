@@ -132,6 +132,19 @@ service cloud.firestore {
         && request.resource.data.billing.updatedBy == "system";
     }
 
+    function validProjectToolDoc(clientId, projectId, toolId) {
+      return request.resource.data.id == toolId
+        && request.resource.data.toolId == toolId
+        && request.resource.data.projectId == projectId
+        && request.resource.data.clientId == clientId
+        && request.resource.data.version == 1
+        && request.resource.data.revision is int
+        && request.resource.data.revision >= 0
+        && request.resource.data.updatedAt is string
+        && request.resource.data.fingerprint is string
+        && request.resource.data.data is map;
+    }
+
     function hasValidActiveClientOnWrite(userId) {
       return !("activeClientId" in request.resource.data)
         || (
@@ -204,6 +217,21 @@ service cloud.firestore {
       allow create, update: if isEditor(clientId)
         && request.resource.data.id == projectId
         && request.resource.data.clientId == clientId;
+      allow delete: if isAdmin(clientId);
+    }
+
+    // Per-tool project data. rules_version 2 does not cascade into subcollections, so without
+    // this block every tool document write is denied. The toolId allow-list bounds the
+    // subcollection to the nine canonical tools (PROJECT_TOOL_IDS in projectToolPartition.ts) so
+    // a bug cannot create an unbounded subcollection under a project. Adding a tenth tool
+    // requires a rules deploy; a ?raw containment test keeps this list in sync with the code.
+    match /clients/{clientId}/projects/{projectId}/toolData/{toolId} {
+      allow read: if isMember(clientId);
+      allow create, update: if isEditor(clientId)
+        && toolId in [
+          "calc", "matrix", "excl", "cron", "cot", "cronobra", "val", "brief", "oc"
+        ]
+        && validProjectToolDoc(clientId, projectId, toolId);
       allow delete: if isAdmin(clientId);
     }
 
