@@ -19,6 +19,22 @@ export const PROJECT_TOOL_IDS = [
 
 export type ProjectToolId = (typeof PROJECT_TOOL_IDS)[number];
 
+/**
+ * Display labels, duplicated from DEFAULT_TOOLS in runtime.tsx so that persistence-layer error
+ * messages can name the offending tool without importing the React component registry.
+ */
+export const PROJECT_TOOL_LABELS: Readonly<Record<ProjectToolId, string>> = {
+  calc: "Calculadora de Honorarios",
+  matrix: "Matriz de Entregables",
+  excl: "Exclusiones y Supuestos",
+  cron: "Cronograma por Etapas",
+  cot: "Cotizacion de Obra",
+  cronobra: "Cronograma de Obra",
+  val: "Valorizacion de Avance",
+  brief: "Programa Arquitectonico",
+  oc: "Orden de Cambio",
+};
+
 type SnapshotToolPrefix = (typeof PROJECT_SNAPSHOT_TOOL_PREFIXES)[number];
 
 /**

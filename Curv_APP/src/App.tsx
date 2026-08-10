@@ -53,6 +53,7 @@ import {
   normalizeProjectRecords,
   normalizeTracks,
   nowIso,
+  type ProjectSnapshot,
   openPrint,
   readStorage,
   readProjectBaseMetadata,
@@ -72,13 +73,16 @@ import {
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
 import { createCheckout } from "./lib/billing/billingService";
 import {
+  fetchProjectSnapshotByClient,
+  getRemoteSnapshotDescriptor,
   importLocalProjectsOnce,
   listProjectSyncEntriesByClient,
   tombstoneProjectByClient,
   upsertProjectByClient,
+  type ProjectHydrationSnapshot,
 } from "./lib/persistence/clientProjects";
 import {
-  decideRemoteSnapshotHydration,
+  decideRemoteSnapshotHydrationByFingerprint,
   getProjectSnapshotFingerprint,
 } from "./features/runtime/storage/projectSnapshot";
 import {
@@ -520,6 +524,13 @@ export default function App() {
             .map((project) => [project.id, project])
         );
         const remoteProjectIds = new Set<string>();
+        // Pass 1 decides from parent-document metadata only and queues the projects that actually
+        // need tool data. Pass 2 fetches. Home therefore paints before any subcollection read.
+        const hydrateQueue: {
+          projectId: string;
+          hydration: ProjectHydrationSnapshot;
+          revision: number;
+        }[] = [];
 
         cloudEntries.forEach((entry) => {
           if (entry.kind === "deleted") {
@@ -540,7 +551,7 @@ export default function App() {
             return;
           }
 
-          const { project, baseMeta, snapshot, revision } = entry.hydration;
+          const { project, baseMeta, revision } = entry.hydration;
           if (deletedProjectIds.has(project.id)) return;
           remoteProjectIds.add(project.id);
           const localProject = mergedProjects.get(project.id);
@@ -552,7 +563,8 @@ export default function App() {
             project.id
           );
 
-          if (!snapshot) {
+          const remote = getRemoteSnapshotDescriptor(entry.hydration);
+          if (!remote) {
             if (!localSync.dirty && !hasSavedProjectData(project.id)) {
               writeProjectBaseMetadata(baseMeta, project.id);
               markProjectHydrated(project.id, revision, project.updatedAt);
@@ -569,9 +581,11 @@ export default function App() {
             revision: localSync.cloudRevision,
             updatedAt: localSync.updatedAt || localUpdatedAt,
           };
-          const decision = decideRemoteSnapshotHydration({
-            localSnapshot,
-            remoteSnapshot: snapshot,
+          const decision = decideRemoteSnapshotHydrationByFingerprint({
+            localFingerprint: getProjectSnapshotFingerprint(localSnapshot),
+            remoteFingerprint: remote.fingerprint,
+            remoteRevision: remote.revision,
+            remoteUpdatedAt: remote.updatedAt,
             localDirty: localSync.dirty,
             localCloudRevision: localSync.cloudRevision,
             localUpdatedAt,
@@ -579,18 +593,11 @@ export default function App() {
           });
 
           if (decision === "hydrate") {
-            suppressDirtyEventsRef.current = true;
-            try {
-              clearProjectStorage(project.id);
-              hydrateProjectSnapshot(project.id, snapshot);
-            } finally {
-              suppressDirtyEventsRef.current = false;
-            }
-            markProjectHydrated(project.id, revision, snapshot.updatedAt);
-            projectFingerprintsRef.current.set(project.id, getProjectSnapshotFingerprint(snapshot));
+            // Show the card now; its tool data and metrics arrive in pass 2.
+            hydrateQueue.push({ projectId: project.id, hydration: entry.hydration, revision });
             mergedProjects.set(project.id, project);
           } else if (decision === "same") {
-            markProjectHydrated(project.id, revision, snapshot.updatedAt);
+            markProjectHydrated(project.id, revision, remote.updatedAt);
             projectFingerprintsRef.current.set(project.id, getProjectSnapshotFingerprint(localSnapshot));
             mergedProjects.set(project.id, project);
           } else if (decision === "conflict") {
@@ -614,6 +621,64 @@ export default function App() {
             ? currentProjectId
             : nextProjects[0]?.id || ""
         ));
+
+        // Pass 2. Applying a snapshot must stay synchronous: suppressDirtyEventsRef is a plain
+        // boolean, so an await inside that window would let a concurrent hydration clear it early
+        // and the storage listener would read the write as a user edit.
+        const applyRemoteSnapshot = (
+          projectId: string,
+          revision: number,
+          snapshot: ProjectSnapshot
+        ) => {
+          suppressDirtyEventsRef.current = true;
+          try {
+            clearProjectStorage(projectId);
+            hydrateProjectSnapshot(projectId, snapshot);
+          } finally {
+            suppressDirtyEventsRef.current = false;
+          }
+          markProjectHydrated(projectId, revision, snapshot.updatedAt);
+          projectFingerprintsRef.current.set(projectId, getProjectSnapshotFingerprint(snapshot));
+        };
+
+        let queueCursor = 0;
+        const drainHydrationQueue = async () => {
+          while (queueCursor < hydrateQueue.length) {
+            const item = hydrateQueue[queueCursor];
+            queueCursor += 1;
+            if (cancelled) return;
+            try {
+              const snapshot = await fetchProjectSnapshotByClient(
+                activeClientId,
+                item.projectId,
+                item.hydration
+              );
+              if (cancelled) return;
+              if (!snapshot) {
+                markProjectSyncError(
+                  item.projectId,
+                  "No se pudo reconstruir la copia en la nube. Se conservo la copia local."
+                );
+                continue;
+              }
+              applyRemoteSnapshot(item.projectId, item.revision, snapshot);
+            } catch (error) {
+              if (cancelled) return;
+              console.warn("[client-projects] tool hydration failed", error);
+              markProjectSyncError(
+                item.projectId,
+                "No se pudieron descargar los datos del proyecto. Reintenta cuando haya conexion."
+              );
+            }
+          }
+        };
+        await Promise.all(
+          Array.from({ length: Math.min(4, hydrateQueue.length) }, drainHydrationQueue)
+        );
+        if (cancelled) return;
+
+        // Only now may the debounced writer run: before the queue drains it would see a
+        // mid-hydration project as dirty and push its empty local snapshot over good cloud data.
         cloudHydratedRef.current = true;
         setSyncTick((value) => value + 1);
       } catch (error) {
