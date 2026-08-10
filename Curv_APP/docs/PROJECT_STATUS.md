@@ -345,8 +345,10 @@ flowchart LR
 4. **`smoke_persistence` collection blocked by security rules**
    - `readSmokeSnapshot` / `writeSmokeSnapshot` target a collection with **no rule match** → denied for clients
 
-5. **Dual provisioning paths**
-   - `onUserCreate` (admin SDK) and `ensureUserHasClient` (client SDK) both create tenants → race/duplicate risk
+5. ~~**Dual provisioning paths**~~ — **resolved.** `onUserCreate` is deleted; the `ensureTenant`
+   callable is the only tenant writer and `clients/{clientId}` is `allow create: if false`, so the
+   browser cannot create one. Tenant ids are now generated (`cli_*`) rather than the owner's uid.
+   See `docs/firebase-multitenant.md`.
 
 ### Medium
 

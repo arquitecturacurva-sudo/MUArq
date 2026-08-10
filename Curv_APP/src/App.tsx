@@ -33,6 +33,7 @@ import {
   TRACK_DEFAULT_ORDER,
   TRACK_REQUIRED_TOOL,
   TRACK_TOOLS,
+  Btn,
   UI,
   calcDesignMiniGantt,
   calcObraMiniGantt,
@@ -121,6 +122,11 @@ export default function App() {
   const [authReady,setAuthReady]=useState(false);
   const [authBusy,setAuthBusy]=useState(false);
   const [authError,setAuthError]=useState("");
+  // Tenant provisioning is now a server round-trip that can fail. Without an explicit state the
+  // app renders Home looking healthy while activeClientId is "" and every sync effect silently
+  // no-ops on `if (!authUser || !activeClientId) return;`.
+  const [tenantState,setTenantState]=useState<"idle"|"provisioning"|"ready"|"error">("idle");
+  const [tenantError,setTenantError]=useState("");
   const [authIntent,setAuthIntent]=useState(false);
   const [activeClientId,setActiveClientId]=useState("");
   const [clientBilling,setClientBilling]=useState<ClientBilling | null>(null);
@@ -332,21 +338,25 @@ export default function App() {
         setActiveClientId("");
         setClientBilling(null);
         setClientAccess(resolveClientAccess(null));
+        setTenantState("idle");
+        setTenantError("");
         setAuthReady(true);
         return;
       }
+      setTenantState("provisioning");
       try {
         const clientId = await ensureUserHasClient({
-          uid: user.uid,
-          email: user.email || "",
-          displayName: user.displayName || "",
+          displayName: user.displayName || undefined,
         });
         if (!active) return;
         setActiveClientId(clientId);
         setAuthError("");
+        setTenantError("");
+        setTenantState("ready");
       } catch (error) {
         if (!active) return;
-        setAuthError(mapFirebaseError(error));
+        setTenantError(mapFirebaseError(error));
+        setTenantState("error");
       } finally {
         if (active) setAuthReady(true);
       }
@@ -1013,13 +1023,14 @@ export default function App() {
     setAuthError("");
     try {
       const user = await action();
+      // displayName is a hint only: registerWithEmail calls updateProfile() after account
+      // creation, so the ID token's name claim is still stale at this point.
       const clientId = await ensureUserHasClient({
-        uid: user.uid,
-        email: user.email || "",
-        displayName: user.displayName || "",
+        displayName: user.displayName || undefined,
       });
       setAuthUser(user);
       setActiveClientId(clientId);
+      setTenantState("ready");
       setAuthIntent(false);
       setLandingSeen(true);
       const requestedDemo = pendingDemoId ? getDemoDefinition(pendingDemoId) : undefined;
@@ -1461,6 +1472,48 @@ export default function App() {
     return (
       <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
         <div style={{fontSize: 13, color: UI.textMuted}}>Cargando sesión...</div>
+      </div>
+    );
+  }
+
+  if (authUser && tenantState === "provisioning") {
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+        <div style={{fontSize: 13, color: UI.textMuted}}>Preparando tu espacio de trabajo...</div>
+      </div>
+    );
+  }
+
+  // Never fall through to Home with an empty activeClientId: the app would look healthy while
+  // every sync effect silently no-ops.
+  if (authUser && tenantState === "error") {
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+        <div style={{maxWidth: 420, display: "grid", gap: 12, textAlign: "center"}}>
+          <div style={{fontSize: 15, fontWeight: 600, color: UI.text}}>
+            No pudimos preparar tu espacio de trabajo
+          </div>
+          <div style={{fontSize: 13, color: UI.textMuted}}>
+            {tenantError || "Reintenta en unos segundos."}
+          </div>
+          <div style={{display: "flex", gap: 8, justifyContent: "center", marginTop: 4}}>
+            <Btn onClick={() => {
+              if (!authUser) return;
+              setTenantState("provisioning");
+              setTenantError("");
+              ensureUserHasClient({ displayName: authUser.displayName || undefined })
+                .then((clientId) => {
+                  setActiveClientId(clientId);
+                  setTenantState("ready");
+                })
+                .catch((error) => {
+                  setTenantError(mapFirebaseError(error));
+                  setTenantState("error");
+                });
+            }}>Reintentar</Btn>
+            <Btn onClick={() => { void logout(); }}>Cerrar sesión</Btn>
+          </div>
+        </div>
       </div>
     );
   }

@@ -32,6 +32,9 @@ describe("branding security rule contracts", () => {
     expect(firestoreRules).toContain(
       'request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name"])'
     );
-    expect(firestoreRules).toContain('request.resource.data.plan == "BASE"');
+    // Previously asserted `request.resource.data.plan == "BASE"`, which existed only inside the
+    // client-side bootstrap validator. Tenant creation is now server-only, which serves the same
+    // intent -- the browser cannot set plan or billing -- more strongly.
+    expect(firestoreRules).toContain("allow create: if false;");
   });
 });
