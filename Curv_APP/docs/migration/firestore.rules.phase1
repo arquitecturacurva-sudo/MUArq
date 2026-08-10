@@ -1,0 +1,260 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isMember(clientId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid));
+    }
+
+    function isAdmin(clientId) {
+      return isMember(clientId)
+        && (
+          get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "admin"
+          || get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "owner"
+        );
+    }
+
+    function isEditor(clientId) {
+      return isAdmin(clientId)
+        || (
+          isMember(clientId)
+          && get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "editor"
+        );
+    }
+
+    function isMemberNowOrAfter(clientId, userId) {
+      return exists(/databases/$(database)/documents/clients/$(clientId)/members/$(userId))
+        || existsAfter(/databases/$(database)/documents/clients/$(clientId)/members/$(userId));
+    }
+
+    function validBrandFont(data) {
+      return (
+        data.fontPresetId == "technical"
+        && data.headingFont == "Inter"
+        && data.bodyFont == "Inter"
+      ) || (
+        data.fontPresetId == "studio"
+        && data.headingFont == "Manrope"
+        && data.bodyFont == "Inter"
+      ) || (
+        data.fontPresetId == "commercial"
+        && data.headingFont == "Montserrat"
+        && data.bodyFont == "Source Sans 3"
+      ) || (
+        data.fontPresetId == "editorial"
+        && data.headingFont == "Lora"
+        && data.bodyFont == "Inter"
+      ) || (
+        data.fontPresetId == "contemporary"
+        && data.headingFont == "DM Sans"
+        && data.bodyFont == "DM Sans"
+      );
+    }
+
+    function validBrandProfile(clientId) {
+      return request.resource.data.keys().hasOnly([
+          "id", "ownerUid", "companyName", "legalName", "taxId",
+          "logoUrl", "logoStoragePath", "email", "phone", "address",
+          "website", "footerText", "backgroundColor", "accentColor",
+          "primaryTextColor", "fontPresetId", "headingFont", "bodyFont",
+          "logoPosition", "showGeneratedWithCurv", "createdAt", "updatedAt",
+          "profileRevision", "schemaVersion"
+        ])
+        && request.resource.data.keys().hasAll([
+          "id", "ownerUid", "companyName", "backgroundColor", "accentColor",
+          "primaryTextColor", "fontPresetId", "headingFont", "bodyFont",
+          "logoPosition", "showGeneratedWithCurv", "createdAt", "updatedAt",
+          "profileRevision", "schemaVersion"
+        ])
+        && request.resource.data.id == "brand"
+        && request.resource.data.ownerUid == get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid
+        && request.resource.data.companyName is string
+        && request.resource.data.companyName.size() <= 160
+        && (!("legalName" in request.resource.data) || (request.resource.data.legalName is string && request.resource.data.legalName.size() <= 160))
+        && (!("taxId" in request.resource.data) || (request.resource.data.taxId is string && request.resource.data.taxId.size() <= 32))
+        && (!("email" in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 254))
+        && (!("phone" in request.resource.data) || (request.resource.data.phone is string && request.resource.data.phone.size() <= 64))
+        && (!("address" in request.resource.data) || (request.resource.data.address is string && request.resource.data.address.size() <= 300))
+        && (!("website" in request.resource.data) || (request.resource.data.website is string && request.resource.data.website.size() <= 300))
+        && (!("footerText" in request.resource.data) || (request.resource.data.footerText is string && request.resource.data.footerText.size() <= 500))
+        && (!("logoUrl" in request.resource.data) || (request.resource.data.logoUrl is string && request.resource.data.logoUrl.size() <= 2048))
+        && (!("logoStoragePath" in request.resource.data) || (request.resource.data.logoStoragePath is string && request.resource.data.logoStoragePath.size() <= 512))
+        && request.resource.data.backgroundColor is string
+        && request.resource.data.backgroundColor.matches('^#[0-9A-Fa-f]{6}$')
+        && request.resource.data.accentColor is string
+        && request.resource.data.accentColor.matches('^#[0-9A-Fa-f]{6}$')
+        && request.resource.data.primaryTextColor in ["#111111", "#FFFFFF"]
+        && validBrandFont(request.resource.data)
+        && request.resource.data.logoPosition in ["left", "center", "right"]
+        && request.resource.data.showGeneratedWithCurv is bool
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.profileRevision is int
+        && request.resource.data.profileRevision >= 0
+        && request.resource.data.schemaVersion == 1;
+    }
+
+    function validBootstrapClient(clientId) {
+      return clientId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "id", "name", "plan", "limits", "createdAt", "ownerUid", "status", "billing"
+        ])
+        && request.resource.data.id == clientId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 160
+        && request.resource.data.plan == "BASE"
+        && request.resource.data.status == "active"
+        && request.resource.data.createdAt is string
+        && request.resource.data.limits is map
+        && request.resource.data.limits.keys().hasOnly(["editorsLimit", "viewersLimit"])
+        && request.resource.data.limits.editorsLimit == 3
+        && request.resource.data.limits.viewersLimit == 25
+        && request.resource.data.billing is map
+        && request.resource.data.billing.keys().hasOnly([
+          "plan", "status", "trialEndsAt", "updatedAt", "updatedBy"
+        ])
+        && request.resource.data.billing.plan == "BASE"
+        && request.resource.data.billing.status == "trialing"
+        && request.resource.data.billing.trialEndsAt is string
+        && request.resource.data.billing.updatedAt is string
+        && request.resource.data.billing.updatedBy == "system";
+    }
+
+    function validProjectToolDoc(clientId, projectId, toolId) {
+      return request.resource.data.id == toolId
+        && request.resource.data.toolId == toolId
+        && request.resource.data.projectId == projectId
+        && request.resource.data.clientId == clientId
+        && request.resource.data.version == 1
+        && request.resource.data.revision is int
+        && request.resource.data.revision >= 0
+        && request.resource.data.updatedAt is string
+        && request.resource.data.fingerprint is string
+        && request.resource.data.data is map;
+    }
+
+    function hasValidActiveClientOnWrite(userId) {
+      return !("activeClientId" in request.resource.data)
+        || (
+          request.resource.data.activeClientId is string
+          && isMemberNowOrAfter(request.resource.data.activeClientId, userId)
+        );
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+      allow create, update: if isSelf(userId)
+        && request.resource.data.uid == userId
+        && hasValidActiveClientOnWrite(userId);
+      allow delete: if false;
+    }
+
+    match /clients/{clientId} {
+      allow read: if isMember(clientId)
+        || (
+          signedIn()
+          && (
+            clientId == request.auth.uid
+            || resource.data.ownerUid == request.auth.uid
+            || resource.data.ownerId == request.auth.uid
+          )
+        );
+      allow create: if signedIn() && validBootstrapClient(clientId);
+      allow update: if isAdmin(clientId)
+        && request.resource.data.id == clientId
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 160
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name"]);
+      allow delete: if false;
+    }
+
+    match /clients/{clientId}/members/{memberId} {
+      allow read: if isMember(clientId);
+      allow create: if isAdmin(clientId)
+        || (
+          signedIn()
+          && request.auth.uid == memberId
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == "admin"
+          && (
+            (
+              exists(/databases/$(database)/documents/clients/$(clientId))
+              && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+            || (
+              existsAfter(/databases/$(database)/documents/clients/$(clientId))
+              && getAfter(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+          )
+        );
+      allow update, delete: if isAdmin(clientId);
+    }
+
+    match /{path=**}/members/{memberId} {
+      allow read: if signedIn()
+        && (
+          memberId == request.auth.uid
+          || resource.data.uid == request.auth.uid
+        );
+    }
+
+    match /clients/{clientId}/projects/{projectId} {
+      allow read: if isMember(clientId);
+      allow create, update: if isEditor(clientId)
+        && request.resource.data.id == projectId
+        && request.resource.data.clientId == clientId;
+      allow delete: if isAdmin(clientId);
+    }
+
+    // Per-tool project data. rules_version 2 does not cascade into subcollections, so without
+    // this block every tool document write is denied. The toolId allow-list bounds the
+    // subcollection to the nine canonical tools (PROJECT_TOOL_IDS in projectToolPartition.ts) so
+    // a bug cannot create an unbounded subcollection under a project. Adding a tenth tool
+    // requires a rules deploy; a ?raw containment test keeps this list in sync with the code.
+    match /clients/{clientId}/projects/{projectId}/toolData/{toolId} {
+      allow read: if isMember(clientId);
+      allow create, update: if isEditor(clientId)
+        && toolId in [
+          "calc", "matrix", "excl", "cron", "cot", "cronobra", "val", "brief", "oc"
+        ]
+        && validProjectToolDoc(clientId, projectId, toolId);
+      allow delete: if isAdmin(clientId);
+    }
+
+    match /clients/{clientId}/settings/{settingId} {
+      allow read: if settingId == "brand" && isMember(clientId);
+      allow create: if settingId == "brand"
+        && isAdmin(clientId)
+        && validBrandProfile(clientId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.profileRevision == 1
+        && !("logoUrl" in request.resource.data)
+        && !("logoStoragePath" in request.resource.data);
+      allow update: if settingId == "brand"
+        && isAdmin(clientId)
+        && validBrandProfile(clientId)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.profileRevision == (
+          ("profileRevision" in resource.data) ? resource.data.profileRevision + 1 : 1
+        )
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "id", "ownerUid", "createdAt", "logoUrl", "logoStoragePath"
+        ]);
+      allow delete: if false;
+    }
+  }
+}
