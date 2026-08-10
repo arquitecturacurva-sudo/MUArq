@@ -1,7 +1,11 @@
 import React, { useMemo } from "react";
+
 import type { ClientAccess } from "../../lib/billing";
 import type { ClientPlan } from "../../lib/tenant/clientService";
 import { DemoCards } from "../demos/DemoCards";
+import { Button, Card, Pill, StatusDot, type PillTone } from "../ui/kit";
+import NewProjectDialog from "./NewProjectDialog";
+import AppHeader from "./AppHeader";
 import type { DemoProjectDefinition } from "../demos/types";
 import type {
   CommercialStatus,
@@ -13,25 +17,14 @@ import type {
   TrackState,
 } from "../runtime/runtime";
 import {
-  Brand,
-  Btn,
   COMMERCIAL_STATUS_OPTIONS,
   DK,
-  Fld,
   G,
-  Inp,
-  PROJECT_CURRENCY_OPTIONS,
-  Sel,
   TRACK_DEFAULT_ORDER,
   TRACK_LABELS,
-  TRACK_STATUS_COLORS,
   UI,
-  badgeS,
-  cardS,
   fDateShort,
   formatMoneyByCurrency,
-  lb,
-  metricS,
 } from "../runtime/runtime";
 
 type DesignMiniGanttItem = {
@@ -100,6 +93,36 @@ type HomeViewProps = {
   handleDeleteProject: (project: ProjectRecord) => void;
 };
 
+const TRACK_STATE_TONE: Record<TrackState, PillTone> = {
+  "No iniciado": "neutral",
+  "En curso": "warning",
+  Completado: "success",
+};
+
+/** Small readout used across the metric strip. Value uses the title size, label the UI size. */
+function Stat({label, value, tone}: {label: string; value: React.ReactNode; tone?: PillTone}) {
+  return (
+    <Card className="gap-1 p-4">
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <div
+        className="text-title font-semibold"
+        style={tone === "danger" ? {color: "var(--ui-danger)"} : tone === "success" ? {color: "var(--ui-success)"} : undefined}
+      >
+        {value}
+      </div>
+    </Card>
+  );
+}
+
+function SectionTitle({title, hint}: {title: string; hint?: string}) {
+  return (
+    <div className="grid gap-0.5">
+      <span className="text-title font-semibold">{title}</span>
+      {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
+    </div>
+  );
+}
+
 export default function HomeView({
   darkMode,
   themeVars,
@@ -154,7 +177,6 @@ export default function HomeView({
   const totalHonorarios = projectsWithMetrics.reduce((sum, item) => sum + item.metrics.diseno.honorario, 0);
   const totalCobrado = projectsWithMetrics.reduce((sum, item) => sum + item.metrics.diseno.cobrado, 0);
   const ocPendientes = projectsWithMetrics.filter((item) => item.metrics.seguimiento.ocPendiente).length;
-  const nextAction = activeProjects.length ? "Abrir proyecto reciente" : "Crear primer proyecto";
   const paywallTitle = !paywallAccess
     ? ""
     : paywallAccess.reason === "trial_active"
@@ -164,257 +186,227 @@ export default function HomeView({
         : "Cuenta inactiva · Activa tu suscripción";
 
   return (
-    <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", fontFamily: "'Inter','Helvetica Neue',sans-serif", background: UI.bg, color: DK, padding: "20px 22px 30px", overflowX: "hidden"}}>
-      <style>{`
-        @media (max-width: 820px) {
-          [data-home-grid],
-          [data-home-metrics],
-          [data-home-form-grid],
-          [data-home-track-grid] {
-            grid-template-columns: 1fr !important;
-          }
-          [data-home-header] {
-            align-items: flex-start !important;
-          }
-          [data-home-actions] {
-            width: 100%;
-          }
-          [data-home-actions] button {
-            flex: 1 1 calc(50% - 8px);
-          }
-        }
-        @media (max-width: 460px) {
-          [data-home-actions] button {
-            flex-basis: 100%;
-          }
-        }
-      `}</style>
-      <div style={{maxWidth: 1180, margin: "0 auto"}}>
-        <header data-home-header style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 14, flexWrap: "wrap"}}>
-          <div style={{display: "flex", alignItems: "center", gap: 10}}>
-            <Brand dark />
-            <div>
-              <div style={{fontSize: 12, fontWeight: 900}}>Dashboard comercial</div>
-              <div style={{fontSize: 10, color: UI.textMuted}}>Pipeline, propuestas y obra desde una sola ficha.</div>
-            </div>
-          </div>
-          <div data-home-actions style={{display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end"}}>
-            <Btn onClick={createProject}>Nuevo proyecto</Btn>
-            <Btn v="ol" onClick={openDemoHub}>Abrir demos</Btn>
-            <Btn v="ol" onClick={openBrandSettings}>Identidad del estudio</Btn>
-            {onLogout && <Btn v="ol" onClick={onLogout}>Cerrar sesión</Btn>}
-            <Btn v="ol" onClick={() => setDarkMode((v) => !v)}>{darkMode ? "Modo claro" : "Modo oscuro"}</Btn>
-          </div>
-        </header>
+    <div
+      data-theme={darkMode ? "dark" : "light"}
+      style={{...themeVars, background: UI.bg, color: DK}}
+      className="min-h-screen overflow-x-hidden font-[Inter,'Helvetica_Neue',sans-serif]"
+    >
+      <AppHeader
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        title="Dashboard"
+        active="dashboard"
+        onOpenDashboard={() => undefined}
+        onOpenDemos={openDemoHub}
+        onOpenBranding={openBrandSettings}
+        onLogout={onLogout}
+      >
+        <NewProjectDialog
+          name={newProjectName}
+          setName={setNewProjectName}
+          client={newProjectClient}
+          setClient={setNewProjectClient}
+          code={newProjectCode}
+          setCode={setNewProjectCode}
+          type={newProjectType}
+          setType={setNewProjectType}
+          location={newProjectLocation}
+          setLocation={setNewProjectLocation}
+          currency={newProjectCurrency}
+          setCurrency={setNewProjectCurrency}
+          status={newProjectStatus}
+          setStatus={setNewProjectStatus}
+          tracks={newProjectTracks}
+          setTracks={setNewProjectTracks}
+          createProject={createProject}
+        />
+      </AppHeader>
+
+      <div className="px-5 pb-8 pt-4">
+      <div className="mx-auto grid max-w-[1180px] gap-4">
 
         {showPaywall && (
-          <div style={{...cardS, padding: 14, marginBottom: 14, border: "1px solid var(--ui-warning)", background: "var(--ui-empty-bg)"}}>
-            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap"}}>
-              <div>
-                <div style={{fontSize: 11, fontWeight: 900, color: UI.warning, marginBottom: 3}}>{paywallTitle}</div>
-                <div style={{fontSize: 10, color: UI.textMuted}}>Plan actual: {paywallPlan}. Home permanece accesible; Workspace se habilita con estado activo.</div>
-              </div>
-              <div style={{display: "flex", gap: 6, flexWrap: "wrap"}}>
-                {onOpenBillingPortal && <Btn sm onClick={() => void onOpenBillingPortal()}>Gestionar plan</Btn>}
-                {!onOpenBillingPortal && onStartCheckout && (
-                  <>
-                    <Btn sm v="ol" onClick={() => void onStartCheckout("BASE")}>{checkoutBusyPlan === "BASE" ? "Redirigiendo..." : "Activar BASE"}</Btn>
-                    <Btn sm onClick={() => void onStartCheckout("PRO")}>{checkoutBusyPlan === "PRO" ? "Redirigiendo..." : "Elegir PRO"}</Btn>
-                  </>
-                )}
-                {onRefreshBilling && <Btn sm v="ol" onClick={onRefreshBilling}>Ya pagué</Btn>}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <section data-home-grid style={{display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 14, marginBottom: 14}}>
-          <div style={{...cardS, padding: 18, marginBottom: 0}}>
-            <div style={{display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap"}}>
-              <div>
-                <div style={{...lb, color: G, marginBottom: 6}}>Studio OS</div>
-                <h1 style={{margin: 0, fontSize: 26, lineHeight: 1.15, letterSpacing: 0, maxWidth: 640}}>Vende, cotiza y controla obra sin duplicar datos entre plantillas.</h1>
-              </div>
-              <span style={{...badgeS, color: activeProjects.length ? UI.success : UI.warning}}>
-                Próxima acción: {nextAction}
+          <Card className="flex flex-wrap items-center justify-between gap-3 p-4" style={{borderColor: "var(--ui-warning)"}}>
+            <div className="grid gap-0.5">
+              <span className="text-sm font-semibold" style={{color: UI.warning}}>{paywallTitle}</span>
+              <span className="text-sm text-muted-foreground">
+                Plan actual: {paywallPlan}. El workspace se habilita con estado activo.
               </span>
             </div>
-            <div data-home-metrics style={{display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 8}}>
-              <div style={metricS}>
-                <div style={{fontSize: 9, color: UI.textMuted}}>Proyectos activos</div>
-                <div style={{fontSize: 22, fontWeight: 900}}>{activeProjects.length}</div>
-              </div>
-              <div style={metricS}>
-                <div style={{fontSize: 9, color: UI.textMuted}}>Honorarios</div>
-                <div style={{fontSize: 18, fontWeight: 900}}>{formatMoneyByCurrency(totalHonorarios, "PEN")}</div>
-              </div>
-              <div style={metricS}>
-                <div style={{fontSize: 9, color: UI.textMuted}}>Obra cotizada</div>
-                <div style={{fontSize: 18, fontWeight: 900}}>{formatMoneyByCurrency(totalCotizado, "PEN")}</div>
-              </div>
-              <div style={metricS}>
-                <div style={{fontSize: 9, color: UI.textMuted}}>OC pendientes</div>
-                <div style={{fontSize: 22, fontWeight: 900, color: ocPendientes ? UI.danger : UI.success}}>{ocPendientes}</div>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {onOpenBillingPortal && (
+                <Button size="sm" onClick={() => void onOpenBillingPortal()}>Gestionar plan</Button>
+              )}
+              {!onOpenBillingPortal && onStartCheckout && (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => void onStartCheckout("BASE")}>
+                    {checkoutBusyPlan === "BASE" ? "Redirigiendo..." : "Activar BASE"}
+                  </Button>
+                  <Button size="sm" onClick={() => void onStartCheckout("PRO")}>
+                    {checkoutBusyPlan === "PRO" ? "Redirigiendo..." : "Elegir PRO"}
+                  </Button>
+                </>
+              )}
+              {onRefreshBilling && (
+                <Button size="sm" variant="outline" onClick={onRefreshBilling}>Ya pagué</Button>
+              )}
             </div>
-          </div>
+          </Card>
+        )}
 
-          <div style={{...cardS, padding: 18, marginBottom: 0}}>
-            <div style={{...lb, color: G, marginBottom: 8}}>Pipeline comercial</div>
-            <div style={{display: "grid", gap: 7}}>
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="Proyectos activos" value={activeProjects.length} />
+          <Stat label="Honorarios" value={formatMoneyByCurrency(totalHonorarios, "PEN")} />
+          <Stat label="Obra cotizada" value={formatMoneyByCurrency(totalCotizado, "PEN")} />
+          <Stat label="OC pendientes" value={ocPendientes} tone={ocPendientes ? "danger" : "success"} />
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Card className="gap-3 p-4">
+            <SectionTitle title="Pipeline comercial" />
+            <div className="grid gap-2.5">
               {COMMERCIAL_STATUS_OPTIONS.map((status) => {
                 const count = pipelineCounts[status] || 0;
-                const pct = activeProjects.length ? Math.max(5, (count / activeProjects.length) * 100) : 0;
+                const pct = activeProjects.length ? Math.max(4, (count / activeProjects.length) * 100) : 0;
                 return (
-                  <div key={status}>
-                    <div style={{display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 4, color: UI.textMuted}}>
-                      <span style={{fontWeight: 800, color: DK}}>{status}</span>
-                      <span>{count}</span>
+                  <div key={status} className="grid gap-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{status}</span>
+                      <span className="text-muted-foreground">{count}</span>
                     </div>
-                    <div style={{height: 7, borderRadius: 999, background: "var(--ui-bg-band)", overflow: "hidden", border: `1px solid ${UI.borderSoft}`}}>
-                      <div style={{height: "100%", width: `${pct}%`, background: status === "Ganado" ? UI.success : status === "Perdido" ? UI.danger : G}} />
+                    <div
+                      className="h-1.5 overflow-hidden rounded-full border border-border-soft"
+                      style={{background: "var(--ui-bg-band)"}}
+                    >
+                      <div
+                        className="h-full"
+                        style={{
+                          width: `${pct}%`,
+                          background: status === "Ganado" ? UI.success : status === "Perdido" ? UI.danger : G,
+                        }}
+                      />
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        </section>
+          </Card>
 
-        <section data-home-grid style={{display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 14, marginBottom: 14}}>
-          <div style={{...cardS, padding: 18, marginBottom: 0}}>
-            <div style={{...lb, color: G, marginBottom: 8}}>Nuevo proyecto</div>
-            <div style={{display: "grid", gap: 6}}>
-              <Fld label="Nombre del proyecto"><Inp value={newProjectName} onChange={setNewProjectName} placeholder="Ej. Casa Pradera" /></Fld>
-              <div data-home-form-grid style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
-                <Fld label="Cliente"><Inp value={newProjectClient} onChange={setNewProjectClient} placeholder="Ej. GoTo Market" /></Fld>
-                <Fld label="Codigo de cotizacion"><Inp value={newProjectCode} onChange={setNewProjectCode} placeholder="Ej. COT-012" /></Fld>
-              </div>
-              <div data-home-form-grid style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
-                <Fld label="Tipo"><Inp value={newProjectType} onChange={setNewProjectType} placeholder="Vivienda / Comercial" /></Fld>
-                <Fld label="Ubicación"><Inp value={newProjectLocation} onChange={setNewProjectLocation} placeholder="Ciudad / distrito" /></Fld>
-              </div>
-              <div data-home-form-grid style={{display: "grid", gridTemplateColumns: "1fr 0.7fr", gap: 10}}>
-                <Fld label="Estado comercial"><Sel value={newProjectStatus} onChange={(value) => setNewProjectStatus(value as CommercialStatus)} options={COMMERCIAL_STATUS_OPTIONS} /></Fld>
-                <Fld label="Moneda"><Sel value={newProjectCurrency} onChange={(value) => setNewProjectCurrency(value as ProjectCurrency)} options={[...PROJECT_CURRENCY_OPTIONS]} /></Fld>
-              </div>
+          <Card className="gap-3 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <SectionTitle title="Estado operativo" />
+              <Pill tone="neutral">Archivados: {archivedCount}</Pill>
             </div>
-            <div style={{display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 12}}>
+            <div className="grid gap-3 sm:grid-cols-3">
               {TRACK_DEFAULT_ORDER.map((track) => (
-                <button
-                  key={track}
-                  onClick={() => setNewProjectTracks((prev) => ({...prev, [track]: !prev[track]}))}
-                  style={{...badgeS, background: newProjectTracks[track] ? "var(--ui-accent-soft)" : UI.card, color: newProjectTracks[track] ? G : UI.textMuted, cursor: "pointer"}}
-                >
-                  {newProjectTracks[track] ? "✓ " : ""}{TRACK_LABELS[track]}
-                </button>
-              ))}
-            </div>
-            <Btn onClick={createProject}>Crear proyecto</Btn>
-          </div>
-
-          <div style={{...cardS, padding: 18, marginBottom: 0}}>
-            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10}}>
-              <div style={{...lb, color: G, margin: 0}}>Estado operativo</div>
-              <span style={{...badgeS, color: UI.textMuted}}>Archivados: {archivedCount}</span>
-            </div>
-            <div data-home-track-grid style={{display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8, marginBottom: 10}}>
-              {TRACK_DEFAULT_ORDER.map((track) => (
-                <div key={track} style={metricS}>
-                  <div style={{fontSize: 10, fontWeight: 900, marginBottom: 6}}>{TRACK_LABELS[track]}</div>
-                  <div style={{display: "grid", gap: 4}}>
-                    {(["No iniciado", "En curso", "Completado"] as TrackState[]).map((state) => (
-                      <div key={state} style={{display: "flex", justifyContent: "space-between", fontSize: 9, color: UI.textMuted}}>
-                        <span style={{color: TRACK_STATUS_COLORS[state], fontWeight: 800}}>{state}</span>
-                        <span>{totalsByTrack[track][state]}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div data-home-track-grid style={{display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8}}>
-              <div style={metricS}><div style={{fontSize: 9, color: UI.textMuted}}>Cobrado diseño</div><div style={{fontSize: 15, fontWeight: 900}}>{formatMoneyByCurrency(totalCobrado, "PEN")}</div></div>
-              <div style={metricS}><div style={{fontSize: 9, color: UI.textMuted}}>Valorizado</div><div style={{fontSize: 15, fontWeight: 900}}>{formatMoneyByCurrency(totalValorizado, "PEN")}</div></div>
-              <div style={metricS}><div style={{fontSize: 9, color: UI.textMuted}}>Conversión ganado</div><div style={{fontSize: 15, fontWeight: 900}}>{activeProjects.length ? `${Math.round(((pipelineCounts.Ganado || 0) / activeProjects.length) * 100)}%` : "0%"}</div></div>
-            </div>
-          </div>
-        </section>
-
-        <section style={{...cardS, padding: 18}}>
-          <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap"}}>
-            <div>
-              <div style={{...lb, color: G, marginBottom: 4}}>Proyectos demo</div>
-              <div style={{fontSize: 11, color: UI.textMuted}}>Tres proyectos precargados para explorar el flujo completo sin afectar tus datos.</div>
-            </div>
-            <Btn v="ol" sm onClick={openDemoHub}>Ver galería completa</Btn>
-          </div>
-          <DemoCards definitions={demoDefinitions} onOpenDemo={openDemo} compact />
-        </section>
-
-        <section style={{...cardS, padding: 18}}>
-          <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap"}}>
-            <div>
-              <div style={{...lb, color: G, marginBottom: 4}}>Proyectos recientes</div>
-              <div style={{fontSize: 11, color: UI.textMuted}}>Abre el workspace, revisa la próxima acción o ajusta metadata comercial.</div>
-            </div>
-            <Btn v="ol" sm onClick={openDemoHub}>Ver demos verticales</Btn>
-          </div>
-          {!projectsWithMetrics.length && (
-            <div style={{border: `1px dashed ${UI.border}`, borderRadius: 8, background: UI.panel, padding: "16px 14px", color: UI.textMuted}}>
-              <div style={{fontSize: 13, fontWeight: 900, color: DK, marginBottom: 4}}>Todavía no hay proyectos</div>
-              <div style={{fontSize: 11, lineHeight: 1.5}}>Crea tu primer proyecto con la ficha de la izquierda. Luego podrás abrir el workspace, completar herramientas y exportar la propuesta.</div>
-            </div>
-          )}
-          <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(310px,1fr))", gap: 10}}>
-            {projectsWithMetrics.map(({project, baseMeta, metrics, disenoGantt, obraGantt}) => (
-              <article key={project.id} style={{border: `1px solid ${UI.borderSoft}`, borderRadius: 8, padding: "12px 12px 11px", background: UI.panel}}>
-                <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8}}>
-                  <div>
-                    <h3 style={{margin: 0, fontSize: 13, color: DK}}>{baseMeta.projectName.trim() || project.name}</h3>
-                    <div style={{fontSize: 9, color: UI.textMuted, lineHeight: 1.45}}>{project.type || "Tipo no definido"} · {baseMeta.location.trim() || project.location || "Ubicación no definida"}</div>
-                    <div style={{fontSize: 8, color: UI.textSubtle}}>Cliente: {baseMeta.client.trim() || "No definido"} · {baseMeta.currency} · {project.commercialStatus}</div>
-                  </div>
-                  {project.archived && <span style={{...badgeS, color: UI.textMuted}}>Archivado</span>}
-                </div>
-                <div style={{display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8}}>
-                  {TRACK_DEFAULT_ORDER.map((track) => project.tracks[track] ? (
-                    <span key={track} style={{...badgeS, color: TRACK_STATUS_COLORS[metrics.states[track]]}}>
-                      {TRACK_LABELS[track]}: {metrics.states[track]}
-                    </span>
-                  ) : null)}
-                </div>
-                <div style={{fontSize: 9, color: UI.textMuted, lineHeight: 1.5, marginBottom: 8}}>
-                  Diseño: {metrics.diseno.pctCobrado.toFixed(1)}% cobrado · Construcción: {formatMoneyByCurrency(metrics.construccion.cotizado, baseMeta.currency)} · Seguimiento: {metrics.seguimiento.pctAvance.toFixed(1)}%
-                </div>
-                <div style={{display: "grid", gap: 6, marginBottom: 10}}>
-                  <div>
-                    <div style={{fontSize: 8, fontWeight: 800, color: UI.textSubtle, marginBottom: 3}}>Diseño</div>
-                    <div style={{display: "flex", height: 7, borderRadius: 4, overflow: "hidden", border: `1px solid ${UI.borderSoft}`, background: "var(--ui-bg-band)"}}>
-                      {disenoGantt.length ? disenoGantt.map((item) => (
-                        <div key={item.id} title={`${item.label}: ${fDateShort(item.start)}-${fDateShort(item.end)}`} style={{width: `${item.pct}%`, background: item.color}} />
-                      )) : <div style={{width: "100%", background: "var(--ui-bg-band)"}} />}
+                <div key={track} className="grid gap-1.5 rounded-lg border border-border-soft p-3">
+                  <span className="text-sm font-medium">{TRACK_LABELS[track]}</span>
+                  {(["No iniciado", "En curso", "Completado"] as TrackState[]).map((state) => (
+                    <div key={state} className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <StatusDot tone={TRACK_STATE_TONE[state]} />
+                        {state}
+                      </span>
+                      <span>{totalsByTrack[track][state]}</span>
                     </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Stat label="Cobrado diseño" value={formatMoneyByCurrency(totalCobrado, "PEN")} />
+              <Stat label="Valorizado" value={formatMoneyByCurrency(totalValorizado, "PEN")} />
+              <Stat
+                label="Conversión ganado"
+                value={activeProjects.length ? `${Math.round(((pipelineCounts.Ganado || 0) / activeProjects.length) * 100)}%` : "0%"}
+              />
+            </div>
+          </Card>
+        </section>
+
+        <Card className="gap-4 p-4">
+          <SectionTitle title="Proyectos" hint="Abre el workspace o ajusta la ficha comercial." />
+          {!projectsWithMetrics.length ? (
+            <div className="rounded-lg border border-dashed border-border p-5" style={{background: UI.panel}}>
+              <div className="text-title font-semibold">Todavía no hay proyectos</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Usa <b>Nuevo proyecto</b> arriba a la derecha para crear el primero.
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3">
+              {projectsWithMetrics.map(({project, baseMeta, metrics, disenoGantt, obraGantt}) => (
+                <article
+                  key={project.id}
+                  className="grid gap-3 rounded-lg border border-border-soft p-4"
+                  style={{background: UI.panel}}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="grid gap-0.5">
+                      <h3 className="m-0 text-title font-semibold">
+                        {baseMeta.projectName.trim() || project.name}
+                      </h3>
+                      <span className="text-sm text-muted-foreground">
+                        {baseMeta.client.trim() || "Cliente no definido"} ·{" "}
+                        {baseMeta.location.trim() || project.location || "Sin ubicación"}
+                      </span>
+                    </div>
+                    {project.archived && <Pill tone="neutral">Archivado</Pill>}
                   </div>
-                  <div>
-                    <div style={{fontSize: 8, fontWeight: 800, color: UI.textSubtle, marginBottom: 3}}>Obra</div>
-                    <div style={{position: "relative", height: 9, borderRadius: 4, overflow: "hidden", border: `1px solid ${UI.borderSoft}`, background: "var(--ui-bg-band)"}}>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    <Pill tone="info">{project.commercialStatus}</Pill>
+                    {TRACK_DEFAULT_ORDER.map((track) => project.tracks[track] ? (
+                      <Pill key={track} tone={TRACK_STATE_TONE[metrics.states[track]]} dot>
+                        {TRACK_LABELS[track]}
+                      </Pill>
+                    ) : null)}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <div className="flex h-1.5 overflow-hidden rounded-full border border-border-soft" style={{background: "var(--ui-bg-band)"}}>
+                      {disenoGantt.map((item) => (
+                        <div
+                          key={item.id}
+                          title={`Diseño · ${item.label}: ${fDateShort(item.start)}-${fDateShort(item.end)}`}
+                          style={{width: `${item.pct}%`, background: item.color}}
+                        />
+                      ))}
+                    </div>
+                    <div className="relative h-1.5 overflow-hidden rounded-full border border-border-soft" style={{background: "var(--ui-bg-band)"}}>
                       {obraGantt.map((item) => (
-                        <div key={item.id} title={item.label} style={{position: "absolute", left: `${Math.max(0, item.pct - 1)}%`, width: `${Math.max(2, item.span)}%`, top: 0, bottom: 0, background: item.color}} />
+                        <div
+                          key={item.id}
+                          title={`Obra · ${item.label}`}
+                          className="absolute inset-y-0"
+                          style={{left: `${Math.max(0, item.pct - 1)}%`, width: `${Math.max(2, item.span)}%`, background: item.color}}
+                        />
                       ))}
                     </div>
                   </div>
-                </div>
-                <div style={{display: "flex", gap: 6, flexWrap: "wrap"}}>
-                  <Btn sm onClick={() => openProject(project.id)}>Abrir workspace</Btn>
-                  <Btn sm v="ol" onClick={() => handleEditProject(project)}>Editar</Btn>
-                  <Btn sm v="ol" onClick={() => toggleArchiveProject(project)}>{project.archived ? "Desarchivar" : "Archivar"}</Btn>
-                  <Btn sm v="ol" onClick={() => handleDeleteProject(project)}>Eliminar</Btn>
-                </div>
-              </article>
-            ))}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => openProject(project.id)}>Abrir</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleEditProject(project)}>Editar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => toggleArchiveProject(project)}>
+                      {project.archived ? "Desarchivar" : "Archivar"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteProject(project)}>Eliminar</Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="gap-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <SectionTitle title="Proyectos demo" hint="Precargados y separados de tus datos." />
+            <Button variant="outline" size="sm" onClick={openDemoHub}>Ver galería completa</Button>
           </div>
-        </section>
+          <DemoCards definitions={demoDefinitions} onOpenDemo={openDemo} compact />
+        </Card>
+        </div>
       </div>
     </div>
   );

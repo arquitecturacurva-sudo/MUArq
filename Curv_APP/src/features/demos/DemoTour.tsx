@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Button, Pill } from "../ui/kit";
 import type { DemoProjectDefinition, DemoTourStep } from "./types";
 import "./demos.css";
 
@@ -77,7 +79,7 @@ function DemoTourSession({
   return (
     <aside className="demo-tour" aria-label={`Recorrido guiado de ${definition.title}`}>
       <div className="demo-tour__topline">
-        <span className="demo-card__badge">Proyecto demo</span>
+        <Pill tone="brand">Proyecto demo</Pill>
         <button className="demo-tour__close" type="button" onClick={close} aria-label="Cerrar recorrido">
           <span aria-hidden="true">×</span>
         </button>
@@ -103,15 +105,15 @@ function DemoTourSession({
           <p className="demo-tour__eyebrow">Ya conoces el flujo de {definition.title}</p>
           <h2>Crea un proyecto real con este mismo flujo.</h2>
           <div className="demo-tour__completion-actions">
-            <button className="demo-button demo-button--primary" type="button" onClick={onDuplicate}>
+            <Button variant="default" onClick={onDuplicate}>
               Duplicar como proyecto
-            </button>
-            <button className="demo-button demo-button--secondary" type="button" onClick={onCreateFromScratch}>
+            </Button>
+            <Button variant="outline" onClick={onCreateFromScratch}>
               Crear proyecto desde cero
-            </button>
-            <button className="demo-button demo-button--quiet" type="button" onClick={onBackToDemos}>
+            </Button>
+            <Button variant="ghost" onClick={onBackToDemos}>
               Volver a las demos
-            </button>
+            </Button>
           </div>
         </div>
       ) : currentStep ? (
@@ -120,17 +122,14 @@ function DemoTourSession({
           <h2>{currentStep.title}</h2>
           <p>{currentStep.description}</p>
           <div className="demo-tour__navigation">
-            <button
-              className="demo-button demo-button--secondary"
-              type="button"
-              onClick={goBack}
-              disabled={stepIndex === 0}
-            >
-              ← Anterior
-            </button>
-            <button className="demo-button demo-button--primary" type="button" onClick={goForward}>
-              {stepIndex === steps.length - 1 ? "Finalizar" : "Siguiente →"}
-            </button>
+            <Button variant="outline" onClick={goBack} disabled={stepIndex === 0}>
+              <ArrowLeft size={15} aria-hidden />
+              Anterior
+            </Button>
+            <Button variant="default" onClick={goForward}>
+              {stepIndex === steps.length - 1 ? "Finalizar" : "Siguiente"}
+              {stepIndex === steps.length - 1 ? null : <ArrowRight size={15} aria-hidden />}
+            </Button>
           </div>
         </div>
       ) : null}

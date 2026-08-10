@@ -13,7 +13,9 @@ import {
   getDemoStorageProjectId,
 } from "./features/demos/demoService";
 import type { DemoProjectDefinition, DemoProjectId, DemoTourStep } from "./features/demos/types";
+import AppHeader from "./features/layout/AppHeader";
 import AuthView from "./features/layout/AuthView";
+import TenantUnavailable from "./features/layout/TenantUnavailable";
 import LandingView from "./features/layout/LandingView";
 import HomeView from "./features/layout/HomeView";
 import OnboardingTour from "./features/layout/OnboardingTour";
@@ -91,6 +93,7 @@ import {
   readProjectSyncState,
   type ProjectSaveStatus,
 } from "./features/runtime/storage/projectSyncState";
+import { DARK_THEME_VARS, LIGHT_THEME_VARS } from "./features/ui/theme";
 import { readSmokeSnapshot, writeSmokeSnapshot } from "./lib/persistence/firestoreSmoke";
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
@@ -119,6 +122,11 @@ export default function App() {
   const [authError,setAuthError]=useState("");
   const [authIntent,setAuthIntent]=useState(false);
   const [activeClientId,setActiveClientId]=useState("");
+  // Tenant bootstrap can fail (undeployed rules, offline, denied read). Without this the
+  // error only reached `authError`, which is rendered on the login screen — so once past
+  // login every gated surface just hung on a "Preparando…" message forever.
+  const [tenantError,setTenantError]=useState("");
+  const [tenantRetryTick,setTenantRetryTick]=useState(0);
   const [clientBilling,setClientBilling]=useState<ClientBilling | null>(null);
   const [clientAccess,setClientAccess]=useState<ClientAccess>(() => resolveClientAccess(null));
   const [billingRefreshTick,setBillingRefreshTick]=useState(0);
@@ -165,99 +173,18 @@ export default function App() {
   const [newProjectCurrency,setNewProjectCurrency]=useState<ProjectCurrency>("PEN");
   const [newProjectStatus,setNewProjectStatus]=useState<CommercialStatus>("Lead");
   const [newProjectTracks,setNewProjectTracks]=useState<Record<TrackId,boolean>>({...DEFAULT_TRACKS});
-  const themeVars: React.CSSProperties = darkMode ? {
-    "--ui-accent": "#C9A96E",
-    "--ui-accent-ink": "#19140C",
-    "--ui-accent-soft": "#2A2318",
-    "--ui-text": "#E6EDF3",
-    "--ui-text-muted": "#9DA7B3",
-    "--ui-text-subtle": "#768292",
-    "--ui-bg": "#0B0F14",
-    "--ui-bg-band": "#10161F",
-    "--ui-card": "#151B24",
-    "--ui-panel": "#111821",
-    "--ui-border": "#2A3442",
-    "--ui-border-soft": "#202A36",
-    "--ui-dark": "#0B1017",
-    "--ui-dark-panel": "#111923",
-    "--ui-input-bg": "#0F141B",
-    "--ui-input-text": "#E6EDF3",
-    "--ui-btn-dk-bg": "#111923",
-    "--ui-btn-dk-text": "#F0F6FC",
-    "--ui-btn-dk-border": "#344155",
-    "--ui-btn-ol-bg": "#151B24",
-    "--ui-btn-ol-text": "#E6EDF3",
-    "--ui-btn-ol-border": "#2A3442",
-    "--ui-btn-gd-text": "#111827",
-    "--ui-button-shadow": "0 8px 18px rgba(0,0,0,0.24)",
-    "--ui-chip-bg": "#111924",
-    "--ui-chip-border": "#2B3645",
-    "--ui-chip-text": "#C3CDD8",
-    "--ui-metric-bg": "#111821",
-    "--ui-muted-dot": "#6B7683",
-    "--ui-saved-bg": "#1B2330",
-    "--ui-saved-border": "#3C4B61",
-    "--ui-saved-dot": "#7FB069",
-    "--ui-saved-text": "#D2DEC5",
-    "--ui-empty-bg": "#121A24",
-    "--ui-empty-border": "#35506D",
-    "--ui-empty-title": "#E3EAF2",
-    "--ui-empty-text": "#AAB5C1",
-    "--ui-empty-label": "#D3BE93",
-    "--ui-empty-shadow": "0 1px 0 rgba(255,255,255,0.03)",
-    "--ui-success": "#79B06B",
-    "--ui-warning": "#D8A74E",
-    "--ui-danger": "#D96D5F",
-    "--ui-info": "#6D9DCA",
-    "--ui-shadow": "0 12px 28px rgba(0,0,0,0.18)",
-    "--ui-shadow-lift": "0 20px 45px rgba(0,0,0,0.28)",
-  } as React.CSSProperties : {
-    "--ui-accent": "#C9A96E",
-    "--ui-accent-ink": "#211807",
-    "--ui-accent-soft": "#F4EEE4",
-    "--ui-text": "#171A1F",
-    "--ui-text-muted": "#5D6470",
-    "--ui-text-subtle": "#818995",
-    "--ui-bg": "#F4F2EE",
-    "--ui-bg-band": "#ECE8DF",
-    "--ui-card": "#FFFFFF",
-    "--ui-panel": "#FBFAF7",
-    "--ui-border": "#D8D1C5",
-    "--ui-border-soft": "#E7E1D7",
-    "--ui-dark": "#101720",
-    "--ui-dark-panel": "#151E29",
-    "--ui-input-bg": "#FFFFFF",
-    "--ui-input-text": "#171A1F",
-    "--ui-btn-dk-bg": "#111827",
-    "--ui-btn-dk-text": "#FFFFFF",
-    "--ui-btn-dk-border": "#111827",
-    "--ui-btn-ol-bg": "#FFFFFF",
-    "--ui-btn-ol-text": "#171A1F",
-    "--ui-btn-ol-border": "#D8D1C5",
-    "--ui-btn-gd-text": "#171A1F",
-    "--ui-button-shadow": "0 10px 24px rgba(17,24,39,0.12)",
-    "--ui-chip-bg": "#FFFFFF",
-    "--ui-chip-border": "#D8D1C5",
-    "--ui-chip-text": "#5D6470",
-    "--ui-metric-bg": "#FBFAF7",
-    "--ui-muted-dot": "#9AA3AE",
-    "--ui-saved-bg": "#FBF7EF",
-    "--ui-saved-border": "#D6C299",
-    "--ui-saved-dot": "#5A8F22",
-    "--ui-saved-text": "#70562A",
-    "--ui-empty-bg": "#FCFAF5",
-    "--ui-empty-border": "#DCCBAA",
-    "--ui-empty-title": "#1A1A1A",
-    "--ui-empty-text": "#6A737D",
-    "--ui-empty-label": "#8A6D3A",
-    "--ui-empty-shadow": "0 1px 2px rgba(17,24,39,0.04)",
-    "--ui-success": "#4D8A5A",
-    "--ui-warning": "#B8831B",
-    "--ui-danger": "#B55345",
-    "--ui-info": "#3F6F9E",
-    "--ui-shadow": "0 12px 30px rgba(27,31,36,0.06)",
-    "--ui-shadow-lift": "0 22px 50px rgba(27,31,36,0.12)",
-  } as React.CSSProperties;
+  const themeVars: React.CSSProperties = darkMode ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+  // Radix renders dialogs, selects and tooltips through a portal on <body>, outside the
+  // themed wrappers. Without the palette on the document root those portals resolve
+  // `var(--ui-*)` to nothing and render fully transparent.
+  useEffect(() => {
+    const root = document.documentElement;
+    const vars = darkMode ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+    Object.entries(vars).forEach(([key, value]) => {
+      if (key.startsWith("--")) root.style.setProperty(key, String(value));
+    });
+    root.dataset.theme = darkMode ? "dark" : "light";
+  }, [darkMode]);
   const normalizedProjects = useMemo(
     () => normalizeProjectRecords(projects).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)),
     [projects]
@@ -340,9 +267,11 @@ export default function App() {
         if (!active) return;
         setActiveClientId(clientId);
         setAuthError("");
+        setTenantError("");
       } catch (error) {
         if (!active) return;
         setAuthError(mapFirebaseError(error));
+        setTenantError(mapFirebaseError(error));
       } finally {
         if (active) setAuthReady(true);
       }
@@ -352,6 +281,27 @@ export default function App() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!tenantRetryTick || !authUser || activeClientId) return;
+    let active = true;
+    (async () => {
+      try {
+        const clientId = await ensureUserHasClient({
+          uid: authUser.uid,
+          email: authUser.email || "",
+          displayName: authUser.displayName || "",
+        });
+        if (!active) return;
+        setActiveClientId(clientId);
+        setTenantError("");
+      } catch (error) {
+        if (!active) return;
+        setTenantError(mapFirebaseError(error));
+      }
+    })();
+    return () => { active = false; };
+  }, [activeClientId, authUser, tenantRetryTick]);
 
   useEffect(() => {
     if (!activeProject) return;
@@ -1423,10 +1373,6 @@ export default function App() {
   if (!authUser || route === "landing") {
     return (
       <LandingView
-        darkMode={darkMode}
-        themeVars={themeVars}
-        setDarkMode={setDarkMode}
-        hasProjects={normalizedProjects.length > 0}
         canContinueWorkspace={!!authUser && !!activeProject}
         openAuth={() => {
           setPendingDemoId(null);
@@ -1446,20 +1392,44 @@ export default function App() {
   if (route === "branding") {
     if (!activeClientId) {
       return (
-        <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", background: UI.bg, color: UI.textMuted}}>
-          Preparando la identidad del estudio…
+        <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", background: UI.bg, color: DK}}>
+          <AppHeader
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+            title="Identidad del estudio"
+            active="branding"
+            onBack={() => setRoute("home")}
+            backLabel="Dashboard"
+            onOpenDashboard={() => setRoute("home")}
+            onOpenDemos={() => setRoute("demos")}
+            onLogout={handleLogout}
+          />
+          <TenantUnavailable
+            error={tenantError}
+            onRetry={() => setTenantRetryTick((tick) => tick + 1)}
+          />
         </div>
       );
     }
     return (
-      <div data-theme={darkMode ? "dark" : "light"} style={themeVars}>
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", background: UI.bg}}>
+        <AppHeader
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          title="Identidad del estudio"
+          active="branding"
+          onBack={() => setRoute("home")}
+          backLabel="Dashboard"
+          onOpenDashboard={() => setRoute("home")}
+          onOpenDemos={() => setRoute("demos")}
+          onLogout={handleLogout}
+        />
         <BrandSettingsView
           key={activeClientId}
           clientId={activeClientId}
           ownerUid={authUser.uid}
           userDisplayName={authUser.displayName || undefined}
           userEmail={authUser.email || undefined}
-          onBack={() => setRoute("home")}
         />
       </div>
     );
@@ -1471,7 +1441,13 @@ export default function App() {
         definitions={DEMO_DEFINITIONS}
         onOpenDemo={openDemo}
         onBackHome={() => setRoute("home")}
+        onOpenBranding={() => {
+          trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "demos"}});
+          setRoute("branding");
+        }}
+        onLogout={handleLogout}
         darkMode={darkMode}
+        setDarkMode={setDarkMode}
         themeVars={themeVars}
       />
     );
@@ -1536,7 +1512,7 @@ export default function App() {
   }
 
   return (
-    <div data-workspace-shell data-theme={darkMode?"dark":"light"} style={{...themeVars,display:"flex",height:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:UI.bg,color:DK,overflow:"hidden"}}>
+    <div data-theme={darkMode?"dark":"light"} style={{...themeVars,display:"flex",flexDirection:"column",height:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:UI.bg,color:DK,overflow:"hidden"}}>
       <style>{`
         @media (max-width: 860px) {
           [data-workspace-shell] {
@@ -1690,22 +1666,33 @@ export default function App() {
           box-shadow: none;
         }
       `}</style>
+
+      {/* Same navigation bar as the dashboard, so global actions never move between screens. */}
+      <AppHeader
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        title={readProjectBaseMetadata(workspaceProjectId).projectName.trim() || workspaceProject.name}
+        active="workspace"
+        onBack={() => (isDemoWorkspace ? returnToDemoGallery() : setRoute("home"))}
+        backLabel={isDemoWorkspace ? "Demos" : "Dashboard"}
+        onOpenDashboard={() => (isDemoWorkspace ? returnToDemoGallery() : setRoute("home"))}
+        onOpenDemos={returnToDemoGallery}
+        onOpenBranding={isDemoWorkspace ? undefined : () => {
+          trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "workspace"}});
+          setRoute("branding");
+        }}
+        onLogout={handleLogout}
+      />
+
+      <div data-workspace-shell style={{display: "flex", flex: 1, minHeight: 0, overflow: "hidden"}}>
       <WorkspaceSidebar
         activeProject={workspaceProject}
         activeProjectId={workspaceProjectId}
         isDemo={isDemoWorkspace}
         demoStatusLabel={activeDemo?.displayStatus}
-        onBackToDemos={returnToDemoGallery}
         enabledTrackOrder={enabledTrackOrder}
         workspaceTrack={workspaceTrack}
         setWorkspaceTrack={setWorkspaceTrack}
-        setRoute={(nextRoute: "home" | "workspace" | "branding") => {
-          if (nextRoute === "branding") {
-            trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "workspace"}});
-          }
-          setRoute(nextRoute);
-        }}
-        onLogout={handleLogout}
         activeTrackTools={activeTrackTools}
         active={active}
         toggleCheck={toggleCheck}
@@ -1717,8 +1704,6 @@ export default function App() {
       />
 
       <WorkspaceMain
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
         openOnboarding={openOnboarding}
         tools={tools}
         active={active}
@@ -1728,11 +1713,11 @@ export default function App() {
         activeTrackTools={activeTrackTools}
         renderedTools={isDemoWorkspace ? demoRenderedTools : undefined}
         activeProjectId={workspaceProjectId}
-        activeProject={workspaceProject}
         projectResetToken={projectResetToken}
         printTool={printTool}
         current={current}
       />
+      </div>
 
       {!isDemoWorkspace && (
         <OnboardingTour

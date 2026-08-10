@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Button as KitButton } from "@/components/ui/button";
+import { StepNav } from "../ui/kit/stepNav";
 import {
   PROJECT_SNAPSHOT_TOOL_PREFIXES,
   collectProjectSnapshotFromStorage,
@@ -153,8 +155,11 @@ export const diffDateDays = (a: string, b: string) => {
   return Math.round((end - start) / 86400000);
 };
 
-export const si: React.CSSProperties = {width:"100%",minHeight:38,padding:"9px 11px",border:`1px solid ${UI.border}`,borderRadius:6,background:"var(--ui-input-bg,#fff)",color:"var(--ui-input-text,var(--ui-text))",fontSize:12,boxSizing:"border-box",outline:"none",fontFamily:"inherit",lineHeight:1.4,boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35)"};
-export const lb: React.CSSProperties = {fontSize:10,fontWeight:800,color:UI.textMuted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:6,display:"block"};
+// Matched to the shadcn <Input> metrics (h-9 / text-sm / rounded-md) so legacy tool
+// fields and kit fields are the same size and shape on screen.
+export const si: React.CSSProperties = {width:"100%",minHeight:36,padding:"7px 12px",border:`1px solid ${UI.border}`,borderRadius:6,background:"var(--ui-input-bg,#fff)",color:"var(--ui-input-text,var(--ui-text))",fontSize:14,boxSizing:"border-box",outline:"none",fontFamily:"inherit",lineHeight:1.45};
+// One label treatment app-wide: no uppercase micro-type, no third font size.
+export const lb: React.CSSProperties = {fontSize:14,fontWeight:500,color:UI.textMuted,marginBottom:6,display:"block",lineHeight:1.45};
 export const cardS: React.CSSProperties = {background:UI.card,borderRadius:8,padding:22,border:`1px solid ${UI.borderSoft}`,boxShadow:UI.shadow,marginBottom:16};
 export const panelS: React.CSSProperties = {background:UI.panel,borderRadius:8,border:`1px solid ${UI.border}`,boxShadow:UI.shadow};
 export const badgeS: React.CSSProperties = {display:"inline-flex",alignItems:"center",gap:5,border:`1px solid ${UI.border}`,borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:800,lineHeight:1.2,whiteSpace:"nowrap"};
@@ -163,14 +168,21 @@ export const metricS: React.CSSProperties = {border:`1px solid ${UI.borderSoft}`
 export const Fld = ({label,children}: FldProps) => <div style={{marginBottom:12}}><label style={lb}>{label}</label>{children}</div>;
 export const Inp = ({value,onChange,type="text",placeholder,min}: InpProps) => <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} min={min} style={si}/>;
 export const Sel = ({value,onChange,options}: SelProps) => <select value={value} onChange={e=>onChange(e.target.value)} style={{...si,appearance:"none"}}>{options.map(o=><option key={o}>{o}</option>)}</select>;
-export const Btn = ({children,onClick,v="dk",sm}: BtnProps) => {
-  const styles: Record<BtnVariant, React.CSSProperties> = {
-    dk:{background:"var(--ui-btn-dk-bg,var(--ui-dark))",color:"var(--ui-btn-dk-text,#fff)",border:"1px solid var(--ui-btn-dk-border,#0F141A)"},
-    ol:{background:"var(--ui-btn-ol-bg,var(--ui-card))",color:"var(--ui-btn-ol-text,var(--ui-text))",border:"1px solid var(--ui-btn-ol-border,var(--ui-border))"},
-    gd:{background:UI.accent,color:"var(--ui-btn-gd-text,#111827)",border:`1px solid ${UI.accent}`},
-  };
-  return <button onClick={onClick} style={{...styles[v],minHeight:sm?34:40,padding:sm?"7px 12px":"10px 18px",borderRadius:6,fontSize:sm?11:12,fontWeight:800,cursor:"pointer",letterSpacing:0,transition:"background 0.15s ease,border-color 0.15s ease,transform 0.15s ease",lineHeight:1.25,boxShadow:v==="dk"?"var(--ui-button-shadow,none)":"none"}}>{children}</button>;
+/**
+ * Legacy button API kept as a facade over the shadcn <Button>, so the ~100 existing
+ * `Btn` call sites across the nine tools pick up the standard control without edits.
+ * New code should import Button from features/ui/kit directly.
+ */
+const BTN_VARIANT: Record<BtnVariant, "default" | "outline" | "brand"> = {
+  dk: "default",
+  ol: "outline",
+  gd: "brand",
 };
+export const Btn = ({children,onClick,v="dk",sm}: BtnProps) => (
+  <KitButton variant={BTN_VARIANT[v]} size={sm ? "sm" : "default"} onClick={onClick}>
+    {children}
+  </KitButton>
+);
 export const InlineEmptyStateCard = ({title,context,build,first,unlock}: InlineEmptyStateCardProps) => (
   <div style={{background:"var(--ui-empty-bg,#FCFAF5)",border:"1px solid var(--ui-empty-border,#DCCBAA)",borderRadius:8,padding:"11px 12px",marginBottom:12,boxShadow:"var(--ui-empty-shadow,none)"}}>
     <div style={{fontSize:11,fontWeight:900,color:"var(--ui-empty-title,#1A1A1A)",marginBottom:5}}>{title}</div>
@@ -876,13 +888,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
   const showCalcEmpty = step===1 && !String(cl).trim() && !String(pr).trim() && !String(ar).trim();
   return (
     <div>
-      <div style={{display:"flex",gap:20,marginBottom:16,paddingBottom:12,borderBottom:"1px solid #E8E2D8"}}>
-        {ST.map((s,i)=>{const n=i+1,d=step>n,a=step===n;return(
-          <div key={i} onClick={()=>d&&ss(n)} style={{display:"flex",alignItems:"center",gap:5,color:a?DK:d?G:"#CCC",fontSize:11,fontWeight:a||d?700:400,cursor:d?"pointer":"default"}}>
-            <span style={{width:16,height:16,borderRadius:"50%",background:d?G:a?DK:"#DDD",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,flexShrink:0}}>{d?"✓":n}</span>{s}
-          </div>
-        );})}
-      </div>
+      <StepNav steps={ST} current={step} onSelect={ss} />
 
       {step===1&&(
         <div style={cardS}>
@@ -3256,19 +3262,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
 
   return (
     <div>
-      <div style={{display:"flex",gap:20,marginBottom:16,paddingBottom:12,borderBottom:"1px solid #E8E2D8"}}>
-        {ST.map((label, index) => {
-          const n = index + 1;
-          const done = step > n;
-          const active = step === n;
-          return (
-            <div key={label} style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={() => setStep(n)}>
-              <div style={{width:19,height:19,borderRadius:"50%",background:done?G:active?DK:"#D9D4C8",color:done?"#fff":active?"#fff":"#888",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{done ? "✓" : n}</div>
-              <span style={{fontSize:10,fontWeight:active?700:500,color:active?DK:"#888"}}>{label}</span>
-            </div>
-          );
-        })}
-      </div>
+      <StepNav steps={ST} current={step} onSelect={setStep} allowAhead />
 
       {step === 1 && (
         <div>

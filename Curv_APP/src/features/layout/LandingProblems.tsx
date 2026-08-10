@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import "@fontsource/merriweather/latin-400.css";
-import "@fontsource/merriweather/latin-400-italic.css";
-import "@fontsource/geist-sans/latin-200.css";
-import "@fontsource/geist-sans/latin-400.css";
+import { SANS, SERIF } from "./landingTheme";
 import cityPoster from "../../assets/landing/city-poster.jpg";
 import iconExcel from "../../assets/landing/icon-excel.png";
 import iconWhatsapp from "../../assets/landing/icon-whatsapp.png";
 import iconPdf from "../../assets/landing/icon-pdf.png";
 import iconCalendar from "../../assets/landing/icon-calendar.png";
-
-const SERIF = "'Merriweather', 'Lora', Georgia, serif";
-const SANS = "'Geist Sans', 'Inter', 'Helvetica Neue', sans-serif";
 
 /** Served from public/ so the 11MB file is never inlined into standalone.html. */
 const VIDEO_SRC = `${import.meta.env.BASE_URL}web-background.mp4`;

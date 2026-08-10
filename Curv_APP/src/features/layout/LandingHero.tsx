@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
-import "@fontsource/merriweather/latin-400.css";
-import "@fontsource/merriweather/latin-400-italic.css";
-import "@fontsource/geist-sans/latin-200.css";
-import "@fontsource/geist-sans/latin-400.css";
 import { trackLocalProductEvent } from "../runtime/runtime";
+import { SANS, SERIF, pillInteractionCss, pillStyle } from "./landingTheme";
 import macFrame from "../../assets/landing/mac.png";
 import iconHouse from "../../assets/landing/icon-house.png";
 import iconBlueprint from "../../assets/landing/icon-blueprint.png";
@@ -11,14 +8,13 @@ import iconTape from "../../assets/landing/icon-tape.png";
 import iconPencilRuler from "../../assets/landing/icon-pencil-ruler.png";
 
 type LandingHeroProps = {
+  canContinueWorkspace: boolean;
   openAuth: () => void;
+  continueWorkspace: () => void;
 };
 
 /** Brand wordmark shown in the centre of the hero nav. */
 const BRAND_LABEL = "archi OS";
-
-const SERIF = "'Merriweather', 'Lora', Georgia, serif";
-const SANS = "'Geist Sans', 'Inter', 'Helvetica Neue', sans-serif";
 
 /** Screen cut-out of mac.png, measured from the transparent region of the asset. */
 const MAC_SCREEN = {left: "12.97%", top: "4.91%", width: "74.53%", height: "83.61%"};
@@ -34,7 +30,7 @@ const ICON_ROTATION_MS = 2600;
 
 const NAV_LINKS = [
   {id: "inicio", label: "Inicio", target: ""},
-  {id: "nosotros", label: "Nosotros", target: "curv-problemas"},
+  {id: "nosotros", label: "Nosotros", target: "curv-nosotros"},
   {id: "ejemplos", label: "Ejemplos", target: "curv-demos"},
 ] as const;
 
@@ -46,21 +42,19 @@ const scrollToSection = (targetId: string) => {
   document.getElementById(targetId)?.scrollIntoView({behavior: "smooth", block: "start"});
 };
 
-const pillStyle = {
-  border: "1px solid rgba(255,255,255,0.72)",
-  borderRadius: 999,
-  background: "transparent",
-  color: "#FFFFFF",
-  fontFamily: SANS,
-  fontWeight: 400,
-  fontSize: 15,
-  lineHeight: 1.2,
-  padding: "11px 22px",
-  cursor: "pointer",
-  transition: "opacity 160ms ease, transform 160ms ease",
-} as const;
+/** Secondary nav actions: same type as the pills, without the outline. */
+const quietActionStyle = {
+  ...pillStyle,
+  border: "1px solid transparent",
+  padding: "11px 6px",
+  color: "rgba(255,255,255,0.78)",
+};
 
-export default function LandingHero({openAuth}: LandingHeroProps) {
+export default function LandingHero({
+  canContinueWorkspace,
+  openAuth,
+  continueWorkspace,
+}: LandingHeroProps) {
   const [iconIndex, setIconIndex] = useState(0);
 
   useEffect(() => {
@@ -90,14 +84,11 @@ export default function LandingHero({openAuth}: LandingHeroProps) {
       }}
     >
       <style>{`
-        /* Keep nav targets clear of the sticky header of the section below. */
-        #curv-problemas, #curv-demos { scroll-margin-top: 76px; }
-        [data-curv-hero-v2] [data-pill]:hover {
-          background: rgba(255,255,255,0.12);
-          border-color: #FFFFFF;
-          transform: translateY(-1px);
-        }
-        [data-curv-hero-v2] [data-pill]:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 3px; }
+        /* Breathing room so a jumped-to section does not start flush against the top. */
+        #curv-problemas, #curv-solucion, #curv-demos, #curv-nosotros { scroll-margin-top: 40px; }
+        ${pillInteractionCss("[data-curv-hero-v2]")}
+        [data-curv-hero-v2] [data-quiet]:hover { color: #FFFFFF; }
+        [data-curv-hero-v2] [data-quiet]:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 3px; }
         @media (max-width: 860px) {
           [data-curv-hero-v2] [data-hero-nav] {
             grid-template-columns: 1fr !important;
@@ -146,7 +137,15 @@ export default function LandingHero({openAuth}: LandingHeroProps) {
           {BRAND_LABEL}
         </div>
 
-        <div data-hero-nav-right style={{display: "flex", justifyContent: "flex-end"}}>
+        <div data-hero-nav-right style={{display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, flexWrap: "wrap"}}>
+          {canContinueWorkspace && (
+            <button type="button" data-quiet style={quietActionStyle} onClick={continueWorkspace}>
+              Continuar workspace
+            </button>
+          )}
+          <button type="button" data-quiet style={quietActionStyle} onClick={openAuth}>
+            Iniciar sesión
+          </button>
           <button type="button" data-pill style={pillStyle} onClick={startDownload}>
             Descargar
           </button>

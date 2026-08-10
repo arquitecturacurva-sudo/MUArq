@@ -30,7 +30,6 @@ type BrandSettingsViewProps = {
   ownerUid: string;
   userDisplayName?: string;
   userEmail?: string;
-  onBack: () => void;
 };
 
 const BACKGROUND_PRESETS: readonly BrandColorPreset[] = [
@@ -60,7 +59,6 @@ export const BrandSettingsView = ({
   ownerUid,
   userDisplayName,
   userEmail,
-  onBack,
 }: BrandSettingsViewProps) => {
   const fallbackCompanyName =
     userDisplayName?.trim() || userEmail?.split("@")[0]?.trim() || "Mi estudio";
@@ -230,7 +228,6 @@ export const BrandSettingsView = ({
       <main className="brand-settings-shell">
         <div className="brand-settings-header">
           <div className="brand-settings-heading">
-            <button type="button" className="brand-back-button" aria-label="Volver" onClick={onBack}>←</button>
             <div><h1>Identidad del estudio</h1><p>Configura la presentación de tus documentos externos.</p></div>
           </div>
         </div>
@@ -271,15 +268,6 @@ export const BrandSettingsView = ({
     <main className="brand-settings-shell">
       <header className="brand-settings-header">
         <div className="brand-settings-heading">
-          <button
-            type="button"
-            className="brand-back-button"
-            aria-label="Volver al dashboard"
-            disabled={mutationBusy}
-            onClick={onBack}
-          >
-            ←
-          </button>
           <div>
             <h1>Identidad del estudio</h1>
             <p>Una sola configuración para propuestas, presupuestos y documentos del workspace.</p>

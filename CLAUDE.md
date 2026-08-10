@@ -137,9 +137,9 @@ Brand logos are never written directly from the client: Storage rules deny all w
   DOM, localStorage, or Firestore.
 - Adding a tool means touching `runtime.tsx` (implementation), a shim in `src/features/tools/`, and the
   snapshot prefix list if it introduces a new storage namespace.
-- UI is heavily inline-styled off the `UI` token object in `runtime.tsx`, which maps to CSS custom
-  properties (`--ui-*`) so brand theming can override them. Follow that pattern rather than adding new
-  styling systems.
+- Legacy UI is still inline-styled off the `UI` token object in `runtime.tsx`, which maps to the same
+  `--ui-*` custom properties as the kit. When touching an old surface, migrate it to the kit rather than
+  extending the inline-style pattern; do not introduce a third styling system.
 - Client-facing print/export must not leak internal detail. `AGENTS.md` mandates a not-yet-implemented
   `printMode: "client" | "internal"` split for the Programa Arquitectónico — client export shows only zone /
   total area / percentage / key observations, internal export keeps the full table. Changing what is exposed
@@ -149,6 +149,46 @@ Brand logos are never written directly from the client: Storage rules deny all w
 - Docs worth reading before large changes: `docs/PROJECT_STATUS.md` (audit + honest readiness table),
   `docs/STABILIZATION_NOTES.md` (what the snapshot/tombstone/checkout work does and does not cover),
   `docs/firebase-multitenant.md`, `docs/billing.md`.
+
+## In-app UI kit (shadcn)
+
+Components are **installed with the CLI**, not hand-written: `npx shadcn@latest add <component>` writes
+into `src/components/ui/` (config in `components.json`, alias `@/*` → `src/*`). Check `npx shadcn@latest
+info` and prefer an existing component over custom UI. `src/features/ui/kit/index.ts` is a barrel that
+re-exports them plus the two things shadcn has no equivalent for: `Pill`/`StatusDot` (Badge + semantic
+tone) and `StepNav`.
+
+- **Two button roles.** `default` (solid) and `outline` (secondary). `ghost` is for icon-only and toolbar
+  affordances. `brand` is the studio gold and is limited to one CTA per surface; `destructive` is for
+  destructive actions only.
+- **`accent` is not the brand colour.** In shadcn, `accent` is the subtle hover surface. The gold lives
+  under `brand` / `--color-brand`, so hover states don't turn gold.
+- **One pill.** `Pill` covers every status/metadata chip via a `tone`
+  (`neutral | brand | success | warning | danger | info`) plus optional `dot`. Colour first, text second.
+- **Exactly two font sizes.** Enforced in the token layer rather than by review: `--text-xs`/`--text-sm`
+  both resolve to 0.875rem and `--text-base`/`--text-lg`/`--text-xl` to 1.125rem, so stock shadcn
+  components obey the rule unedited. Hierarchy comes from weight and colour.
+- **No breadcrumbs.** Wizard steps use `StepNav`, which is navigation, not a trail.
+- Prefer a lucide icon over a repeated text label (demo cards use `MapPin`/`Ruler`/`Coins` instead of
+  UBICACIÓN/ÁREA/MONEDA headings, with `sr-only` text kept for screen readers).
+- Forms use `Field` + `FieldGroup` + `Input`/`Select`, never raw divs (see `NewProjectDialog`).
+
+Tailwind v4 is wired through `@tailwindcss/vite`, but **full preflight is deliberately not imported**
+(`src/styles/kit.css`) because the reset would restyle the inline-styled `runtime.tsx` monolith. The one
+piece that *is* reproduced is the border reset (`border-width: 0; border-style: solid`) — without it
+Tailwind's `border` utility sets width only, leaving every shadcn border invisible.
+
+Tokens are mapped with `@theme inline`, so `bg-card` compiles to `background-color: var(--ui-card)` rather
+than a literal. The palette therefore lives in `src/features/ui/theme.ts` and light/dark keeps working
+through the existing `--ui-*` variables. A subtree can opt into a different theme than the shell by
+applying the vars itself — `WorkspaceSidebar` spreads `DARK_THEME_VARS` to stay a dark island in light mode.
+
+`react-refresh/only-export-components` is disabled for `src/components/ui/**` in `eslint.config.js`:
+shadcn ships component + variants in one file, and editing that would fight `shadcn diff`.
+
+The legacy `Btn`, `si` and `lb` in `runtime.tsx` are now facades over the kit — `Btn` renders the shadcn
+`Button`, and `si`/`lb` match the `Input` metrics. That standardises the nine tools without touching their
+call sites, so **do not restore bespoke inline button/input styling there**.
 
 ## Release
 

@@ -1,6 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties } from "react";
-import { Brand, Btn, DK, G, UI } from "../runtime/runtime";
+import { ArrowLeft, Moon, Sun } from "lucide-react";
+import { Button, Card, Field, FieldLabel, Input } from "../ui/kit";
+import { Brand } from "../runtime/runtime";
+import authBackground from "../../assets/auth/auth-background.webp";
 
 type AuthViewProps = {
   darkMode: boolean;
@@ -20,6 +23,18 @@ type AuthViewProps = {
 
 type Mode = "login" | "register";
 
+/** Google's mark is not in lucide, so it ships inline. */
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 18 18" aria-hidden className="size-4">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z" />
+      <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z" />
+    </svg>
+  );
+}
+
 export default function AuthView({
   darkMode,
   themeVars,
@@ -35,22 +50,11 @@ export default function AuthView({
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const title = useMemo(
-    () => (mode === "login" ? "Inicia sesión en Curv" : "Crea tu cuenta en Curv"),
-    [mode]
-  );
-  const panelBorder = darkMode ? "#304764" : "#D0D7DE";
-  const panelBackground = darkMode ? "linear-gradient(145deg,#101C2D 0%,#0D1726 100%)" : "linear-gradient(145deg,#FFFFFF 0%,#FBF7EF 100%)";
-  const inputBorder = darkMode ? "#35506D" : "#D0D7DE";
-  const inputBackground = darkMode ? "#0E1622" : "#FFFFFF";
-  const inputColor = darkMode ? "#E6EDF3" : "#111827";
-  const mutedColor = darkMode ? "#9BB0C6" : "#6A737D";
-  const helperBackground = darkMode ? "#0F1A2A" : "#FCFAF5";
+  const isLogin = mode === "login";
 
   const submit = async () => {
     if (!email.trim() || !password.trim()) return;
-    if (mode === "login") {
+    if (isLogin) {
       await onLoginWithEmail(email.trim(), password);
       return;
     }
@@ -64,138 +68,141 @@ export default function AuthView({
   return (
     <div
       data-theme={darkMode ? "dark" : "light"}
+      /*
+       * The photo and its scrim are painted by this element rather than by absolutely
+       * positioned children: a negative z-index only works relative to the nearest
+       * ancestor stacking context, so it is easily out-painted by a wrapper background.
+       * A background-image stack cannot be, and needs no extra DOM.
+       */
       style={{
         ...themeVars,
-        minHeight: "100vh",
-        fontFamily: "'Inter','Helvetica Neue',sans-serif",
-        background: UI.bg,
-        color: DK,
-        padding: "22px 24px 30px",
+        backgroundImage: `linear-gradient(180deg, rgba(10,8,6,0.62) 0%, rgba(10,8,6,0.44) 38%, rgba(10,8,6,0.70) 100%), url(${authBackground})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
       }}
+      className="flex min-h-screen flex-col"
     >
-      <style>{`
-        @media (max-width: 760px) {
-          [data-auth-grid] {
-            grid-template-columns: 1fr !important;
-            margin-top: 18px !important;
-          }
-          [data-auth-actions] button {
-            flex: 1 1 100%;
-          }
-        }
-      `}</style>
-      <div style={{maxWidth: 1120, margin: "0 auto"}}>
-        <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 10, flexWrap: "wrap"}}>
-          <div style={{display: "flex", alignItems: "center", gap: 10}}>
-            <Brand dark />
-            <span style={{fontSize: 12, color: mutedColor}}>Acceso seguro por cliente</span>
-          </div>
-          <div style={{display: "flex", gap: 8}}>
-            <Btn v="ol" onClick={onBackLanding}>Volver</Btn>
-            <Btn v="ol" onClick={() => setDarkMode((v) => !v)}>{darkMode ? "Modo claro" : "Modo oscuro"}</Btn>
-          </div>
+
+      <header className="flex items-center justify-between gap-3 px-6 py-4">
+        <div className="flex items-center gap-2.5">
+          <Brand />
+          <span className="text-sm text-white/70">Acceso seguro por cliente</span>
         </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            className="text-white hover:bg-white/15 hover:text-white"
+            onClick={onBackLanding}
+          >
+            <ArrowLeft />
+            Volver
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/15 hover:text-white"
+            onClick={() => setDarkMode((value) => !value)}
+            title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+            aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          >
+            {darkMode ? <Sun /> : <Moon />}
+          </Button>
+        </div>
+      </header>
 
-        <div data-auth-grid style={{maxWidth: 920, margin: "36px auto 0", display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 14, alignItems: "start"}}>
-          <section style={{border: `1px solid ${panelBorder}`, borderRadius: 8, background: panelBackground, padding: "22px 20px"}}>
-          <div style={{display: "flex", justifyContent: "center", gap: 8, marginBottom: 14}}>
-            <button
-              onClick={() => setMode("login")}
-              style={{padding: "6px 11px", borderRadius: 999, border: `1px solid ${mode === "login" ? G : inputBorder}`, background: mode === "login" ? "#FBF7EF" : inputBackground, color: mode === "login" ? G : mutedColor, fontSize: 10, fontWeight: 800, cursor: "pointer"}}
-            >
-              Iniciar sesión
-            </button>
-            <button
-              onClick={() => setMode("register")}
-              style={{padding: "6px 11px", borderRadius: 999, border: `1px solid ${mode === "register" ? G : inputBorder}`, background: mode === "register" ? "#FBF7EF" : inputBackground, color: mode === "register" ? G : mutedColor, fontSize: 10, fontWeight: 800, cursor: "pointer"}}
-            >
-              Registrarse
-            </button>
+      <main className="flex flex-1 items-center justify-center px-5 py-10">
+        <Card className="w-full max-w-[440px] gap-5 p-8 shadow-2xl">
+          <div className="grid gap-1">
+            <h1 className="m-0 text-title font-semibold">
+              {isLogin ? "Inicia sesión" : "Crea tu cuenta"}
+            </h1>
+            <p className="m-0 text-sm text-muted-foreground">
+              {isLogin
+                ? "Entra a tus proyectos, propuestas y obra."
+                : "Se crea un cliente BASE con tu espacio de trabajo."}
+            </p>
           </div>
 
-          <h1 style={{margin: "0 0 12px", fontSize: 24, lineHeight: 1.2, textAlign: "center"}}>{title}</h1>
+          <Button variant="outline" className="w-full" onClick={onLoginWithGoogle} disabled={busy}>
+            <GoogleMark />
+            Continuar con Google
+          </Button>
 
-          {mode === "register" && (
-            <label style={{display: "block", marginBottom: 9}}>
-              <div style={{fontSize: 10, color: mutedColor, marginBottom: 4}}>Nombre</div>
-              <input
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Nombre del responsable"
-                style={{width: "100%", border: `1px solid ${inputBorder}`, borderRadius: 8, padding: "9px 10px", fontSize: 12, background: inputBackground, color: inputColor}}
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-sm text-muted-foreground">O con tu correo</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <div className="grid gap-4">
+            {!isLogin && (
+              <Field>
+                <FieldLabel htmlFor="auth-name">Nombre</FieldLabel>
+                <Input
+                  id="auth-name"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="Nombre del responsable"
+                  autoComplete="name"
+                />
+              </Field>
+            )}
+            <Field>
+              <FieldLabel htmlFor="auth-email">Correo</FieldLabel>
+              <Input
+                id="auth-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="correo@empresa.com"
+                autoComplete="email"
               />
-            </label>
-          )}
-
-          <label style={{display: "block", marginBottom: 9}}>
-            <div style={{fontSize: 10, color: mutedColor, marginBottom: 4}}>Correo</div>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="correo@empresa.com"
-              style={{width: "100%", border: `1px solid ${inputBorder}`, borderRadius: 8, padding: "9px 10px", fontSize: 12, background: inputBackground, color: inputColor}}
-            />
-          </label>
-
-          <label style={{display: "block", marginBottom: 12}}>
-            <div style={{fontSize: 10, color: mutedColor, marginBottom: 4}}>Contraseña</div>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              style={{width: "100%", border: `1px solid ${inputBorder}`, borderRadius: 8, padding: "9px 10px", fontSize: 12, background: inputBackground, color: inputColor}}
-            />
-          </label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="auth-password">Contraseña</FieldLabel>
+              <Input
+                id="auth-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                onKeyDown={(event) => { if (event.key === "Enter") void submit(); }}
+              />
+            </Field>
+          </div>
 
           {error && (
-            <div style={{marginBottom: 9, border: "1px solid #E7C1C1", background: "#FFF7F7", color: "#A63B2A", borderRadius: 8, padding: "8px 9px", fontSize: 11}}>
+            <div
+              role="alert"
+              className="rounded-md border border-solid p-3 text-sm"
+              style={{
+                color: "var(--ui-text)",
+                borderColor: "color-mix(in srgb, var(--ui-danger) 38%, transparent)",
+                background: "color-mix(in srgb, var(--ui-danger) 14%, transparent)",
+              }}
+            >
               {error}
             </div>
           )}
 
-          <div data-auth-actions style={{display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap"}}>
-            <button
-              onClick={submit}
-              disabled={busy}
-              style={{padding: "9px 12px", border: "none", borderRadius: 8, background: busy ? "#B9B9B9" : G, color: "#fff", fontSize: 11, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer"}}
-            >
-              {busy ? "Procesando..." : mode === "login" ? "Entrar" : "Crear cuenta"}
-            </button>
-            <button
-              onClick={onLoginWithGoogle}
-              disabled={busy}
-              style={{padding: "9px 12px", border: `1px solid ${inputBorder}`, borderRadius: 8, background: inputBackground, color: busy ? "#9BA3AD" : inputColor, fontSize: 11, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer"}}
-            >
-              Continuar con Google
-            </button>
-          </div>
+          <Button className="w-full" onClick={submit} disabled={busy}>
+            {busy ? "Procesando..." : isLogin ? "Entrar" : "Crear cuenta"}
+          </Button>
 
-          <div style={{fontSize: 10, color: mutedColor, lineHeight: 1.5}}>
-            Al registrarte se crea automáticamente un cliente BASE con límites de equipo iniciales.
-          </div>
-          </section>
-
-          <aside style={{border: `1px solid ${panelBorder}`, borderRadius: 8, background: helperBackground, padding: "16px 14px"}}>
-            <div style={{fontSize: 11, fontWeight: 800, color: G, marginBottom: 7}}>Qué ocurre al entrar</div>
-            <div style={{fontSize: 11, color: mutedColor, lineHeight: 1.6}}>
-              1. Se crea o detecta tu cliente en Firebase.
-              <br />
-              2. Se asigna plan BASE por defecto para cuentas nuevas.
-              <br />
-              3. Tus proyectos quedan separados por cliente (tenant).
-              <br />
-              4. Si tienes datos locales, se importan una sola vez.
-            </div>
-            <div style={{marginTop: 12, fontSize: 10, color: mutedColor, lineHeight: 1.55}}>
-              BASE: 3 editores + 25 viewers.
-              <br />
-              PRO: 10 editores + 100 viewers.
-            </div>
-          </aside>
-        </div>
-      </div>
+          <p className="m-0 text-center text-sm text-muted-foreground">
+            {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes una cuenta?"}{" "}
+            <button
+              type="button"
+              onClick={() => setMode(isLogin ? "register" : "login")}
+              className="kit-focus cursor-pointer border-0 bg-transparent p-0 font-medium text-foreground underline underline-offset-2"
+            >
+              {isLogin ? "Regístrate" : "Inicia sesión"}
+            </button>
+          </p>
+        </Card>
+      </main>
     </div>
   );
 }
