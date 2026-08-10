@@ -2,11 +2,8 @@ import {
   collection,
   deleteField,
   doc,
-  getDoc,
   getDocs,
   runTransaction,
-  setDoc,
-  updateDoc,
 } from "firebase/firestore";
 import type {
   CommercialStatus,
@@ -68,15 +65,6 @@ export type ProjectDoc = {
   createdAt: string;
   updatedAt: string;
 };
-
-export type CreateProjectInput = Omit<
-  ProjectDoc,
-  "id" | "clientId" | "createdAt" | "updatedAt"
->;
-
-export type UpdateProjectPatch = Partial<
-  Omit<ProjectDoc, "id" | "clientId" | "ownerUid" | "createdAt" | "updatedAt">
->;
 
 export type ProjectToolIndexEntry = {
   toolId: ProjectToolId;
@@ -609,64 +597,6 @@ const runtimeToProjectDoc = (
   updatedAt,
 });
 
-export const createProject = async (clientId: string, input: CreateProjectInput) => {
-  const collectionRef = collection(ensureDb(), "clients", clientId, "projects");
-  const ref = doc(collectionRef);
-  const timestamp = nowIso();
-  const payload: ProjectDoc = {
-    id: ref.id,
-    clientId,
-    ownerUid: input.ownerUid,
-    name: input.name.trim(),
-    client: input.client.trim(),
-    code: input.code.trim(),
-    location: input.location.trim(),
-    currency: getCurrency(input.currency, "PEN"),
-    status: getStatus(input.status, "Lead"),
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-  await setDoc(ref, payload, { merge: true });
-  return payload;
-};
-
-export const getProjects = async (clientId: string) => {
-  const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
-  const projects: ProjectDoc[] = [];
-  snapshot.forEach((docSnapshot) => {
-    const data = docSnapshot.data();
-    if (isProjectTombstoned(data)) return;
-    const payload = normalizeProjectDoc(clientId, docSnapshot.id, data);
-    if (payload) projects.push(payload);
-  });
-  return projects;
-};
-
-export const getProjectById = async (clientId: string, projectId: string) => {
-  const snapshot = await getDoc(projectDocRef(clientId, projectId));
-  if (!snapshot.exists()) return null;
-  const data = snapshot.data();
-  if (isProjectTombstoned(data)) return null;
-  return normalizeProjectDoc(clientId, projectId, data);
-};
-
-export const updateProject = async (
-  clientId: string,
-  projectId: string,
-  patch: UpdateProjectPatch
-) => {
-  const payload: Partial<ProjectDoc> = {
-    updatedAt: nowIso(),
-  };
-  if (typeof patch.name === "string") payload.name = patch.name.trim();
-  if (typeof patch.client === "string") payload.client = patch.client.trim();
-  if (typeof patch.code === "string") payload.code = patch.code.trim();
-  if (typeof patch.location === "string") payload.location = patch.location.trim();
-  if (patch.currency) payload.currency = getCurrency(patch.currency);
-  if (patch.status) payload.status = getStatus(patch.status);
-  await updateDoc(projectDocRef(clientId, projectId), payload);
-};
-
 export const listProjectSyncEntriesByClient = async (clientId: string): Promise<ProjectSyncEntry[]> => {
   const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
   const projects: ProjectSyncEntry[] = [];
@@ -704,16 +634,6 @@ export const listProjectSyncEntriesByClient = async (clientId: string): Promise<
     });
   });
   return projects;
-};
-
-export const listProjectSnapshotsByClient = async (clientId: string): Promise<ProjectHydrationSnapshot[]> => {
-  const entries = await listProjectSyncEntriesByClient(clientId);
-  return entries.flatMap((entry) => entry.kind === "active" ? [entry.hydration] : []);
-};
-
-export const listProjectsByClient = async (clientId: string) => {
-  const snapshots = await listProjectSnapshotsByClient(clientId);
-  return snapshots.map((snapshot) => snapshot.project);
 };
 
 export const upsertProjectByClient = async (
