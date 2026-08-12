@@ -71,6 +71,20 @@ VITE_BILLING_PORTAL_URL=
 firebase deploy --only firestore:rules
 ```
 
+### Cuenta QA para previews
+
+La cuenta de pruebas se aprovisiona con Firebase Admin sin guardar credenciales
+en el repositorio:
+
+```bash
+npm run qa:provision
+```
+
+Configura previamente `QA_EMAIL`, `QA_PASSWORD` y una de las variables
+`FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_SERVICE_ACCOUNT` o
+`FIREBASE_SERVICE_ACCOUNT_B64`. Consulta `docs/qa/preview-testing.md` para el
+flujo de login y previews protegidos de Vercel.
+
 ### Ejecutar desktop en modo desarrollo
 
 ```bash

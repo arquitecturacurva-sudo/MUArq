@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useDocumentBrandTheme } from "../../lib/branding/documentBranding";
 import {
+  PROJECT_SNAPSHOT_UPDATED_AT_KEY,
   PROJECT_SNAPSHOT_TOOL_PREFIXES,
   collectProjectSnapshotFromStorage,
   getScopedProjectStorageKeysFromStorage,
@@ -11,8 +13,10 @@ import type {
   ProjectSnapshot as StorageProjectSnapshot,
   ProjectSnapshotTools,
 } from "./storage/projectSnapshot";
+import { commitPersistentStateTransition } from "./storage/persistentStateTransition";
 
 export {
+  PROJECT_SNAPSHOT_UPDATED_AT_KEY,
   PROJECT_SNAPSHOT_TOOL_PREFIXES,
   isProjectSnapshotToolKey,
   shouldHydrateRemoteSnapshot,
@@ -347,7 +351,6 @@ export const SHARED_PROJECT_NAME_KEY = "project.name";
 export const SHARED_PROJECT_LOCATION_KEY = "project.location";
 export const SHARED_PROJECT_CODE_KEY = "project.code";
 export const SHARED_PROJECT_CURRENCY_KEY = "project.currency";
-export const PROJECT_SNAPSHOT_UPDATED_AT_KEY = "project.snapshotUpdatedAt";
 
 export const PROJECT_CLIENT_LEGACY_KEYS = ["calc.cl", "matrix.cl", "excl.cl", "cron.cl", "oc.cl", "brief.cl", "cot.cl", "obra.cl", "cronobra.cl", "val.cl"];
 export const PROJECT_NAME_LEGACY_KEYS = ["calc.pr", "matrix.pr", "excl.pr", "cron.pr", "oc.pr", "brief.pr", "cot.pr", "obra.pr", "cronobra.pr", "val.pr"];
@@ -447,9 +450,14 @@ export const hydrateProjectSnapshot = (projectId: string, snapshot: ProjectSnaps
   });
 };
 
-export const notifyStorageChange = () => {
+export type ProjectStorageChangeDetail = { key?: string };
+
+export const notifyStorageChange = (key?: string) => {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event(PROJECT_STORAGE_EVENT));
+  window.dispatchEvent(new CustomEvent<ProjectStorageChangeDetail>(
+    PROJECT_STORAGE_EVENT,
+    { detail: key ? { key } : {} }
+  ));
 };
 
 export const readStorage = <T,>(
@@ -474,8 +482,11 @@ export const readStorage = <T,>(
 export const writeStorage = <T,>(key: string, value: T, scopeProjectId?: string) => {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(storageKey(key, scopeProjectId), JSON.stringify(value));
-    notifyStorageChange();
+    const keyName = storageKey(key, scopeProjectId);
+    const serializedValue = JSON.stringify(value);
+    if (window.localStorage.getItem(keyName) === serializedValue) return;
+    window.localStorage.setItem(keyName, serializedValue);
+    notifyStorageChange(keyName);
   } catch {
     // localStorage can fail in private mode or quota issues
   }
@@ -487,7 +498,7 @@ export const removeStorage = (key: string, scopeProjectId?: string) => {
     const keyName = storageKey(key, scopeProjectId);
     if (window.localStorage.getItem(keyName) === null) return;
     window.localStorage.removeItem(keyName);
-    notifyStorageChange();
+    notifyStorageChange(keyName);
   } catch {
     // no-op
   }
@@ -596,36 +607,55 @@ export function usePersistentState<T>(
   const initialRef = React.useRef<T>(resolveValue(initialValue));
   const keyRef = React.useRef(key);
   const [state, setState] = useState<T>(() => readStorage(key, initialRef.current, validate));
-  const skipFirstEffect = React.useRef(true);
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     if (keyRef.current === key) return;
     keyRef.current = key;
     const initial = resolveValue(initialValue);
     initialRef.current = initial;
-    skipFirstEffect.current = true;
-    setState(readStorage(key, initial, validate));
+    const nextValue = readStorage(key, initial, validate);
+    stateRef.current = nextValue;
+    setState(nextValue);
   }, [initialValue, key, validate]);
 
   useEffect(() => {
-    if (skipFirstEffect.current) {
-      skipFirstEffect.current = false;
-      return;
-    }
+    const fullKey = storageKey(key);
+    const syncFromAnotherTab = (event: StorageEvent) => {
+      if (event.key !== fullKey) return;
+      const nextValue = readStorage(key, initialRef.current, validate);
+      setState((current) => {
+        try {
+          if (JSON.stringify(current) === JSON.stringify(nextValue)) return current;
+        } catch {
+          if (Object.is(current, nextValue)) return current;
+        }
+        stateRef.current = nextValue;
+        return nextValue;
+      });
+    };
+    window.addEventListener("storage", syncFromAnotherTab);
+    return () => window.removeEventListener("storage", syncFromAnotherTab);
+  }, [key, validate]);
 
-    try {
-      if (!preserveInitialValue && JSON.stringify(state) === JSON.stringify(initialRef.current)) {
-        removeStorage(key);
-        return;
-      }
-    } catch {
-      // If value can't be stringified, fallback to direct write.
-    }
+  const setPersistentState = React.useCallback<React.Dispatch<React.SetStateAction<T>>>((value) => {
+    const current = stateRef.current;
+    const nextValue = typeof value === "function"
+      ? (value as (previous: T) => T)(current)
+      : value;
+    commitPersistentStateTransition({
+      stateRef,
+      nextValue,
+      initialValue: initialRef.current,
+      preserveInitialValue,
+      persistValue: (next) => writeStorage(key, next),
+      removeValue: () => removeStorage(key),
+      applyState: setState,
+    });
+  }, [key, preserveInitialValue]);
 
-    writeStorage(key, state);
-  }, [key, preserveInitialValue, state]);
-
-  return [state, setState] as const;
+  return [state, setPersistentState] as const;
 }
 
 export function useSharedProjectTextField(
@@ -818,14 +848,33 @@ export const Brand = ({dark=false,sm=false}: {dark?: boolean; sm?: boolean}) => 
   </div>
 );
 
-export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: string; fe: string}) => (
-  <div style={{borderBottom:"2px solid "+G,paddingBottom:13,marginBottom:18}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-      <div><Brand dark/><div style={{fontSize:9,color:"#888",textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{title}</div></div>
-      <div style={{textAlign:"right",fontSize:11,color:"#555",lineHeight:1.6}}><b>{cl||"—"}</b><br/>{pr||"—"}<br/><span style={{color:"#888",fontSize:10}}>{fDate(fe)}</span></div>
+export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: string; fe: string}) => {
+  const brandTheme = useDocumentBrandTheme();
+  const alignment = brandTheme?.logoPosition === "center"
+    ? "center"
+    : brandTheme?.logoPosition === "right"
+      ? "flex-end"
+      : "flex-start";
+  return (
+    <div data-brand-document-header style={{borderBottom:`2px solid ${brandTheme?.accent || G}`,paddingBottom:13,marginBottom:18}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:20}}>
+        <div style={{minWidth:0,flex:1}}>
+          <div data-brand-document-identity style={{display:"flex",justifyContent:alignment}}>
+            {brandTheme?.logoUrl ? (
+              <img src={brandTheme.logoUrl} alt={`Logo de ${brandTheme.companyName}`} style={{display:"block",maxWidth:170,maxHeight:52,objectFit:"contain"}} />
+            ) : brandTheme ? (
+              <strong style={{color:brandTheme.text,fontFamily:`'${brandTheme.headingFont}', Inter, sans-serif`,fontSize:20,letterSpacing:"-0.02em"}}>{brandTheme.companyName}</strong>
+            ) : (
+              <Brand dark/>
+            )}
+          </div>
+          <div data-brand-document-title style={{fontSize:9,color:brandTheme?.mutedText || "#888",textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{title}</div>
+        </div>
+        <div style={{textAlign:"right",fontSize:11,color:brandTheme?.mutedText || "#555",lineHeight:1.6}}><b style={{color:brandTheme?.text}}>{cl||"—"}</b><br/>{pr||"—"}<br/><span style={{fontSize:10}}>{fDate(fe)}</span></div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ══ CALCULADORA ═══════════════════════════════════════════════════════
 // ── BRIEF CONSTANTES ──────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import {
 } from "./brandProfileSerialization";
 import { getContrastRatio, getContrastText } from "./contrast";
 import { createDefaultBrandProfile } from "./defaults";
+import { getDocumentBrandingCss, getDocumentFooterText } from "./documentBranding";
 import { FONT_PRESETS, getFontPreset, isFontPresetId } from "./fontPresets";
 import { isValidHexColor, normalizeHexColor } from "./hexValidation";
 import {
@@ -129,5 +130,25 @@ describe("BrandProfile serialization", () => {
       logoPosition: "center",
       showGeneratedWithCurv: false,
     });
+  });
+
+  it("maps the saved identity into export styles and footer content", () => {
+    const profile = createDefaultBrandProfile({
+      ownerUid: "owner-1",
+      companyName: "Estudio Norte",
+      email: "hola@estudio.pe",
+    });
+    const theme = brandProfileToDocumentTheme({
+      ...profile,
+      accentColor: "#315A8C",
+      footerText: "Arquitectura con propósito",
+      fontPresetId: "editorial",
+      headingFont: "Lora",
+      bodyFont: "Inter",
+    });
+    expect(getDocumentBrandingCss(theme)).toContain("--ui-accent: #315A8C");
+    expect(getDocumentBrandingCss(theme)).toContain("'Lora', Inter, sans-serif");
+    expect(getDocumentFooterText(theme)).toBe("Arquitectura con propósito");
+    expect(getDocumentFooterText({ ...theme, footerText: "" })).toBe("hola@estudio.pe");
   });
 });

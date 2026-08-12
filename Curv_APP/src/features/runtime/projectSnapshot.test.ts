@@ -10,9 +10,13 @@ import {
   writeProjectBaseMetadata,
   writeStorage,
 } from "./runtime";
+import type { ProjectSnapshot as RuntimeProjectSnapshot } from "./runtime";
 import {
   decideRemoteSnapshotHydration,
   getProjectSnapshotFingerprint,
+  isProjectSnapshotToolKey,
+  retargetProjectSnapshotForCopy,
+  sanitizeProjectSnapshotTools,
   type ProjectSnapshot,
 } from "./storage/projectSnapshot";
 
@@ -77,6 +81,16 @@ describe("project snapshot storage", () => {
       "cot.cod": "COT-012",
     });
     expect(snapshot.tools).not.toHaveProperty("unrelated.key");
+  });
+
+  it("never collects the internal snapshot timestamp as tool data", () => {
+    installWindowStorage();
+    writeStorage("calc.area", 120, "project-a");
+    writeStorage(PROJECT_SNAPSHOT_UPDATED_AT_KEY, "2026-07-09T16:00:00.000Z", "project-a");
+
+    expect(isProjectSnapshotToolKey(PROJECT_SNAPSHOT_UPDATED_AT_KEY)).toBe(false);
+    expect(getScopedProjectStorageKeys("project-a")).toEqual(["calc.area"]);
+    expect(collectProjectSnapshot("project-a").tools).toEqual({ "calc.area": 120 });
   });
 
   it("collects the required project-scoped prefixes without taking other project data", () => {
@@ -199,6 +213,154 @@ describe("project snapshot storage", () => {
     expect(readProjectBaseMetadata("project-a").code).toBe("COT-012");
   });
 
+  it("round-trips collect, hydrate, and collect without creating phantom tool changes", () => {
+    installWindowStorage();
+    writeProjectBaseMetadata({
+      client: "GoTo Market",
+      projectName: "Oficinas GoTo",
+      location: "Lima",
+      code: "COT-012",
+      currency: "PEN",
+    }, "project-a");
+    writeStorage("calc.area", 120, "project-a");
+    writeStorage("matrix.items", [{ id: "row-1", value: 20 }], "project-a");
+
+    const collected = collectProjectSnapshot("project-a", "client-a");
+    hydrateProjectSnapshot("project-b", collected);
+    const recollected = collectProjectSnapshot("project-b", "client-a");
+
+    expect(recollected.tools).not.toHaveProperty(PROJECT_SNAPSHOT_UPDATED_AT_KEY);
+    expect(getProjectSnapshotFingerprint(recollected)).toBe(
+      getProjectSnapshotFingerprint(collected)
+    );
+  });
+
+  it("sanitizes legacy timestamp tool data without mutating the snapshot input", () => {
+    const localStorage = installWindowStorage();
+    const legacyTools = {
+      "calc.area": 120,
+      [PROJECT_SNAPSHOT_UPDATED_AT_KEY]: "2020-01-01T00:00:00.000Z",
+    };
+    const legacySnapshot: RuntimeProjectSnapshot = {
+      projectId: "project-a",
+      clientId: "client-a",
+      version: 1,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      baseMeta: {
+        client: "GoTo Market",
+        projectName: "Oficinas GoTo",
+        location: "Lima",
+        code: "COT-012",
+        currency: "PEN",
+      },
+      tools: legacyTools,
+    };
+
+    expect(sanitizeProjectSnapshotTools(legacySnapshot.tools)).toEqual({ "calc.area": 120 });
+    hydrateProjectSnapshot("project-a", legacySnapshot);
+
+    expect(legacySnapshot.tools).toBe(legacyTools);
+    expect(legacySnapshot.tools).toHaveProperty(
+      PROJECT_SNAPSHOT_UPDATED_AT_KEY,
+      "2020-01-01T00:00:00.000Z"
+    );
+    expect(localStorage.getItem(storageKey(PROJECT_SNAPSHOT_UPDATED_AT_KEY, "project-a"))).toBe(
+      JSON.stringify(legacySnapshot.updatedAt)
+    );
+    expect(collectProjectSnapshot("project-a").tools).not.toHaveProperty(
+      PROJECT_SNAPSHOT_UPDATED_AT_KEY
+    );
+
+    const cleanSnapshot: RuntimeProjectSnapshot = {
+      ...legacySnapshot,
+      tools: { "calc.area": 120 },
+    };
+    expect(getProjectSnapshotFingerprint(legacySnapshot)).toBe(
+      getProjectSnapshotFingerprint(cleanSnapshot)
+    );
+  });
+
+  it("retargets a recovered snapshot to a new project without mutating the source", () => {
+    const source: RuntimeProjectSnapshot = {
+      projectId: "project-a",
+      clientId: "client-a",
+      version: 1,
+      revision: 7,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      baseMeta: {
+        client: "GoTo Market",
+        projectName: "Oficinas GoTo",
+        location: "Lima",
+        code: "COT-012",
+        currency: "PEN",
+      },
+      tools: {
+        "app.tools.project-a": [
+          { id: "calc", checked: true },
+          { id: "matrix", checked: false },
+        ],
+        "calc.area": 120,
+        "project.name": "Oficinas GoTo",
+        [PROJECT_SNAPSHOT_UPDATED_AT_KEY]: "2020-01-01T00:00:00.000Z",
+      },
+    };
+    const sourceBefore = structuredClone(source);
+
+    const copy = retargetProjectSnapshotForCopy(source, {
+      projectId: "project-copy",
+      clientId: "client-b",
+      projectName: "Oficinas GoTo (copia recuperada)",
+      updatedAt: "2026-07-09T17:00:00.000Z",
+    });
+
+    expect(copy).toMatchObject({
+      projectId: "project-copy",
+      clientId: "client-b",
+      revision: 0,
+      updatedAt: "2026-07-09T17:00:00.000Z",
+      baseMeta: {
+        projectName: "Oficinas GoTo (copia recuperada)",
+      },
+      tools: {
+        "app.tools.project-copy": source.tools["app.tools.project-a"],
+        "calc.area": 120,
+        "project.name": "Oficinas GoTo (copia recuperada)",
+      },
+    });
+    expect(copy.tools).not.toHaveProperty("app.tools.project-a");
+    expect(copy.tools).not.toHaveProperty(PROJECT_SNAPSHOT_UPDATED_AT_KEY);
+    expect(copy.baseMeta).not.toBe(source.baseMeta);
+    expect(copy.tools).not.toBe(source.tools);
+    expect(source).toEqual(sourceBefore);
+  });
+
+  it("preserves unrelated tool-selection keys while retargeting the source project key", () => {
+    const source: ProjectSnapshot<{ projectName: string }> = {
+      projectId: "project-a",
+      clientId: "client-a",
+      version: 1,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      baseMeta: { projectName: "Original" },
+      tools: {
+        "app.tools.project-a": ["source-selection"],
+        "app.tools.legacy-project": ["legacy-selection"],
+      },
+    };
+
+    const copy = retargetProjectSnapshotForCopy(source, {
+      projectId: "project-b",
+      clientId: "client-a",
+      projectName: "Recovered",
+      updatedAt: "2026-07-09T18:00:00.000Z",
+    });
+
+    expect(copy.tools).toEqual({
+      "app.tools.project-b": ["source-selection"],
+      "app.tools.legacy-project": ["legacy-selection"],
+    });
+    expect(source.tools).toHaveProperty("app.tools.project-a");
+  });
+
   it("gates base metadata and tools with the same revision decision", () => {
     const local: ProjectSnapshot = {
       projectId: "project-a",
@@ -249,5 +411,57 @@ describe("project snapshot storage", () => {
       updatedAt: "2030-01-01T00:00:00.000Z",
     };
     expect(getProjectSnapshotFingerprint(snapshot)).toBe(getProjectSnapshotFingerprint(retimedSnapshot));
+  });
+
+  it("surfaces equal-timestamp legacy divergence as a conflict", () => {
+    const local: ProjectSnapshot = {
+      projectId: "project-a",
+      clientId: "client-a",
+      version: 1,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      baseMeta: { projectName: "Local" },
+      tools: { "calc.area": 100 },
+    };
+    const remote: ProjectSnapshot = {
+      ...local,
+      baseMeta: { projectName: "Remote" },
+      tools: { "calc.area": 200 },
+    };
+
+    expect(decideRemoteSnapshotHydration({
+      localSnapshot: local,
+      remoteSnapshot: remote,
+      localDirty: false,
+      localCloudRevision: 0,
+      localUpdatedAt: local.updatedAt,
+      hasLocalData: true,
+    })).toBe("conflict");
+  });
+
+  it("does not guess when legacy local timestamps are missing or invalid", () => {
+    const local: ProjectSnapshot = {
+      projectId: "project-a",
+      clientId: "client-a",
+      version: 1,
+      updatedAt: "",
+      baseMeta: { projectName: "Local" },
+      tools: { "calc.area": 100 },
+    };
+    const remote: ProjectSnapshot = {
+      ...local,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      baseMeta: { projectName: "Remote" },
+    };
+
+    for (const localUpdatedAt of [undefined, "not-a-date"]) {
+      expect(decideRemoteSnapshotHydration({
+        localSnapshot: local,
+        remoteSnapshot: remote,
+        localDirty: false,
+        localCloudRevision: 0,
+        localUpdatedAt,
+        hasLocalData: true,
+      })).toBe("conflict");
+    }
   });
 });

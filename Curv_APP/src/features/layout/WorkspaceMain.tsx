@@ -27,6 +27,9 @@ type WorkspaceMainProps = {
   hasSavedData: boolean;
   saveState: { status: ProjectSaveStatus; label: string; detail: string };
   onRetrySave: () => void;
+  onUseCloudCopy: () => void;
+  onKeepBothCopies: () => void;
+  conflictBusy: boolean;
   activeTrackTools: WorkspaceTool[];
   renderedTools?: WorkspaceTool[];
   activeProjectId: string;
@@ -45,6 +48,9 @@ export default function WorkspaceMain({
   hasSavedData,
   saveState,
   onRetrySave,
+  onUseCloudCopy,
+  onKeepBothCopies,
+  conflictBusy,
   activeTrackTools,
   renderedTools,
   activeProjectId,
@@ -76,6 +82,8 @@ export default function WorkspaceMain({
     saved_local: "var(--ui-info,#3F6F9E)",
     saved_cloud: "var(--ui-saved-dot,#5A8F22)",
     offline: "var(--ui-warning,#B8831B)",
+    retrying: "var(--ui-warning,#B8831B)",
+    conflict: "var(--ui-danger,#B55345)",
     error: "var(--ui-danger,#B55345)",
   };
 
@@ -134,6 +142,26 @@ export default function WorkspaceMain({
                 >
                   Reintentar
                 </button>
+              )}
+              {saveState.status === "conflict" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={onUseCloudCopy}
+                    disabled={conflictBusy}
+                    style={{border: 0, padding: 0, background: "transparent", color: "inherit", fontSize: 9, fontWeight: 900, textDecoration: "underline", cursor: conflictBusy ? "wait" : "pointer", opacity: conflictBusy ? 0.55 : 1}}
+                  >
+                    Usar nube
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onKeepBothCopies}
+                    disabled={conflictBusy}
+                    style={{border: 0, padding: 0, background: "transparent", color: "inherit", fontSize: 9, fontWeight: 900, textDecoration: "underline", cursor: conflictBusy ? "wait" : "pointer", opacity: conflictBusy ? 0.55 : 1}}
+                  >
+                    Conservar ambas
+                  </button>
+                </>
               )}
             </div>
           </div>
