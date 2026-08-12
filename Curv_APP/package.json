@@ -19,6 +19,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "qa:provision": "node scripts/provision-qa-user.mjs",
     "preview": "vite preview"
   },
   "build": {

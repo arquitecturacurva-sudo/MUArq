@@ -30,6 +30,7 @@ type BrandSettingsViewProps = {
   ownerUid: string;
   userDisplayName?: string;
   userEmail?: string;
+  onProfileSaved?: (profile: BrandProfileDraft) => void;
 };
 
 const BACKGROUND_PRESETS: readonly BrandColorPreset[] = [
@@ -59,6 +60,7 @@ export const BrandSettingsView = ({
   ownerUid,
   userDisplayName,
   userEmail,
+  onProfileSaved,
 }: BrandSettingsViewProps) => {
   const fallbackCompanyName =
     userDisplayName?.trim() || userEmail?.split("@")[0]?.trim() || "Mi estudio";
@@ -165,6 +167,7 @@ export const BrandSettingsView = ({
       );
       setProfileExists(true);
       setSaveState(hasNewerEdits ? "idle" : "saved");
+      onProfileSaved?.(savedCanonical);
       return savedCanonical;
     } catch (error) {
       const message = error instanceof Error ? error.message : "No pudimos guardar la identidad.";

@@ -3,11 +3,13 @@ import firestoreRules from "../../../firestore.rules?raw";
 import storageRules from "../../../storage.rules?raw";
 import logoHandlers from "../../../functions/src/branding/logoHandlers.ts?raw";
 
+const normalizedFirestoreRules = firestoreRules.replace(/\r\n/g, "\n");
+
 describe("branding security rule contracts", () => {
   it("scopes BrandProfile reads to workspace members and writes to admins", () => {
-    expect(firestoreRules).toContain("match /clients/{clientId}/settings/{settingId}");
-    expect(firestoreRules).toContain('allow read: if settingId == "brand" && isMember(clientId)');
-    expect(firestoreRules).toContain('settingId == "brand"\n        && isAdmin(clientId)');
+    expect(normalizedFirestoreRules).toContain("match /clients/{clientId}/settings/{settingId}");
+    expect(normalizedFirestoreRules).toContain('allow read: if settingId == "brand" && isMember(clientId)');
+    expect(normalizedFirestoreRules).toContain('settingId == "brand"\n        && isAdmin(clientId)');
   });
 
   it("prevents browser writes to backend-owned logo fields", () => {

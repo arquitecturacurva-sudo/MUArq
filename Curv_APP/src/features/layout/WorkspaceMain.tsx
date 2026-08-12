@@ -25,6 +25,9 @@ type WorkspaceMainProps = {
   hasSavedData: boolean;
   saveState: { status: ProjectSaveStatus; label: string; detail: string };
   onRetrySave: () => void;
+  onUseCloudCopy: () => void;
+  onKeepBothCopies: () => void;
+  conflictBusy: boolean;
   activeTrackTools: WorkspaceTool[];
   renderedTools?: WorkspaceTool[];
   activeProjectId: string;
@@ -40,6 +43,9 @@ export default function WorkspaceMain({
   hasSavedData,
   saveState,
   onRetrySave,
+  onUseCloudCopy,
+  onKeepBothCopies,
+  conflictBusy,
   activeTrackTools,
   renderedTools,
   activeProjectId,
@@ -69,6 +75,8 @@ export default function WorkspaceMain({
     saved_local: "info",
     saved_cloud: "success",
     offline: "warning",
+    retrying: "warning",
+    conflict: "danger",
     error: "danger",
   };
 
@@ -102,6 +110,28 @@ export default function WorkspaceMain({
                 >
                   Reintentar
                 </button>
+              )}
+              {saveState.status === "conflict" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={onUseCloudCopy}
+                    disabled={conflictBusy}
+                    className="kit-focus ml-1 cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-ui font-semibold underline disabled:cursor-wait disabled:opacity-55"
+                    style={{color: "inherit"}}
+                  >
+                    Usar nube
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onKeepBothCopies}
+                    disabled={conflictBusy}
+                    className="kit-focus ml-1 cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-ui font-semibold underline disabled:cursor-wait disabled:opacity-55"
+                    style={{color: "inherit"}}
+                  >
+                    Conservar ambas
+                  </button>
+                </>
               )}
             </Pill>
             <Button
