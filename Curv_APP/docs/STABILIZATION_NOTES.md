@@ -1,5 +1,12 @@
 # Stabilization Notes
 
+> **Superseded in part.** The "Not Finished" list below predates the tool-subcollection refactor.
+> Revision-based optimistic concurrency *does* exist and works (`syncRevision`,
+> `ProjectRevisionConflictError`, `decideRemoteSnapshotHydration` with genuine conflict
+> detection); what is still missing is field-level merge *across* tools. Project tool data now
+> lives in `projects/{id}/toolData/{toolId}` rather than a single `snapshot` blob — see
+> `docs/firebase-multitenant.md`.
+
 **Date:** 2026-07-09
 **Phase 1 sync update:** 2026-07-26
 

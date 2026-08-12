@@ -17,6 +17,8 @@
     "desktop:build": "npm run build && npm run build:icon",
     "desktop:dist": "node scripts/ensure-signing-env.mjs && npm run desktop:build && node scripts/run-electron-builder.mjs --win nsis portable --x64",
     "lint": "eslint .",
+    "backfill:tool-docs": "node scripts/backfill-project-tool-docs.mjs",
+    "audit:tenants": "node scripts/audit-tenants.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "qa:provision": "node scripts/provision-qa-user.mjs",

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions/v1";
+import { requireAuthUid } from "../shared/callableAuth.js";
 import { canManageBrand } from "./brandAccess.js";
 import {
   MAX_LOGO_BYTES,
@@ -13,12 +14,6 @@ const CLIENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 type CallablePayload = Record<string, unknown>;
-
-const requireAuthUid = (context: functions.https.CallableContext) => {
-  const uid = context.auth?.uid;
-  if (!uid) throw new functions.https.HttpsError("unauthenticated", "Inicia sesión para continuar.");
-  return uid;
-};
 
 const requirePayload = (data: unknown): CallablePayload => {
   if (!data || typeof data !== "object" || Array.isArray(data)) {

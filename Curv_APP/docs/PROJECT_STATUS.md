@@ -341,8 +341,10 @@ flowchart LR
    - Local code requires Firebase ID token and verifies membership in `clientId`
    - Still needs deployed Vercel/Firebase/Mercado Pago verification for BASE and PRO
 
-4. **Dual provisioning paths**
-   - `onUserCreate` (admin SDK) and `ensureUserHasClient` (client SDK) both create tenants → race/duplicate risk
+4. ~~**Dual provisioning paths**~~ — **resolved.** `onUserCreate` is deleted; the `ensureTenant`
+   callable is the only tenant writer and `clients/{clientId}` is `allow create: if false`, so the
+   browser cannot create one. Tenant ids are now generated (`cli_*`) rather than the owner's uid.
+   See `docs/firebase-multitenant.md`.
 
 ### Medium
 

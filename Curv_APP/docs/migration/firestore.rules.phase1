@@ -31,6 +31,11 @@ service cloud.firestore {
         );
     }
 
+    function isMemberNowOrAfter(clientId, userId) {
+      return exists(/databases/$(database)/documents/clients/$(clientId)/members/$(userId))
+        || existsAfter(/databases/$(database)/documents/clients/$(clientId)/members/$(userId));
+    }
+
     function validBrandFont(data) {
       return (
         data.fontPresetId == "technical"
@@ -99,6 +104,34 @@ service cloud.firestore {
         && request.resource.data.schemaVersion == 1;
     }
 
+    function validBootstrapClient(clientId) {
+      return clientId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "id", "name", "plan", "limits", "createdAt", "ownerUid", "status", "billing"
+        ])
+        && request.resource.data.id == clientId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 160
+        && request.resource.data.plan == "BASE"
+        && request.resource.data.status == "active"
+        && request.resource.data.createdAt is string
+        && request.resource.data.limits is map
+        && request.resource.data.limits.keys().hasOnly(["editorsLimit", "viewersLimit"])
+        && request.resource.data.limits.editorsLimit == 3
+        && request.resource.data.limits.viewersLimit == 25
+        && request.resource.data.billing is map
+        && request.resource.data.billing.keys().hasOnly([
+          "plan", "status", "trialEndsAt", "updatedAt", "updatedBy"
+        ])
+        && request.resource.data.billing.plan == "BASE"
+        && request.resource.data.billing.status == "trialing"
+        && request.resource.data.billing.trialEndsAt is string
+        && request.resource.data.billing.updatedAt is string
+        && request.resource.data.billing.updatedBy == "system";
+    }
+
     function validProjectToolDoc(clientId, projectId, toolId) {
       return request.resource.data.id == toolId
         && request.resource.data.toolId == toolId
@@ -116,31 +149,29 @@ service cloud.firestore {
       return !("activeClientId" in request.resource.data)
         || (
           request.resource.data.activeClientId is string
-          && exists(/databases/$(database)/documents/clients/$(request.resource.data.activeClientId)/members/$(userId))
+          && isMemberNowOrAfter(request.resource.data.activeClientId, userId)
         );
     }
 
     match /users/{userId} {
       allow read: if isSelf(userId);
-      // Pointer documents are minted by the ensureTenant callable (Admin SDK).
-      allow create: if false;
-      // clientIds is a server-maintained cache and is deliberately out of browser reach.
-      allow update: if isSelf(userId)
+      allow create, update: if isSelf(userId)
         && request.resource.data.uid == userId
-        && hasValidActiveClientOnWrite(userId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "activeClientId", "displayName", "email", "migrations", "updatedAt"
-        ]);
+        && hasValidActiveClientOnWrite(userId);
       allow delete: if false;
     }
 
     match /clients/{clientId} {
-      allow read: if isMember(clientId);
-      // Tenant creation is server-only: functions/src/tenant/ensureTenant.ts. This is strictly
-      // stronger than the old bootstrap rule -- a browser can now create zero tenant documents
-      // rather than one -- so tenant-id squatting is impossible by construction and the
-      // self-serve cap lives in the callable, where a future invite flow can relax it.
-      allow create: if false;
+      allow read: if isMember(clientId)
+        || (
+          signedIn()
+          && (
+            clientId == request.auth.uid
+            || resource.data.ownerUid == request.auth.uid
+            || resource.data.ownerId == request.auth.uid
+          )
+        );
+      allow create: if signedIn() && validBootstrapClient(clientId);
       allow update: if isAdmin(clientId)
         && request.resource.data.id == clientId
         && request.resource.data.ownerUid == resource.data.ownerUid
@@ -153,9 +184,23 @@ service cloud.firestore {
 
     match /clients/{clientId}/members/{memberId} {
       allow read: if isMember(clientId);
-      // Self-bootstrap removed: the owner membership is written by ensureTenant alongside the
-      // tenant document. Admins can still invite.
-      allow create: if isAdmin(clientId);
+      allow create: if isAdmin(clientId)
+        || (
+          signedIn()
+          && request.auth.uid == memberId
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == "admin"
+          && (
+            (
+              exists(/databases/$(database)/documents/clients/$(clientId))
+              && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+            || (
+              existsAfter(/databases/$(database)/documents/clients/$(clientId))
+              && getAfter(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid
+            )
+          )
+        );
       allow update, delete: if isAdmin(clientId);
     }
 

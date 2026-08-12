@@ -2,10 +2,51 @@
 
 This app now uses tenant-scoped storage in Firestore:
 
-- `users/{uid}`
-- `clients/{clientId}`
+- `users/{uid}` — pointer document only (`activeClientId`, `clientIds`). No project data lives here.
+- `clients/{clientId}` — the tenant. Roles, seat limits and billing all hang off this document.
 - `clients/{clientId}/members/{uid}`
-- `clients/{clientId}/projects/{projectId}`
+- `clients/{clientId}/projects/{projectId}` — project metadata + `snapshotIndex`
+- `clients/{clientId}/projects/{projectId}/toolData/{toolId}` — one document per tool
+
+## Tenant ids
+
+Tenant ids are **generated and opaque**: `cli_` + a Firestore auto-id, e.g.
+`cli_9kQ2mZbT4vRxWpLd7nHc`. They are minted only by the `ensureTenant` callable.
+
+Tenants created before this change use the owner's uid as their id. Document ids are opaque
+strings, so those keep working unchanged and no migration is needed — the two shapes coexist.
+
+**Provisioning has exactly one path.** `clients/{clientId}` is `allow create: if false`, so the
+browser cannot create a tenant at all; `ensureTenant` (Admin SDK) is the only writer. It handles
+creation *and* repair through the same code, which is why the old `onUserCreate` auth trigger was
+removed — a trigger fires once per account and so can never repair an existing user, and its
+`failurePolicy` retries would mint a second tenant now that ids are generated rather than derived
+from the uid. The mint happens inside a transaction whose read set includes `users/{uid}`, so
+concurrent calls converge on exactly one tenant.
+
+Self-serve tenant count is capped in the callable (`MAX_SELF_SERVE_TENANTS`), not in rules — rules
+cannot count documents, and a future invite or upgrade flow can relax the cap without a deploy.
+
+Run `npm run audit:tenants` (read-only) before deploying rules changes: it reports pre-rename
+tenants (`ownerId` instead of `ownerUid`, member `userId` instead of `uid`) whose owners would
+lose access, and users whose `activeClientId` points nowhere.
+
+## Project tool data
+
+Tool content lives in the `toolData` subcollection, one document per tool
+(`calc`, `matrix`, `excl`, `cron`, `cot`, `cronobra`, `val`, `brief`, `oc`), each holding a
+`data` map of raw storage keys.
+
+The parent document carries a `snapshotIndex` with the whole-snapshot fingerprint, so the project
+list stays metadata-only and tool documents are fetched only when a project actually needs
+hydrating. Tool documents are written with a full replace (no merge) — the previous single-blob
+write used `{merge:true}`, which deep-merges nested maps, so a key deleted locally was never
+removed from the cloud.
+
+`npm run backfill:tool-docs -- --client=<id>` converts legacy blob-shaped documents (dry run by
+default; `--apply` to write, `--strip-blobs` to drop the legacy field afterwards).
+`WRITE_LEGACY_SNAPSHOT_BLOB` in `src/lib/persistence/clientProjects.ts` keeps writing the old blob
+alongside the new shape until the backfill has run everywhere.
 
 Role model:
 

@@ -7,13 +7,13 @@ import {
   limit,
   orderBy,
   query,
-  runTransaction,
   setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { createDefaultBilling, type ClientBilling } from "../billing";
-import { ensureDb } from "../firebase";
+import { ensureAuth, ensureDb, ensureFunctions } from "../firebase";
 
 export type ClientPlan = "BASE" | "PRO";
 export type MemberRole = "admin" | "editor" | "viewer";
@@ -57,12 +57,6 @@ export const PLAN_LIMITS: Record<ClientPlan, ClientLimits> = {
   PRO: { editorsLimit: 10, viewersLimit: 100 },
 };
 
-type EnsureClientInput = {
-  uid: string;
-  email: string;
-  displayName: string;
-};
-
 type MembershipCandidate = {
   clientId: string;
   createdAt: string;
@@ -70,8 +64,6 @@ type MembershipCandidate = {
 
 const userDocRef = (uid: string) => doc(ensureDb(), "users", uid);
 const clientDocRef = (clientId: string) => doc(ensureDb(), "clients", clientId);
-const memberDocRef = (clientId: string, uid: string) =>
-  doc(ensureDb(), "clients", clientId, "members", uid);
 const nowIso = () => new Date().toISOString();
 const MEMBERSHIP_REPAIR_SCAN_LIMIT = 100;
 
@@ -91,14 +83,6 @@ const normalizeClientLimits = (value: unknown): ClientLimits => {
     editorsLimit: Number.isFinite(editorsLimit) && editorsLimit > 0 ? editorsLimit : PLAN_LIMITS.BASE.editorsLimit,
     viewersLimit: Number.isFinite(viewersLimit) && viewersLimit > 0 ? viewersLimit : PLAN_LIMITS.BASE.viewersLimit,
   };
-};
-
-const getClientNameFromInput = (input: EnsureClientInput) => {
-  const display = input.displayName.trim();
-  if (display) return `${display} - Workspace`;
-  const emailUser = input.email.split("@")[0]?.trim();
-  if (emailUser) return `${emailUser} - Workspace`;
-  return "Nuevo cliente";
 };
 
 const getClientIdFromMemberDocPath = (path: string) => {
@@ -171,106 +155,6 @@ const readDeterministicMembershipCandidates = async (uid: string) => {
   }
 };
 
-const upsertClientAndMembershipAndUser = async (
-  input: EnsureClientInput,
-  clientId: string,
-  plan: ClientPlan
-) => {
-  const { uid, email, displayName } = input;
-  const timestamp = nowIso();
-  return runTransaction(ensureDb(), async (tx) => {
-    const userRef = userDocRef(uid);
-    const userSnapshot = await tx.get(userRef);
-    const existing = userSnapshot.exists()
-      ? (userSnapshot.data() as Partial<UserClientProfile>)
-      : null;
-    const resolvedClientId =
-      typeof existing?.activeClientId === "string" && existing.activeClientId.trim()
-        ? existing.activeClientId
-        : clientId;
-    const existingClientIds = Array.isArray(existing?.clientIds)
-      ? existing.clientIds.filter(
-          (entry): entry is string =>
-            typeof entry === "string" && entry.trim().length > 0
-        )
-      : [];
-    const mergedClientIds = Array.from(new Set([...existingClientIds, resolvedClientId]));
-    const targetClientRef = clientDocRef(resolvedClientId);
-    const targetClientSnapshot = await tx.get(targetClientRef);
-    const existingClient = targetClientSnapshot.exists()
-      ? (targetClientSnapshot.data() as Partial<ClientRecord>)
-      : null;
-    const resolvedPlan: ClientPlan =
-      existingClient?.plan === "PRO" || existingClient?.plan === "BASE"
-        ? existingClient.plan
-        : plan;
-    const resolvedClientName =
-      typeof existingClient?.name === "string" && existingClient.name.trim()
-        ? existingClient.name
-        : getClientNameFromInput(input);
-    const resolvedClientCreatedAt =
-      typeof existingClient?.createdAt === "string" && existingClient.createdAt.trim()
-        ? existingClient.createdAt
-        : timestamp;
-    const resolvedBilling = existingClient?.billing || createDefaultBilling(resolvedPlan);
-
-    tx.set(
-      targetClientRef,
-      {
-        id: resolvedClientId,
-        name: resolvedClientName,
-        plan: resolvedPlan,
-        limits: PLAN_LIMITS[resolvedPlan],
-        createdAt: resolvedClientCreatedAt,
-        ownerUid: uid,
-        status: "active",
-        billing: resolvedBilling,
-      } satisfies ClientRecord,
-      { merge: true }
-    );
-
-    tx.set(
-      memberDocRef(resolvedClientId, uid),
-      {
-        uid,
-        role: "admin" as MemberRole,
-        email,
-        displayName,
-        createdAt: timestamp,
-      } satisfies ClientMember,
-      { merge: true }
-    );
-
-    tx.set(
-      userRef,
-      {
-        uid,
-        activeClientId: resolvedClientId,
-        clientIds: mergedClientIds,
-        email,
-        displayName,
-        createdAt:
-          typeof existing?.createdAt === "string" && existing.createdAt.trim()
-            ? existing.createdAt
-            : timestamp,
-        updatedAt: timestamp,
-      } satisfies UserClientProfile,
-      { merge: true }
-    );
-    return resolvedClientId;
-  });
-};
-
-export const createClientForNewUser = async (
-  input: EnsureClientInput,
-  plan: ClientPlan = "BASE"
-) => {
-  const { uid } = input;
-  const existingProfile = await getUserProfile(uid);
-  if (existingProfile?.activeClientId) return existingProfile.activeClientId;
-  return upsertClientAndMembershipAndUser(input, uid, plan);
-};
-
 export const getUserProfile = async (uid: string) => {
   const snapshot = await getDoc(userDocRef(uid));
   if (!snapshot.exists()) return null;
@@ -310,8 +194,10 @@ export const getUserClients = async (uid: string) => {
 
   const clientDocs = await Promise.all(
     Array.from(candidateIds).map(async (clientId) => {
-      const snapshot = await getDoc(clientDocRef(clientId));
-      if (!snapshot.exists()) return null;
+      // Reads are member-scoped, so a stale clientIds entry now rejects with permission-denied
+      // instead of resolving to !exists(). Without this catch one stale id fails the whole list.
+      const snapshot = await getDoc(clientDocRef(clientId)).catch(() => null);
+      if (!snapshot?.exists()) return null;
       const data = snapshot.data() as Partial<ClientRecord>;
       return {
         id: clientId,
@@ -348,42 +234,90 @@ export const getClientById = async (clientId: string) => {
   return resolved;
 };
 
-export const ensureUserHasClient = async (input: EnsureClientInput) => {
-  const timestamp = nowIso();
-  const profile = await getUserProfile(input.uid);
-  if (profile?.activeClientId) {
-    const clientId = await upsertClientAndMembershipAndUser(input, profile.activeClientId, "BASE");
-    await setDoc(
-      userDocRef(input.uid),
-      {
-        uid: input.uid,
-        activeClientId: clientId,
-        updatedAt: timestamp,
-      },
-      { merge: true }
-    );
-    return clientId;
-  }
+export class TenantProvisioningError extends Error {
+  readonly code: string;
 
-  const membershipCandidates = await readDeterministicMembershipCandidates(input.uid);
-  const repairedClientId = membershipCandidates[0]?.clientId || "";
-  if (repairedClientId) {
-    const resolvedClientIds = Array.from(
-      new Set([...(profile?.clientIds || []), ...membershipCandidates.map((candidate) => candidate.clientId)])
-    );
-    await setDoc(
-      userDocRef(input.uid),
-      {
-        uid: input.uid,
-        activeClientId: repairedClientId,
-        clientIds: resolvedClientIds,
-        updatedAt: timestamp,
-      },
-      { merge: true }
-    );
-    return repairedClientId;
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = "TenantProvisioningError";
+    this.code = code;
   }
-  return createClientForNewUser(input, "BASE");
+}
+
+type EnsureTenantResponse = { clientId: string; created: boolean; repaired: boolean };
+
+const RETRYABLE_CALLABLE_CODES = new Set([
+  "internal",
+  "unavailable",
+  "deadline-exceeded",
+  "aborted",
+]);
+
+const callEnsureTenant = async (displayName?: string): Promise<string> => {
+  const callable = httpsCallable<{ displayName?: string }, EnsureTenantResponse>(
+    ensureFunctions(),
+    "ensureTenant"
+  );
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const { data } = await callable({ displayName });
+      const clientId = typeof data?.clientId === "string" ? data.clientId.trim() : "";
+      if (!clientId) {
+        throw new TenantProvisioningError(
+          "Respuesta de aprovisionamiento invalida.",
+          "invalid-response"
+        );
+      }
+      return clientId;
+    } catch (error) {
+      if (error instanceof TenantProvisioningError) throw error;
+      const rawCode = (error as { code?: string })?.code || "";
+      const code = rawCode.replace(/^functions\//, "") || "unknown";
+      // One transparent retry absorbs a cold start; anything else is surfaced so the user can act.
+      if (attempt === 0 && RETRYABLE_CALLABLE_CODES.has(code)) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        continue;
+      }
+      throw new TenantProvisioningError(
+        error instanceof Error && error.message
+          ? error.message
+          : "No pudimos preparar tu espacio de trabajo.",
+        code
+      );
+    }
+  }
+  throw new TenantProvisioningError("No pudimos preparar tu espacio de trabajo.", "exhausted");
+};
+
+const isReadableClient = async (clientId: string) => {
+  // Under member-scoped reads a lost membership rejects rather than returning !exists(), and
+  // either way the server should repair it.
+  const snapshot = await getDoc(clientDocRef(clientId)).catch(() => null);
+  return Boolean(snapshot?.exists());
+};
+
+/**
+ * Resolves the caller's tenant, provisioning or repairing it server-side when needed.
+ *
+ * Tenants are minted only by the ensureTenant callable — `clients/{clientId}` is `allow create: if
+ * false`, so the browser cannot create one at all. In the steady state this costs two reads and
+ * zero function calls; previously every auth state change ran a 2-read/3-write transaction.
+ *
+ * `displayName` is a cosmetic hint: registerWithEmail calls updateProfile() after account
+ * creation, so the ID token's name claim is still stale here. Identity itself comes from the
+ * verified token on the server, never from this argument.
+ */
+export const ensureUserHasClient = async (
+  input: { displayName?: string } = {}
+): Promise<string> => {
+  const uid = ensureAuth().currentUser?.uid || "";
+  if (!uid) throw new TenantProvisioningError("Sesion no disponible.", "unauthenticated");
+
+  const profile = await getUserProfile(uid);
+  const pointer = profile?.activeClientId?.trim() || "";
+  if (pointer && await isReadableClient(pointer)) return pointer;
+
+  return callEnsureTenant(input.displayName);
 };
 
 export const listClientMembers = async (clientId: string) => {

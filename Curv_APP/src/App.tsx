@@ -44,6 +44,7 @@ import {
   TRACK_DEFAULT_ORDER,
   TRACK_REQUIRED_TOOL,
   TRACK_TOOLS,
+  Btn,
   UI,
   calcDesignMiniGantt,
   calcObraMiniGantt,
@@ -64,6 +65,7 @@ import {
   normalizeProjectRecords,
   normalizeTracks,
   nowIso,
+  type ProjectSnapshot,
   openPrint,
   readStorage,
   readProjectBaseMetadata,
@@ -83,16 +85,19 @@ import {
 import { resolveClientAccess, type ClientAccess, type ClientBilling } from "./lib/billing";
 import { createCheckout } from "./lib/billing/billingService";
 import {
+  fetchProjectSnapshotByClient,
   getProjectSyncEntryByClient,
+  getRemoteSnapshotDescriptor,
   importLocalProjectsOnce,
   listProjectSyncEntriesByClient,
   ProjectRevisionConflictError,
   tombstoneProjectByClient,
   upsertProjectByClient,
+  type ProjectHydrationSnapshot,
   type ProjectSyncEntry,
 } from "./lib/persistence/clientProjects";
 import {
-  decideRemoteSnapshotHydration,
+  decideRemoteSnapshotHydrationByFingerprint,
   getProjectSnapshotFingerprint,
   retargetProjectSnapshotForCopy,
 } from "./features/runtime/storage/projectSnapshot";
@@ -136,12 +141,13 @@ export default function App() {
   const [authReady,setAuthReady]=useState(false);
   const [authBusy,setAuthBusy]=useState(false);
   const [authError,setAuthError]=useState("");
+  // Tenant provisioning is now a server round-trip that can fail. Without an explicit state the
+  // app renders Home looking healthy while activeClientId is "" and every sync effect silently
+  // no-ops on `if (!authUser || !activeClientId) return;`.
+  const [tenantState,setTenantState]=useState<"idle"|"provisioning"|"ready"|"error">("idle");
+  const [tenantError,setTenantError]=useState("");
   const [authIntent,setAuthIntent]=useState(false);
   const [activeClientId,setActiveClientId]=useState("");
-  // Tenant bootstrap can fail (undeployed rules, offline, denied read). Without this the
-  // error only reached `authError`, which is rendered on the login screen — so once past
-  // login every gated surface just hung on a "Preparando…" message forever.
-  const [tenantError,setTenantError]=useState("");
   const [tenantRetryTick,setTenantRetryTick]=useState(0);
   const [documentTheme,setDocumentTheme]=useState<DocumentTheme | null>(null);
   const [clientBilling,setClientBilling]=useState<ClientBilling | null>(null);
@@ -356,23 +362,27 @@ export default function App() {
         setActiveClientId("");
         setClientBilling(null);
         setClientAccess(resolveClientAccess(null));
+        setTenantState("idle");
+        setTenantError("");
         setAuthReady(true);
         return;
       }
+      setTenantState("provisioning");
       try {
         const clientId = await ensureUserHasClient({
-          uid: user.uid,
-          email: user.email || "",
-          displayName: user.displayName || "",
+          displayName: user.displayName || undefined,
         });
         if (!active) return;
         setActiveClientId(clientId);
         setAuthError("");
         setTenantError("");
+        setTenantState("ready");
       } catch (error) {
         if (!active) return;
-        setAuthError(mapFirebaseError(error));
-        setTenantError(mapFirebaseError(error));
+        const message = mapFirebaseError(error);
+        setAuthError(message);
+        setTenantError(message);
+        setTenantState("error");
       } finally {
         if (active) setAuthReady(true);
       }
@@ -389,9 +399,7 @@ export default function App() {
     (async () => {
       try {
         const clientId = await ensureUserHasClient({
-          uid: authUser.uid,
-          email: authUser.email || "",
-          displayName: authUser.displayName || "",
+          displayName: authUser.displayName || undefined,
         });
         if (!active) return;
         setActiveClientId(clientId);
@@ -609,6 +617,13 @@ export default function App() {
             .map((project) => [project.id, project])
         );
         const remoteProjectIds = new Set<string>();
+        // Pass 1 decides from parent-document metadata only and queues the projects that actually
+        // need tool data. Pass 2 fetches. Home therefore paints before any subcollection read.
+        const hydrateQueue: {
+          projectId: string;
+          hydration: ProjectHydrationSnapshot;
+          revision: number;
+        }[] = [];
 
         cloudEntries.forEach((entry) => {
           if (entry.kind === "deleted") {
@@ -630,7 +645,7 @@ export default function App() {
             return;
           }
 
-          const { project, baseMeta, snapshot, revision } = entry.hydration;
+          const { project, baseMeta, revision } = entry.hydration;
           if (deletedProjectIds.has(project.id)) return;
           remoteProjectIds.add(project.id);
           const localProject = mergedProjects.get(project.id);
@@ -642,7 +657,8 @@ export default function App() {
             project.id
           );
 
-          if (!snapshot) {
+          const remote = getRemoteSnapshotDescriptor(entry.hydration);
+          if (!remote) {
             if (!localSync.dirty && !hasSavedProjectData(project.id)) {
               writeProjectBaseMetadata(baseMeta, project.id);
               markProjectHydrated(project.id, revision, project.updatedAt);
@@ -659,9 +675,11 @@ export default function App() {
             revision: localSync.cloudRevision,
             updatedAt: localSync.updatedAt || localUpdatedAt,
           };
-          const decision = decideRemoteSnapshotHydration({
-            localSnapshot,
-            remoteSnapshot: snapshot,
+          const decision = decideRemoteSnapshotHydrationByFingerprint({
+            localFingerprint: getProjectSnapshotFingerprint(localSnapshot),
+            remoteFingerprint: remote.fingerprint,
+            remoteRevision: remote.revision,
+            remoteUpdatedAt: remote.updatedAt,
             localDirty: localSync.dirty,
             localCloudRevision: localSync.cloudRevision,
             localUpdatedAt,
@@ -669,15 +687,12 @@ export default function App() {
           });
 
           if (decision === "hydrate") {
-            replaceProjectStorageFromSnapshot(project.id, snapshot);
-            markProjectHydrated(project.id, revision, snapshot.updatedAt);
+            // Show the card now; its tool data and metrics arrive in pass 2.
+            hydrateQueue.push({ projectId: project.id, hydration: entry.hydration, revision });
             mergedProjects.set(project.id, project);
           } else if (decision === "same") {
-            markProjectHydrated(project.id, revision, snapshot.updatedAt);
-            projectFingerprintsRef.current.set(
-              project.id,
-              getProjectSnapshotFingerprint(localSnapshot)
-            );
+            markProjectHydrated(project.id, revision, remote.updatedAt);
+            projectFingerprintsRef.current.set(project.id, getProjectSnapshotFingerprint(localSnapshot));
             mergedProjects.set(project.id, project);
           } else if (decision === "conflict") {
             markProjectSyncConflict(project.id, {
@@ -701,6 +716,56 @@ export default function App() {
             ? currentProjectId
             : nextProjects[0]?.id || ""
         ));
+
+        // Pass 2. Applying a snapshot stays synchronous and suppresses dirty events per project,
+        // so concurrent hydrations cannot make one another look like user edits.
+        const applyRemoteSnapshot = (
+          projectId: string,
+          revision: number,
+          snapshot: ProjectSnapshot
+        ) => {
+          replaceProjectStorageFromSnapshot(projectId, snapshot);
+          markProjectHydrated(projectId, revision, snapshot.updatedAt);
+        };
+
+        let queueCursor = 0;
+        const drainHydrationQueue = async () => {
+          while (queueCursor < hydrateQueue.length) {
+            const item = hydrateQueue[queueCursor];
+            queueCursor += 1;
+            if (!isCurrentSession()) return;
+            try {
+              const snapshot = await fetchProjectSnapshotByClient(
+                activeClientId,
+                item.projectId,
+                item.hydration
+              );
+              if (!isCurrentSession()) return;
+              if (!snapshot) {
+                markProjectSyncError(
+                  item.projectId,
+                  "No se pudo reconstruir la copia en la nube. Se conservo la copia local."
+                );
+                continue;
+              }
+              applyRemoteSnapshot(item.projectId, item.revision, snapshot);
+            } catch (error) {
+              if (!isCurrentSession()) return;
+              console.warn("[client-projects] tool hydration failed", error);
+              markProjectSyncError(
+                item.projectId,
+                "No se pudieron descargar los datos del proyecto. Reintenta cuando haya conexion."
+              );
+            }
+          }
+        };
+        await Promise.all(
+          Array.from({ length: Math.min(4, hydrateQueue.length) }, drainHydrationQueue)
+        );
+        if (!isCurrentSession()) return;
+
+        // Only now may the debounced writer run: before the queue drains it would see a
+        // mid-hydration project as dirty and push its empty local snapshot over good cloud data.
         cloudHydratedRef.current = true;
         setReconcileError("");
         reconcileRetryAttemptRef.current = 0;
@@ -1445,13 +1510,14 @@ export default function App() {
     setAuthError("");
     try {
       const user = await action();
+      // displayName is a hint only: registerWithEmail calls updateProfile() after account
+      // creation, so the ID token's name claim is still stale at this point.
       const clientId = await ensureUserHasClient({
-        uid: user.uid,
-        email: user.email || "",
-        displayName: user.displayName || "",
+        displayName: user.displayName || undefined,
       });
       setAuthUser(user);
       setActiveClientId(clientId);
+      setTenantState("ready");
       setAuthIntent(false);
       setLandingSeen(true);
       const requestedDemo = pendingDemoId ? getDemoDefinition(pendingDemoId) : undefined;
@@ -1937,6 +2003,48 @@ export default function App() {
     return (
       <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
         <div style={{fontSize: 13, color: UI.textMuted}}>Cargando sesión...</div>
+      </div>
+    );
+  }
+
+  if (authUser && tenantState === "provisioning") {
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+        <div style={{fontSize: 13, color: UI.textMuted}}>Preparando tu espacio de trabajo...</div>
+      </div>
+    );
+  }
+
+  // Never fall through to Home with an empty activeClientId: the app would look healthy while
+  // every sync effect silently no-ops.
+  if (authUser && tenantState === "error") {
+    return (
+      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+        <div style={{maxWidth: 420, display: "grid", gap: 12, textAlign: "center"}}>
+          <div style={{fontSize: 15, fontWeight: 600, color: UI.text}}>
+            No pudimos preparar tu espacio de trabajo
+          </div>
+          <div style={{fontSize: 13, color: UI.textMuted}}>
+            {tenantError || "Reintenta en unos segundos."}
+          </div>
+          <div style={{display: "flex", gap: 8, justifyContent: "center", marginTop: 4}}>
+            <Btn onClick={() => {
+              if (!authUser) return;
+              setTenantState("provisioning");
+              setTenantError("");
+              ensureUserHasClient({ displayName: authUser.displayName || undefined })
+                .then((clientId) => {
+                  setActiveClientId(clientId);
+                  setTenantState("ready");
+                })
+                .catch((error) => {
+                  setTenantError(mapFirebaseError(error));
+                  setTenantState("error");
+                });
+            }}>Reintentar</Btn>
+            <Btn onClick={() => { void logout(); }}>Cerrar sesión</Btn>
+          </div>
+        </div>
       </div>
     );
   }
