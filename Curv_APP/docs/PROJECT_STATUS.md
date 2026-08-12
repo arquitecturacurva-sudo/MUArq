@@ -1,6 +1,7 @@
 # Curv App — Project Status
 
-**Audit date:** 2026-07-09  
+**Audit date:** 2026-07-09
+**Firestore sync update:** 2026-07-26
 **Auditor role:** Technical / SaaS readiness review  
 **Repository:** `curv-app` v0.0.0
 
@@ -20,7 +21,7 @@ Backend concerns are handled mostly by **Firebase** (Auth + Firestore) with **Me
 
 **Maturity estimate: functional prototype / pre-beta (roughly 45-55%).**
 
-This is not production-ready SaaS yet. Core domain tools are substantial and can support local workflows, but the SaaS foundation is still incomplete: tool-level data does not fully sync to the cloud, billing activation is not reliably tied to tenants, team/admin features are partial, and there are no automated tests. The largest technical risk remains the combination of localStorage as the primary tool datastore and a ~4,000-line monolith (`runtime.tsx`) that mixes storage, business logic, UI primitives, and all tools.
+This is not production-ready SaaS yet. Core domain tools are substantial and can support local workflows. Full project snapshots now have revision-aware Firestore synchronization, but deployed multi-device QA is still required before Phase 1 can be signed off. Billing activation is not reliably tied to tenants and team/admin features remain partial. The largest technical risk remains the combination of localStorage as the working tool datastore and a ~4,000-line monolith (`runtime.tsx`) that mixes storage, business logic, UI primitives, and all tools.
 
 For a developer taking over: treat the app as a valuable product prototype with real domain depth, not as a hardened SaaS platform.
 
@@ -39,11 +40,11 @@ For a developer taking over: treat the app as a valuable product prototype with 
 | Domain tools | Medium | Broad feature coverage and usable local flows, but tightly coupled and mostly untested |
 | UX shell | Medium | Landing/Home/Workspace are coherent after recent cleanup; forms still rely heavily on inline styles and some prompt-based edits |
 | Local persistence | Medium | Project-scoped localStorage works and legacy migration exists, but schema is implicit and brittle |
-| Cloud persistence | Low | Project shell/base metadata sync exists; full tool content sync is not implemented |
+| Cloud persistence | Medium, pending QA | Full project snapshots, revision conflicts, tombstones, retries, and multi-tab writer exclusion are implemented; deployed multi-profile QA remains |
 | Auth / tenancy | Low-medium | Firebase Auth and tenant docs exist, but provisioning paths and schema still diverge |
 | Billing | Low-medium | Checkout and webhook plumbing work; secure client association is incomplete |
 | Team / roles | Low | Service/rules pieces exist; no complete team management UX or frontend role enforcement |
-| QA / release | Low | Lint/build pass, but no automated tests or visible CI release workflow |
+| QA / release | Low-medium | Unit coverage exists for sync primitives and snapshots; deployed end-to-end coverage and visible CI release workflow remain |
 
 ### Production status update — 2026-07-07
 
@@ -205,7 +206,7 @@ On every cold boot, the app **forces `landing` once** (`forceLandingOnBootRef` i
 | `src/lib/auth/` | Auth wrappers (email, Google, logout, watch) |
 | `src/lib/tenant/` | Multi-tenant client/user/membership Firestore operations |
 | `src/lib/billing/` | Trial/paywall logic + checkout client |
-| `src/lib/persistence/` | Firestore project CRUD + smoke test collection |
+| `src/lib/persistence/` | Firestore project CRUD, snapshot sync state, conflict, retry, and writer-lease primitives |
 | `src/lib/desktop.ts` | Electron bridge helpers |
 | `api/` | Vercel serverless Mercado Pago + Firebase Admin billing sync |
 | `api/_lib/` | Shared Mercado Pago provider + Firebase Admin initialization |
@@ -236,7 +237,6 @@ flowchart LR
   App --> Billing[lib/billing]
   App --> Checkout[lib/billing/checkoutService]
   App --> Projects[lib/persistence/clientProjects]
-  App --> Smoke[lib/persistence/firestoreSmoke]
   App --> Desktop[lib/desktop]
 
   AuthSvc --> Firebase[lib/firebase]
@@ -244,7 +244,6 @@ flowchart LR
   ClientSvc --> Billing
   Projects --> Firebase
   Projects --> Runtime
-  Smoke --> Firebase
   Checkout --> API[api/billing/*]
 
   API --> MercadoPagoLib[api/_lib/billing]
@@ -262,10 +261,10 @@ flowchart LR
 
 1. `watchAuth` → `ensureUserHasClient` → sets `activeClientId`
 2. `importLocalProjectsOnce` migrates local projects → Firestore (once per client)
-3. `listProjectsByClient` hydrates project list from cloud
-4. Debounced `upsertProjectByClient` pushes project metadata + `baseMeta` + `ProjectRecord`
-5. **Base metadata** (`project.client`, `project.code`, `project.name`, `project.location`, `project.currency`) is shared locally and included in project shell sync
-6. **Most tool field data** (`calc.*`, `matrix.*`, `cot.partidas`, etc.) stays in **localStorage only**
+3. `listProjectsByClient` reconciles revisions and tombstones from cloud
+4. Dirty state is recorded immediately; an 800 ms debounce serializes full snapshot writes per project
+5. Focus, reconnect, sign-in, and project-open events trigger reconciliation without requiring a full reload
+6. Revision and remote-deletion conflicts require explicit “Usar nube” or “Conservar ambas” action
 
 ---
 
@@ -310,18 +309,18 @@ flowchart LR
 
 | Feature | Notes |
 |---------|-------|
-| Full cloud sync of tool state | Only project shell + `baseMeta` sync; calculator/matrix/cotizacion line items/etc. data is device-local |
+| Full cloud sync sign-off | Implemented for scoped project snapshots; complete Preview/production multi-profile validation remains |
 | Team management UI | `listClientMembers`, role limits exist in code but no invite/manage screens |
 | Role enforcement in UI | Firestore rules enforce roles; frontend does not read member role |
 | EMPRESA plan | Marketed on landing as "PRONTO"; not in `ClientPlan` type |
 | Firestore project delete | Local delete now writes a Firestore tombstone locally; needs deployed Firestore QA |
 | Client/tenant switcher UI | `setActiveClient` exists; no UI for multiple clients |
-| Real-time sync / conflict resolution | One-shot hydrate + debounced upsert |
+| Real-time listener | Focus/open/reconnect reconciliation is implemented; there is no continuous Firestore `onSnapshot` listener |
 | Hosting / deploy config in repo | No `vercel.json`, no Firebase Hosting block |
 | CI/CD workflow | README references `.github/workflows/release-desktop.yml` — **file missing** |
 | Automated tests | Minimal Vitest coverage exists for snapshot, tombstone, and checkout; still no e2e |
 | i18n | Spanish hardcoded throughout |
-| Offline-first cloud queue | Failed syncs only log to console |
+| Background offline queue | Dirty state and bounded retries survive locally, but there is no service-worker/background-sync queue |
 
 ---
 
@@ -342,10 +341,7 @@ flowchart LR
    - Local code requires Firebase ID token and verifies membership in `clientId`
    - Still needs deployed Vercel/Firebase/Mercado Pago verification for BASE and PRO
 
-4. **`smoke_persistence` collection blocked by security rules**
-   - `readSmokeSnapshot` / `writeSmokeSnapshot` target a collection with **no rule match** → denied for clients
-
-5. ~~**Dual provisioning paths**~~ — **resolved.** `onUserCreate` is deleted; the `ensureTenant`
+4. ~~**Dual provisioning paths**~~ — **resolved.** `onUserCreate` is deleted; the `ensureTenant`
    callable is the only tenant writer and `clients/{clientId}` is `allow create: if false`, so the
    browser cannot create one. Tenant ids are now generated (`cli_*`) rather than the owner's uid.
    See `docs/firebase-multitenant.md`.
@@ -374,7 +370,7 @@ flowchart LR
 |------|------|--------|
 | `runtime.tsx` (~4,173 lines) | God file: tools + storage + UI + constants | Hard to test, review, or parallelize |
 | `App.tsx` (~1,131 lines) | God component orchestration | Same |
-| Persistence model | Split localStorage/Firestore without contract | Data loss across devices |
+| Persistence model | Full-document snapshots with revision-level conflicts, not field merges | Concurrent edits require explicit copy preservation |
 | Type safety | Widespread `any` in tools | Runtime bugs |
 | Styling | Inline styles everywhere | No design system reuse |
 | Error handling | `console.warn` for sync failures | Silent degradation |
@@ -390,7 +386,7 @@ flowchart LR
 
 1. Align `functions/src/index.ts` with `clientService` schema (`ownerUid`, `uid`, `billing`, `plan`, `limits`, `id`)
 2. Remove or gate duplicate provisioning (function **or** client bootstrap, not both)
-3. Add Firestore rules for `smoke_persistence` or remove smoke code
+3. ~~Add Firestore rules for `smoke_persistence` or remove smoke code~~ — smoke code removed; collection stays denied
 4. Authenticate checkout API (Firebase ID token verification)
 5. Add `vercel.json` + document local API dev workflow
 6. Restore/create `.github/workflows/release-desktop.yml`
@@ -402,6 +398,7 @@ flowchart LR
 2. Implement bidirectional sync with versioning / `updatedAt` conflict strategy
 3. Firestore delete when project deleted locally
 4. Persist `app.tools.*` and active tool per project to cloud
+5. Validate the dated multi-profile matrix in `docs/qa/2026-07-26-firestore-snapshot-sync.md` and promote the exact approved artifact
 
 ### Phase 2 — Product completeness (3–4 weeks)
 
@@ -479,7 +476,7 @@ Follow existing patterns unless refactoring:
 | `VITE_FIREBASE_APP_ID` | Firebase app ID |
 | `VITE_BILLING_PORTAL_URL` | External billing page (desktop opens in browser) |
 
-Placeholder `xxx` disables Firebase smoke features.
+Placeholder `xxx` disables Firebase initialization. The obsolete Firestore smoke probe has been removed.
 
 ### Server — Vercel `api/` (no `VITE_` prefix)
 

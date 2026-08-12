@@ -1,6 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, Download, RotateCcw } from "lucide-react";
 import {
-  Brand,
+  Button,
+  Field,
+  FieldLabel,
+  Input,
+  Pill,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../ui/kit";
+import { DARK_THEME_VARS } from "../ui/theme";
+import {
   G,
   IconCalc,
   PROJECT_CURRENCY_OPTIONS,
@@ -30,12 +47,9 @@ type WorkspaceSidebarProps = {
   activeProjectId: string;
   isDemo?: boolean;
   demoStatusLabel?: string;
-  onBackToDemos?: () => void;
   enabledTrackOrder: TrackId[];
   workspaceTrack: TrackId;
   setWorkspaceTrack: (track: TrackId) => void;
-  setRoute: (route: "home" | "workspace" | "branding") => void;
-  onLogout: () => void;
   activeTrackTools: SidebarTool[];
   active: string;
   toggleCheck: (id: string) => void;
@@ -51,12 +65,9 @@ export default function WorkspaceSidebar({
   activeProjectId,
   isDemo = false,
   demoStatusLabel,
-  onBackToDemos,
   enabledTrackOrder,
   workspaceTrack,
   setWorkspaceTrack,
-  setRoute,
-  onLogout,
   activeTrackTools,
   active,
   toggleCheck,
@@ -66,7 +77,6 @@ export default function WorkspaceSidebar({
   tools,
   handleResetActiveProject,
 }: WorkspaceSidebarProps) {
-  const [editingBaseMeta, setEditingBaseMeta] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [eventTick, setEventTick] = useState(0);
   const baseMeta = readProjectBaseMetadata(activeProjectId);
@@ -81,17 +91,6 @@ export default function WorkspaceSidebar({
     }, {})
   ), [localEvents]);
   const eventSummaryRows = Object.entries(eventSummary).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const metaInputStyle = {
-    width: "100%",
-    boxSizing: "border-box" as const,
-    border: "1px solid #2B3645",
-    borderRadius: 5,
-    background: "#111923",
-    color: "#D0D7DE",
-    fontSize: 9,
-    padding: "5px 6px",
-    outline: "none",
-  };
 
   useEffect(() => {
     const onStorageChange = () => setEventTick((tick) => tick + 1);
@@ -146,184 +145,203 @@ export default function WorkspaceSidebar({
   };
 
   return (
-    <div data-tour-id="sidebar" style={{width: 248, background: UI.dark, display: "flex", flexDirection: "column", flexShrink: 0, height: "100vh", overflowY: "auto", borderRight: "1px solid #0F141A", boxShadow: "8px 0 22px rgba(0,0,0,0.16)"}}>
-      <div style={{padding: "18px 14px 14px", borderBottom: "1px solid #1F2733"}}>
-        <Brand />
-        <div style={{display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10}}>
-          <span style={{border: "1px solid #2B3645", borderRadius: 999, padding: "3px 8px", color: G, fontSize: 8, fontWeight: 900, textTransform: "uppercase"}}>
-            {isDemo ? "Proyecto demo" : activeProject.commercialStatus}
-          </span>
-          {isDemo && (
-            <span style={{border: "1px solid #2B3645", borderRadius: 999, padding: "3px 8px", color: "#AAB3BE", fontSize: 8, fontWeight: 800}}>
-              {demoStatusLabel || activeProject.commercialStatus}
-            </span>
-          )}
-          <span style={{border: "1px solid #2B3645", borderRadius: 999, padding: "3px 8px", color: "#AAB3BE", fontSize: 8, fontWeight: 800}}>
-            {nChecked}/{tools.length} propuesta
-          </span>
-        </div>
-        <button
-          onClick={() => isDemo && onBackToDemos ? onBackToDemos() : setRoute("home")}
-          style={{marginTop: 10, width: "100%", padding: "8px 10px", background: "#111923", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 800, cursor: "pointer"}}
-        >
-          {isDemo ? "← Volver a las demos" : "← Volver al Home"}
-        </button>
-        {!isDemo && (
-          <button
-            type="button"
-            onClick={() => setRoute("branding")}
-            style={{marginTop: 7, width: "100%", padding: "7px 10px", background: "transparent", border: "1px solid #2B3645", borderRadius: 6, color: "#C3CDD8", fontSize: 10, fontWeight: 750, cursor: "pointer"}}
-          >
-            Configuración · Identidad
-          </button>
-        )}
-        <button
-          onClick={onLogout}
-          style={{marginTop: 7, width: "100%", padding: "7px 10px", background: "transparent", border: "1px solid #3A3A3A", borderRadius: 6, color: "#AAB3BE", fontSize: 10, fontWeight: 700, cursor: "pointer"}}
-        >
-          Cerrar sesión
-        </button>
-        <div style={{marginTop: 10, padding: "10px 10px 9px", border: "1px solid #2B3645", borderRadius: 8, background: UI.darkPanel}}>
-          <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, marginBottom: 6}}>
-            <div style={{fontSize: 8, color: "#7E8794", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.8px"}}>Ficha base</div>
-            <button
-              type="button"
-              onClick={() => setEditingBaseMeta((value) => !value)}
-              style={{border: "1px solid #2B3645", borderRadius: 999, background: editingBaseMeta ? G : "#111923", color: editingBaseMeta ? "#111827" : "#C3CDD8", fontSize: 8, fontWeight: 800, padding: "2px 7px", cursor: "pointer"}}
-            >
-              {editingBaseMeta ? "Cerrar" : "Editar"}
-            </button>
-          </div>
-          {!editingBaseMeta ? (
-            <div style={{fontSize: 9, color: "#8A949F", lineHeight: 1.45}}>
-              <div style={{fontWeight: 800, color: "#D0D7DE"}}>{baseMeta.projectName.trim() || activeProject?.name || "Proyecto sin nombre"}</div>
-              <div>Cliente: {baseMeta.client.trim() || "No definido"}</div>
-              <div>{activeProject?.type || "Tipo no definido"} · {baseMeta.location.trim() || activeProject?.location || "Ubicación no definida"}</div>
-              <div>Cod: {baseMeta.code.trim() || "Sin código"} · {baseMeta.currency}</div>
-            </div>
-          ) : (
-            <div style={{display: "grid", gap: 6}}>
-              <label style={{fontSize: 8, color: "#7E8794", fontWeight: 700}}>Cliente<input value={baseMeta.client} onChange={(event) => updateBaseText("client", event.target.value)} onBlur={() => trackFichaEdit("client")} style={{...metaInputStyle, marginTop: 3}} /></label>
-              <label style={{fontSize: 8, color: "#7E8794", fontWeight: 700}}>Proyecto<input value={baseMeta.projectName} onChange={(event) => updateBaseText("projectName", event.target.value)} onBlur={() => trackFichaEdit("projectName")} style={{...metaInputStyle, marginTop: 3}} /></label>
-              <label style={{fontSize: 8, color: "#7E8794", fontWeight: 700}}>Ubicación<input value={baseMeta.location} onChange={(event) => updateBaseText("location", event.target.value)} onBlur={() => trackFichaEdit("location")} style={{...metaInputStyle, marginTop: 3}} /></label>
-              <div style={{display: "grid", gridTemplateColumns: "1fr 70px", gap: 6}}>
-                <label style={{fontSize: 8, color: "#7E8794", fontWeight: 700}}>Código<input value={baseMeta.code} onChange={(event) => updateBaseText("code", event.target.value)} onBlur={() => trackFichaEdit("code")} style={{...metaInputStyle, marginTop: 3}} /></label>
-                <label style={{fontSize: 8, color: "#7E8794", fontWeight: 700}}>Moneda<select value={baseMeta.currency} onChange={(event) => updateCurrency(event.target.value)} style={{...metaInputStyle, marginTop: 3}}>{PROJECT_CURRENCY_OPTIONS.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>
-              </div>
-            </div>
-          )}
-        </div>
-        <div style={{marginTop: 8, border: "1px solid #2B3645", borderRadius: 8, background: UI.darkPanel, overflow: "hidden"}}>
-          <button
-            type="button"
-            onClick={() => setDiagnosticsOpen((value) => !value)}
-            style={{width: "100%", border: "none", background: "transparent", color: "#C3CDD8", fontSize: 9, fontWeight: 800, padding: "7px 9px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center"}}
-          >
-            <span>Diagnostico</span>
-            <span style={{color: G}}>{localEvents.length}</span>
-          </button>
-          {diagnosticsOpen && (
-            <div style={{borderTop: "1px solid #2B3645", padding: "8px 9px 9px"}}>
-              <div style={{display: "grid", gap: 4, marginBottom: 7}}>
-                {eventSummaryRows.length ? eventSummaryRows.map(([name, count]) => (
-                  <div key={name} style={{display: "flex", justifyContent: "space-between", gap: 8, color: "#8A949F", fontSize: 8}}>
-                    <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{name}</span>
-                    <b style={{color: "#D0D7DE"}}>{count}</b>
-                  </div>
-                )) : <div style={{fontSize: 8, color: "#7E8794"}}>Sin eventos todavía.</div>}
-              </div>
-              <div style={{display: "grid", gap: 4, marginBottom: 7, maxHeight: 92, overflowY: "auto"}}>
-                {localEvents.slice(0, 5).map((event) => (
-                  <div key={event.id} title={event.name} style={{borderTop: "1px solid #1F2733", paddingTop: 4, fontSize: 8, color: "#7E8794", lineHeight: 1.35}}>
-                    <div style={{color: "#C3CDD8", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{event.name}</div>
-                    <div>{new Date(event.ts).toLocaleString("es-PE")}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{display: "flex", gap: 5}}>
-                <button type="button" onClick={exportLocalEvents} style={{flex: 1, border: "1px solid #2B3645", background: "#111923", color: "#C3CDD8", borderRadius: 5, padding: "5px 0", fontSize: 8, fontWeight: 800, cursor: "pointer"}}>Exportar</button>
-                <button type="button" onClick={clearEvents} style={{flex: 1, border: "1px solid #3A3A3A", background: "transparent", color: "#AAB3BE", borderRadius: 5, padding: "5px 0", fontSize: 8, fontWeight: 800, cursor: "pointer"}}>Limpiar</button>
-              </div>
-            </div>
-          )}
-        </div>
-        <div style={{display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap"}}>
-          {enabledTrackOrder.map((track) => (
-            <button
-              key={track}
-              onClick={() => setWorkspaceTrack(track)}
-              style={{padding: "5px 9px", borderRadius: 999, border: `1px solid ${workspaceTrack === track ? G : "#2B3645"}`, background: workspaceTrack === track ? G : "#111923", color: workspaceTrack === track ? "#111827" : "#C3CDD8", fontSize: 8, fontWeight: 900, cursor: "pointer"}}
-            >
-              {TRACK_LABELS[track]}
-            </button>
-          ))}
-        </div>
+    <div
+      data-tour-id="sidebar"
+      className="flex h-full w-[268px] shrink-0 flex-col overflow-hidden border-0 border-r border-solid border-border text-foreground"
+      // The sidebar stays dark in both themes, so it carries its own palette and every
+      // kit component inside it resolves against the dark tokens. `text-foreground` is
+      // required, not decorative: shadcn's `ghost` button and `FieldLabel` set no colour
+      // of their own, so without it they inherit the document default and go black-on-black.
+      style={{...DARK_THEME_VARS, background: UI.dark}}
+    >
+      {/* Brand, project name and global nav live in AppHeader now — this is status only. */}
+      <div className="flex flex-wrap items-center gap-2 border-0 border-b border-solid border-border p-3.5">
+        <Pill tone={isDemo ? "brand" : "info"}>
+          {isDemo ? (demoStatusLabel || "Demo") : activeProject.commercialStatus}
+        </Pill>
+        <span className="text-sm text-muted-foreground">{nChecked}/{tools.length} en propuesta</span>
       </div>
 
-      <nav style={{flex: 1, padding: "8px 0"}}>
-        <div style={{padding: "8px 14px 6px", fontSize: 8, fontWeight: 700, color: "#6F7B88", textTransform: "uppercase", letterSpacing: "1px"}}>
-          {TRACK_LABELS[workspaceTrack]} · {activeTrackSelectedCount}/{activeTrackTools.length} en propuesta
+      {/*
+        The sidebar previously showed the tool list, the ficha, diagnostics and four
+        navigation actions at once. Tabs keep the working surface (tools) primary and
+        park the project metadata behind a deliberate click.
+      */}
+      <Tabs defaultValue="herramientas" className="flex min-h-0 flex-1 flex-col gap-0">
+        <div className="px-3.5 pt-3">
+          <TabsList className="w-full">
+            <TabsTrigger value="herramientas" className="flex-1">Herramientas</TabsTrigger>
+            <TabsTrigger value="proyecto" className="flex-1">Proyecto</TabsTrigger>
+          </TabsList>
         </div>
-        {activeTrackTools.map((t) => {
-          const Icon = TOOL_ICONS[t.id] || IconCalc;
-          const isActive = active === t.id;
-          return (
-            <div key={t.id} style={{display: "flex", alignItems: "center", background: isActive ? "#151E29" : "transparent", borderLeft: `3px solid ${isActive ? G : "transparent"}`, transition: "background 0.1s"}}>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); toggleCheck(t.id); }}
-                aria-pressed={t.checked}
-                aria-label={`${t.checked ? "Quitar" : "Incluir"} ${t.label} en propuesta`}
-                title={t.checked ? "Quitar de propuesta" : "Incluir en propuesta"}
-                style={{padding: "10px 8px 10px 12px", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0, border: "none", background: "transparent"}}
-              >
-                <div style={{width: 14, height: 14, border: `1.5px solid ${t.checked ? G : "#3A3A3A"}`, background: t.checked ? G : "transparent", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.1s", flexShrink: 0}}>
-                  {t.checked && <span style={{color: "#fff", fontSize: 8, fontWeight: 800, lineHeight: 1}}>✓</span>}
-                </div>
-              </button>
-              <button
-                data-tour-id={t.id === "calc" ? "tool-calc" : undefined}
-                onClick={() => setActive(t.id)}
-                style={{flex: 1, padding: "10px 12px 10px 4px", background: "transparent", border: "none", color: isActive ? "#fff" : "#AAB3BE", fontSize: 11, fontWeight: isActive ? 800 : 500, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8}}
-              >
-                <Icon c={isActive ? G : "#8A949F"} s={15} />
-                <span style={{lineHeight: 1.3}}>{t.label}</span>
-              </button>
-            </div>
-          );
-        })}
-      </nav>
 
-      <div style={{padding: "12px", borderTop: "1px solid #1E1E1E"}}>
-        <button
-          data-tour-id="export"
-          onClick={handleExportProposal}
-          style={{width: "100%", padding: "11px 0", background: G, color: "#141006", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 900, cursor: "pointer", letterSpacing: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: "0 12px 24px rgba(201,169,110,0.22)"}}
-        >
-          <svg width={13} height={13} viewBox="0 0 16 16" fill="none" stroke="#141006" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 2v9M4 7l4 4 4-4"/><line x1="2" y1="14" x2="14" y2="14"/>
-          </svg>
+        <TabsContent value="herramientas" className="min-h-0 flex-1 overflow-y-auto">
+          {enabledTrackOrder.length > 1 && (
+            <div className="flex flex-wrap gap-1.5 px-3.5 pt-3">
+              {enabledTrackOrder.map((track) => (
+                <Button
+                  key={track}
+                  size="sm"
+                  variant={workspaceTrack === track ? "brand" : "outline"}
+                  aria-pressed={workspaceTrack === track}
+                  onClick={() => setWorkspaceTrack(track)}
+                >
+                  {TRACK_LABELS[track]}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          <nav className="py-2">
+            {activeTrackTools.map((t) => {
+              const Icon = TOOL_ICONS[t.id] || IconCalc;
+              const isActive = active === t.id;
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center border-0 border-l-[3px] border-solid transition-colors"
+                  style={{
+                    background: isActive ? UI.darkPanel : "transparent",
+                    borderLeftColor: isActive ? G : "transparent",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleCheck(t.id); }}
+                    aria-pressed={t.checked}
+                    aria-label={`${t.checked ? "Quitar" : "Incluir"} ${t.label} en propuesta`}
+                    title={t.checked ? "Quitar de propuesta" : "Incluir en propuesta"}
+                    className="kit-focus flex shrink-0 cursor-pointer items-center border-0 bg-transparent py-2.5 pl-3 pr-2"
+                  >
+                    <span
+                      className="flex size-4 shrink-0 items-center justify-center rounded-[3px] border border-solid transition-colors"
+                      style={{
+                        borderColor: t.checked ? G : "var(--ui-border)",
+                        background: t.checked ? G : "transparent",
+                      }}
+                    >
+                      {t.checked && (
+                        <span className="text-sm font-semibold leading-none" style={{color: "var(--ui-accent-ink)"}}>✓</span>
+                      )}
+                    </span>
+                  </button>
+                  <button
+                    data-tour-id={t.id === "calc" ? "tool-calc" : undefined}
+                    type="button"
+                    onClick={() => setActive(t.id)}
+                    className={`kit-focus flex flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent py-2.5 pl-1 pr-3 text-left text-sm ${isActive ? "font-semibold text-foreground" : "font-normal text-muted-foreground"}`}
+                  >
+                    <Icon c={isActive ? G : "var(--ui-text-subtle)"} s={16} />
+                    <span className="leading-snug">{t.label}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </nav>
+        </TabsContent>
+
+        <TabsContent value="proyecto" className="min-h-0 flex-1 overflow-y-auto">
+          <div className="grid gap-4 p-3.5">
+            <div className="grid gap-3">
+              <span className="font-medium">Ficha base</span>
+              <Field>
+                <FieldLabel htmlFor="sb-client">Cliente</FieldLabel>
+                <Input
+                  id="sb-client"
+                  value={baseMeta.client}
+                  onChange={(event) => updateBaseText("client", event.target.value)}
+                  onBlur={() => trackFichaEdit("client")}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="sb-project">Proyecto</FieldLabel>
+                <Input
+                  id="sb-project"
+                  value={baseMeta.projectName}
+                  onChange={(event) => updateBaseText("projectName", event.target.value)}
+                  onBlur={() => trackFichaEdit("projectName")}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="sb-location">Ubicación</FieldLabel>
+                <Input
+                  id="sb-location"
+                  value={baseMeta.location}
+                  onChange={(event) => updateBaseText("location", event.target.value)}
+                  onBlur={() => trackFichaEdit("location")}
+                />
+              </Field>
+              <div className="grid grid-cols-[1fr_92px] gap-2">
+                <Field>
+                  <FieldLabel htmlFor="sb-code">Código</FieldLabel>
+                  <Input
+                    id="sb-code"
+                    value={baseMeta.code}
+                    onChange={(event) => updateBaseText("code", event.target.value)}
+                    onBlur={() => trackFichaEdit("code")}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="sb-currency">Moneda</FieldLabel>
+                  <Select value={baseMeta.currency} onValueChange={updateCurrency}>
+                    <SelectTrigger id="sb-currency" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_CURRENCY_OPTIONS.map((currency) => (
+                        <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            </div>
+
+            {/* Only project-scoped actions here; account-level ones live in AppHeader. */}
+            <div className="border-0 border-t border-solid border-border pt-3">
+              <Button variant="ghost" className="w-full justify-start" onClick={handleResetActiveProject}>
+                <RotateCcw />
+                {isDemo ? "Reiniciar demo" : "Limpiar proyecto"}
+              </Button>
+            </div>
+
+            <div className="border-0 border-t border-solid border-border pt-3">
+              <Button
+                variant="ghost"
+                className="w-full justify-between"
+                aria-expanded={diagnosticsOpen}
+                onClick={() => setDiagnosticsOpen((value) => !value)}
+              >
+                <span>Diagnóstico · {localEvents.length}</span>
+                <ChevronDown className={diagnosticsOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+              </Button>
+              {diagnosticsOpen && (
+                <div className="grid gap-2 pt-2">
+                  {eventSummaryRows.length ? eventSummaryRows.map(([name, count]) => (
+                    <div key={name} className="flex justify-between gap-2 text-sm text-muted-foreground">
+                      <span className="truncate">{name}</span>
+                      <b className="font-medium text-foreground">{count}</b>
+                    </div>
+                  )) : <div className="text-sm text-muted-foreground">Sin eventos todavía.</div>}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={exportLocalEvents}>Exportar</Button>
+                    <Button variant="ghost" size="sm" className="flex-1" onClick={clearEvents}>Limpiar</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <div className="grid gap-1.5 border-0 border-t border-solid border-border p-3">
+        <Button data-tour-id="export" variant="brand" className="w-full" onClick={handleExportProposal}>
+          <Download />
           Exportar Propuesta
-        </button>
-        {!isDemo && (
-          <button
-            type="button"
-            onClick={() => setRoute("branding")}
-            style={{width: "100%", padding: "8px 0", marginTop: 8, background: "#111923", color: "#C3CDD8", border: "1px solid #2B3645", borderRadius: 6, fontSize: 9, fontWeight: 800, cursor: "pointer"}}
-          >
-            Identidad aplicada · Configurar
-          </button>
-        )}
-        <div style={{fontSize: 9, color: "#7E8794", textAlign: "center", marginTop: 7, lineHeight: 1.4}}>
-          <span style={{color: nChecked > 0 ? G : "#3A3A3A", fontWeight: 700}}>{nChecked}</span>
-          <span> de {tools.length} secciones seleccionadas</span>
-        </div>
-        <button
-          onClick={handleResetActiveProject}
-          style={{width: "100%", padding: "9px 0", marginTop: 10, background: "transparent", color: "#A7A7A7", border: "1px solid #3A3A3A", borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: "pointer", letterSpacing: "0.4px"}}
-        >
-          {isDemo ? "Reiniciar demo" : "Limpiar proyecto"}
-        </button>
+        </Button>
+        <span className="text-center text-sm text-muted-foreground">
+          {nChecked} de {tools.length} secciones
+        </span>
       </div>
     </div>
   );

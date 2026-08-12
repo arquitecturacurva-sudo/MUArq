@@ -1,0 +1,126 @@
+/*
+ * shadcn/ui foundation.
+ *
+ * Full preflight is deliberately NOT imported: `runtime.tsx` is ~4.7k lines of
+ * inline-styled markup that relies on browser defaults for headings, lists and tables,
+ * and the reset would silently restyle all of it. We take theme + utilities, plus the
+ * one piece of preflight that shadcn components genuinely require (see below).
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@layer base {
+  /*
+   * Tailwind's `border` utility only sets border-width; without this, border-style
+   * stays `none` and every shadcn outline/card border renders invisible. Zeroing the
+   * width at the same time is required — otherwise the default `medium` width would
+   * suddenly paint 3px borders on every element.
+   *
+   * Safe for the legacy UI because it sets borders with the `border:` shorthand
+   * (which carries its own style), and inline styles outrank this rule regardless.
+   */
+  *,
+  ::before,
+  ::after {
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--color-border);
+  }
+
+  /*
+   * The other piece of preflight we cannot skip. Variants that paint no background of
+   * their own (ghost, link) would otherwise fall through to the UA's `buttonface`
+   * colour and render as a white box with black text — unreadable on a dark surface.
+   * Legacy buttons set their colours inline, which still outranks this.
+   */
+  button {
+    background-color: transparent;
+    background-image: none;
+    color: inherit;
+  }
+}
+
+/*
+ * Tokens are mapped `inline`, so a utility such as `bg-card` compiles to
+ * `background-color: var(--ui-card)` instead of baking in a literal. The `--ui-*`
+ * variables are set per subtree by `themeVars` (src/features/ui/theme.ts), so
+ * light/dark keeps working and that file stays the single source of truth for colour.
+ */
+@theme inline {
+  --color-background: var(--ui-bg);
+  --color-foreground: var(--ui-text);
+
+  --color-card: var(--ui-card);
+  --color-card-foreground: var(--ui-text);
+  --color-popover: var(--ui-card);
+  --color-popover-foreground: var(--ui-text);
+
+  --color-primary: var(--ui-btn-dk-bg);
+  --color-primary-foreground: var(--ui-btn-dk-text);
+
+  --color-secondary: var(--ui-bg-band);
+  --color-secondary-foreground: var(--ui-text);
+
+  --color-muted: var(--ui-panel);
+  --color-muted-foreground: var(--ui-text-muted);
+  --color-subtle-foreground: var(--ui-text-subtle);
+
+  /*
+   * In shadcn, `accent` is the subtle hover surface (ghost/outline hover) — NOT a
+   * brand colour. The studio gold lives under `brand` so it stays an intentional
+   * choice rather than the colour every hover state picks up.
+   */
+  --color-accent: var(--ui-accent-soft);
+  --color-accent-foreground: var(--ui-text);
+  --color-brand: var(--ui-accent);
+  --color-brand-foreground: var(--ui-accent-ink);
+
+  --color-destructive: var(--ui-danger);
+  --color-success: var(--ui-success);
+  --color-warning: var(--ui-warning);
+  --color-info: var(--ui-info);
+
+  --color-border: var(--ui-border);
+  --color-border-soft: var(--ui-border-soft);
+  --color-input: var(--ui-border);
+  --color-ring: var(--ui-accent);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /*
+   * Exactly two type sizes in the app. Rather than police this per component, the
+   * Tailwind scale itself is collapsed: xs/sm resolve to the UI size and base/lg/xl to
+   * the title size, so stock shadcn components obey the rule without being edited.
+   * Hierarchy comes from weight and colour, never a third size.
+   */
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.45;
+  --text-ui: 0.875rem;
+  --text-ui--line-height: 1.45;
+
+  --text-base: 1.125rem;
+  --text-base--line-height: 1.3;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.3;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.3;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.3;
+}
+
+@layer components {
+  /* Focus ring for the few raw <button>/<input> elements that are not shadcn components. */
+  .kit-focus {
+    outline: none;
+  }
+  .kit-focus:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+  }
+}

@@ -2,6 +2,7 @@ import {
   collection,
   deleteField,
   doc,
+  getDoc,
   getDocs,
   runTransaction,
 } from "firebase/firestore";
@@ -597,43 +598,62 @@ const runtimeToProjectDoc = (
   updatedAt,
 });
 
+const toProjectSyncEntry = (
+  clientId: string,
+  projectId: string,
+  rawPayload: ProjectStorageDoc
+): ProjectSyncEntry | null => {
+  const revision = getStoredProjectRevision(rawPayload);
+  if (isProjectTombstoned(rawPayload)) {
+    return {
+      kind: "deleted",
+      projectId,
+      revision,
+      deletedAt: rawPayload.deletedAt || "",
+    };
+  }
+  const canonical = normalizeProjectDoc(clientId, projectId, rawPayload);
+  if (!canonical) return null;
+  const baseMeta = projectDocToBaseMeta(canonical, rawPayload);
+  // Prefer snapshotIndex when both shapes exist. This keeps list/get metadata-only for migrated
+  // projects while preserving the legacy blob fallback during the dual-write window.
+  const snapshotIndex = normalizeSnapshotIndex(rawPayload, baseMeta);
+  return {
+    kind: "active",
+    projectId,
+    revision,
+    hydration: {
+      project: projectDocToRuntimeProject(canonical, rawPayload),
+      baseMeta,
+      revision,
+      ...(snapshotIndex
+        ? { snapshotIndex }
+        : { snapshot: normalizeProjectSnapshot(clientId, projectId, rawPayload, baseMeta) }),
+    },
+  };
+};
+
+export const getProjectSyncEntryByClient = async (
+  clientId: string,
+  projectId: string
+): Promise<ProjectSyncEntry | null> => {
+  const snapshot = await getDoc(projectDocRef(clientId, projectId));
+  if (!snapshot.exists()) return null;
+  return toProjectSyncEntry(clientId, snapshot.id, snapshot.data() as ProjectStorageDoc);
+};
+
 export const listProjectSyncEntriesByClient = async (clientId: string): Promise<ProjectSyncEntry[]> => {
   const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
-  const projects: ProjectSyncEntry[] = [];
+  const entries: ProjectSyncEntry[] = [];
   snapshot.forEach((docSnapshot) => {
-    const rawPayload = docSnapshot.data() as ProjectStorageDoc;
-    const revision = getStoredProjectRevision(rawPayload);
-    if (isProjectTombstoned(rawPayload)) {
-      projects.push({
-        kind: "deleted",
-        projectId: docSnapshot.id,
-        revision,
-        deletedAt: rawPayload.deletedAt || "",
-      });
-      return;
-    }
-    const canonical = normalizeProjectDoc(clientId, docSnapshot.id, rawPayload);
-    if (!canonical) return;
-    const baseMeta = projectDocToBaseMeta(canonical, rawPayload);
-    // snapshotIndex wins when both shapes are present: that is a migrated document whose legacy
-    // blob has not been stripped yet. Materializing the blob here is what made this list read
-    // expensive, so only legacy-only documents pay for it.
-    const snapshotIndex = normalizeSnapshotIndex(rawPayload, baseMeta);
-    projects.push({
-      kind: "active",
-      projectId: docSnapshot.id,
-      revision,
-      hydration: {
-        project: projectDocToRuntimeProject(canonical, rawPayload),
-        baseMeta,
-        revision,
-        ...(snapshotIndex
-          ? { snapshotIndex }
-          : { snapshot: normalizeProjectSnapshot(clientId, docSnapshot.id, rawPayload, baseMeta) }),
-      },
-    });
+    const entry = toProjectSyncEntry(
+      clientId,
+      docSnapshot.id,
+      docSnapshot.data() as ProjectStorageDoc
+    );
+    if (entry) entries.push(entry);
   });
-  return projects;
+  return entries;
 };
 
 export const upsertProjectByClient = async (

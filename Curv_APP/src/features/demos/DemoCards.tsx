@@ -1,10 +1,24 @@
+import { ArrowRight, Check, Coins, MapPin, Ruler } from "lucide-react";
+import { Button, Card, Pill, type PillTone } from "../ui/kit";
 import { DEMO_DEFINITIONS } from "./demoDefinitions";
-import type { DemoProjectDefinition } from "./types";
-import "./demos.css";
+import type { DemoDisplayStatus, DemoProjectDefinition } from "./types";
 
 const formatArea = (area: DemoProjectDefinition["area"]) => (
   typeof area === "number" ? `${area.toLocaleString("es-PE")} m²` : area
 );
+
+/** Commercial stage reads as colour first, text second. */
+const STATUS_TONE: Record<DemoDisplayStatus, PillTone> = {
+  Lead: "neutral",
+  Propuesta: "info",
+  Negociacion: "warning",
+  Ganado: "success",
+  Perdido: "danger",
+  "En ejecución": "brand",
+};
+
+/** Three is enough to signal what the demo contains; more turns the card into a wall. */
+const MAX_HIGHLIGHTS = 3;
 
 export type DemoCardsProps = {
   definitions?: readonly DemoProjectDefinition[];
@@ -18,51 +32,67 @@ export function DemoCards({
   compact = false,
 }: DemoCardsProps) {
   return (
-    <div className={`demo-cards${compact ? " demo-cards--compact" : ""}`}>
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-4">
       {definitions.map((definition) => (
-        <article className="demo-card" key={`${definition.id}-v${definition.version}`}>
-          <div className="demo-card__topline">
-            <span className="demo-card__badge">Proyecto demo</span>
-            <span className="demo-card__status">{definition.displayStatus}</span>
+        <Card
+          key={`${definition.id}-v${definition.version}`}
+          className="flex flex-col gap-4 p-5 transition-colors hover:border-brand"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <Pill tone="brand">Proyecto demo</Pill>
+            <Pill tone={STATUS_TONE[definition.displayStatus]} dot>
+              {definition.displayStatus}
+            </Pill>
           </div>
 
-          <div className="demo-card__heading">
-            <p className="demo-card__eyebrow">{definition.subtitle}</p>
-            <h2>{definition.title}</h2>
-            <p className="demo-card__client">{definition.clientName}</p>
+          {/*
+            Subtitle and client name are intentionally gone: the vertical restated the
+            status pill, and the client is not how anyone picks a demo. Title carries it.
+          */}
+          <h3 className="m-0 text-title font-semibold">{definition.title}</h3>
+
+          {/* Icons carry the meaning the UBICACIÓN / ÁREA / MONEDA labels used to. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin className="size-4 shrink-0 text-subtle-foreground" aria-hidden />
+              <span className="sr-only">Ubicación: </span>
+              {definition.location}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Ruler className="size-4 shrink-0 text-subtle-foreground" aria-hidden />
+              <span className="sr-only">Área: </span>
+              {formatArea(definition.area)}
+            </span>
+            {!compact && (
+              <span className="inline-flex items-center gap-1.5">
+                <Coins className="size-4 shrink-0 text-subtle-foreground" aria-hidden />
+                <span className="sr-only">Moneda: </span>
+                {definition.currency}
+              </span>
+            )}
           </div>
 
-          <dl className="demo-card__metadata">
-            <div>
-              <dt>Ubicación</dt>
-              <dd>{definition.location}</dd>
-            </div>
-            <div>
-              <dt>Área</dt>
-              <dd>{formatArea(definition.area)}</dd>
-            </div>
-            <div>
-              <dt>Moneda</dt>
-              <dd>{definition.currency}</dd>
-            </div>
-          </dl>
-
-          <ul className="demo-card__highlights" aria-label={`Contenido de ${definition.title}`}>
-            {definition.highlights.slice(0, compact ? 3 : 5).map((highlight) => (
-              <li key={highlight}>{highlight}</li>
+          <ul
+            className="m-0 grid list-none gap-1.5 p-0"
+            aria-label={`Contenido de ${definition.title}`}
+          >
+            {definition.highlights.slice(0, MAX_HIGHLIGHTS).map((highlight) => (
+              <li key={highlight} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Check className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+                {highlight}
+              </li>
             ))}
           </ul>
 
-          <button
-            className="demo-button demo-button--primary demo-card__action"
-            type="button"
+          <Button
+            className="mt-auto w-full"
             onClick={() => onOpenDemo(definition)}
             aria-label={`Abrir proyecto demo ${definition.title}`}
           >
             Explorar demo
-            <span aria-hidden="true">→</span>
-          </button>
-        </article>
+            <ArrowRight aria-hidden />
+          </Button>
+        </Card>
       ))}
     </div>
   );

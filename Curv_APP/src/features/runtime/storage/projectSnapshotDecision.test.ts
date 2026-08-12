@@ -170,8 +170,8 @@ describe("decideRemoteSnapshotHydrationByFingerprint", () => {
       localUpdatedAt: "2026-07-09T16:00:00.000Z",
     };
     expect(decideRemoteSnapshotHydrationByFingerprint({ ...base, remoteRevision: -5 }))
-      .toBe("keep-local");
+      .toBe("conflict");
     expect(decideRemoteSnapshotHydrationByFingerprint({ ...base, remoteRevision: Number.NaN }))
-      .toBe("keep-local");
+      .toBe("conflict");
   });
 });

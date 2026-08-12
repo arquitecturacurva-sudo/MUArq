@@ -13,6 +13,8 @@ export type ProjectSnapshot<BaseMeta = unknown> = {
 
 export type RemoteSnapshotDecision = "hydrate" | "same" | "keep-local" | "conflict";
 
+export const PROJECT_SNAPSHOT_UPDATED_AT_KEY = "project.snapshotUpdatedAt";
+
 export const PROJECT_SNAPSHOT_TOOL_PREFIXES = [
   "project.",
   "calc.",
@@ -29,8 +31,64 @@ export const PROJECT_SNAPSHOT_TOOL_PREFIXES = [
 ] as const;
 
 export const isProjectSnapshotToolKey = (rawKey: string) => (
-  PROJECT_SNAPSHOT_TOOL_PREFIXES.some((prefix) => rawKey.startsWith(prefix))
+  rawKey !== PROJECT_SNAPSHOT_UPDATED_AT_KEY
+  && PROJECT_SNAPSHOT_TOOL_PREFIXES.some((prefix) => rawKey.startsWith(prefix))
 );
+
+/**
+ * Returns a copy without internal runtime metadata that legacy snapshots may have
+ * accidentally persisted as tool data.
+ */
+export const sanitizeProjectSnapshotTools = (
+  tools?: ProjectSnapshotTools | null
+): ProjectSnapshotTools => Object.fromEntries(
+  Object.entries(tools || {}).filter(([key]) => key !== PROJECT_SNAPSHOT_UPDATED_AT_KEY)
+);
+
+export type ProjectSnapshotCopyTarget = {
+  projectId: string;
+  clientId: string;
+  projectName: string;
+  updatedAt: string;
+};
+
+/**
+ * Creates an isolated revision-zero snapshot for a recovered local copy.
+ * Project-scoped tool selection follows the new project id and the source is
+ * left untouched.
+ */
+export const retargetProjectSnapshotForCopy = <
+  BaseMeta extends { projectName: string }
+>(
+  snapshot: ProjectSnapshot<BaseMeta>,
+  target: ProjectSnapshotCopyTarget
+): ProjectSnapshot<BaseMeta> => {
+  const sourceToolSelectionKey = `app.tools.${snapshot.projectId}`;
+  const targetToolSelectionKey = `app.tools.${target.projectId}`;
+  const tools = sanitizeProjectSnapshotTools(snapshot.tools);
+
+  if (Object.prototype.hasOwnProperty.call(tools, sourceToolSelectionKey)) {
+    const toolSelection = tools[sourceToolSelectionKey];
+    delete tools[sourceToolSelectionKey];
+    tools[targetToolSelectionKey] = toolSelection;
+  }
+  if (Object.prototype.hasOwnProperty.call(tools, "project.name")) {
+    tools["project.name"] = target.projectName;
+  }
+
+  return {
+    ...snapshot,
+    projectId: target.projectId,
+    clientId: target.clientId,
+    revision: 0,
+    updatedAt: target.updatedAt,
+    baseMeta: {
+      ...snapshot.baseMeta,
+      projectName: target.projectName,
+    },
+    tools,
+  };
+};
 
 export const shouldHydrateRemoteSnapshot = (localUpdatedAt?: string, remoteUpdatedAt?: string) => {
   if (!remoteUpdatedAt) return false;
@@ -67,7 +125,10 @@ export const stableValue = (value: unknown): unknown => {
 /** Content-only fingerprint: timestamps and revisions never make a project look dirty. */
 export const getProjectSnapshotFingerprint = (
   snapshot: Pick<ProjectSnapshot, "baseMeta" | "tools">
-) => JSON.stringify(stableValue({ baseMeta: snapshot.baseMeta, tools: snapshot.tools || {} }));
+) => JSON.stringify(stableValue({
+  baseMeta: snapshot.baseMeta,
+  tools: sanitizeProjectSnapshotTools(snapshot.tools),
+}));
 
 const normalizeRevision = (revision: number) => (
   Number.isSafeInteger(revision) && revision >= 0 ? revision : 0
@@ -112,10 +173,15 @@ export const decideRemoteSnapshotHydrationByFingerprint = ({
   if (normalizedRemoteRevision > 0) return "conflict";
 
   // Legacy snapshots have no revision. Preserve unknown local data unless the old timestamp gate
-  // proves that the remote snapshot is newer.
+  // proves that one side is newer. Equal or malformed timestamps with different content are an
+  // explicit conflict rather than a silent overwrite.
   if (!hasLocalData) return "hydrate";
-  if (shouldHydrateRemoteSnapshot(localUpdatedAt, remoteUpdatedAt)) return "hydrate";
-  return localUpdatedAt ? "keep-local" : "conflict";
+  const localTime = localUpdatedAt ? Date.parse(localUpdatedAt) : Number.NaN;
+  const remoteTime = remoteUpdatedAt ? Date.parse(remoteUpdatedAt) : Number.NaN;
+  if (!Number.isFinite(localTime) || !Number.isFinite(remoteTime)) return "conflict";
+  if (remoteTime > localTime) return "hydrate";
+  if (remoteTime < localTime) return "keep-local";
+  return "conflict";
 };
 
 export const decideRemoteSnapshotHydration = <BaseMeta>({
@@ -182,6 +248,7 @@ export const collectProjectSnapshotFromStorage = <BaseMeta>({
 }): ProjectSnapshot<BaseMeta> => {
   const tools: ProjectSnapshotTools = {};
   getScopedProjectStorageKeys(projectId).forEach((key) => {
+    if (!isProjectSnapshotToolKey(key)) return;
     tools[key] = readStorage(key, projectId);
   });
   return {
@@ -212,7 +279,7 @@ export const hydrateProjectSnapshotToStorage = <BaseMeta>({
   const targetProjectId = projectId.trim() || snapshot.projectId.trim();
   if (!targetProjectId) return;
   writeBaseMeta(snapshot.baseMeta, targetProjectId);
-  Object.entries(snapshot.tools || {}).forEach(([key, value]) => {
+  Object.entries(sanitizeProjectSnapshotTools(snapshot.tools)).forEach(([key, value]) => {
     if (!isProjectSnapshotToolKey(key)) return;
     writeStorage(key, value, targetProjectId);
   });

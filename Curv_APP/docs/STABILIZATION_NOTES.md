@@ -8,6 +8,7 @@
 > `docs/firebase-multitenant.md`.
 
 **Date:** 2026-07-09
+**Phase 1 sync update:** 2026-07-26
 
 Curv App is still a pre-beta SaaS prototype. These notes document the first stabilization pass for data integrity, billing security, tenant schema, and test coverage.
 
@@ -27,10 +28,15 @@ Curv App is still a pre-beta SaaS prototype. These notes document the first stab
 - Mercado Pago checkout now requires a Firebase ID token and verifies membership in the requested `clientId`.
 - Tenant provisioning in `functions/src/index.ts` now writes the canonical schema expected by the frontend.
 - Added Vitest and minimum stabilization tests.
+- Excluded the internal `project.snapshotUpdatedAt` marker from snapshot tools, hydration, and fingerprints; legacy snapshots containing it are sanitized on read.
+- Added persistent revision and remote-deletion conflicts with explicit “Usar nube” and “Conservar ambas” resolution paths.
+- Added reconciliation on login, focus recovery, reconnect, and project open.
+- Added immediate dirty persistence, 800 ms debounced writes, early page-hide flushes, bounded transient retries, and per-project writer exclusion across tabs.
+- Removed the obsolete `smoke_persistence` probe. The collection remains denied by the default Firestore rules and the app no longer sends traffic to it.
 
 ## Not Finished
 
-- This is not full conflict resolution. Timestamp comparison prevents old remote snapshots from overwriting newer local snapshots, but there is no field-level merge.
+- Conflict handling is revision-based and explicit; there is still no field-level merge. “Conservar ambas” preserves local work under a new project ID before loading the cloud version.
 - Snapshot writes are still debounced from the app shell, not from a dedicated sync service.
 - Firestore real-world multi-device behavior still needs manual QA against deployed rules and real accounts.
 - Team management, role-aware UI, and client switching are still incomplete.
@@ -56,7 +62,7 @@ Curv App is still a pre-beta SaaS prototype. These notes document the first stab
 
 The snapshot stores canonical metadata in `baseMeta` and tool-local values in `tools`. The app still writes legacy `runtime` and `baseMeta` fields to avoid breaking existing hydration.
 
-`hydrateProjectSnapshot(projectId, snapshot)` writes only into the target project scope. It ignores unknown tool keys and stores `project.snapshotUpdatedAt` locally so the app can avoid hydrating older remote data over newer local data.
+`hydrateProjectSnapshot(projectId, snapshot)` writes only into the target project scope. It ignores unknown tool keys and stores `project.snapshotUpdatedAt` as local synchronization metadata. That marker is never copied into `snapshot.tools` and never participates in the content fingerprint, including when reading legacy snapshots that already contain it.
 
 ## Tombstone Behavior
 
@@ -122,6 +128,10 @@ Current stabilization tests cover:
 - Remote snapshot timestamp gating.
 - Base metadata preservation.
 - `oc.cod` not overwriting canonical `project.code`.
+- `collect → hydrate → collect` round trips without phantom revisions.
+- Legacy snapshot sanitation for `project.snapshotUpdatedAt`.
+- Persistent revision and remote-deletion conflicts.
+- Bounded retry timing and cross-tab writer lease behavior.
 - Tombstone detection.
 - Checkout missing token, invalid token, wrong membership, and valid membership.
 
@@ -130,6 +140,8 @@ These tests are minimum guardrails, not comprehensive SaaS coverage.
 ## Real Firestore QA Still Needed
 
 Before calling FASE 1 complete, manually verify with real Firebase/Vercel environments:
+
+- Follow the dated matrix in `docs/qa/2026-07-26-firestore-snapshot-sync.md`.
 
 - Create project on device A and confirm full tool snapshot appears on device B.
 - Edit a tool on device B and confirm device A does not overwrite it with stale local data.
