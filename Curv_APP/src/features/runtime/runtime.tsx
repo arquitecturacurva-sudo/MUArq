@@ -169,7 +169,7 @@ export const panelS: React.CSSProperties = {background:UI.panel,borderRadius:8,b
 export const badgeS: React.CSSProperties = {display:"inline-flex",alignItems:"center",gap:5,border:`1px solid ${UI.border}`,borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:800,lineHeight:1.2,whiteSpace:"nowrap"};
 export const metricS: React.CSSProperties = {border:`1px solid ${UI.borderSoft}`,borderRadius:8,padding:"12px 13px",background:"var(--ui-metric-bg,var(--ui-card))"};
 
-export const Fld = ({label,children}: FldProps) => <div style={{marginBottom:12}}><label style={lb}>{label}</label>{children}</div>;
+export const Fld = ({label,children}: FldProps) => <div style={{marginBottom:12,minWidth:0}}><label style={lb}>{label}</label>{children}</div>;
 export const Inp = ({value,onChange,type="text",placeholder,min}: InpProps) => <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} min={min} style={si}/>;
 export const Sel = ({value,onChange,options}: SelProps) => <select value={value} onChange={e=>onChange(e.target.value)} style={{...si,appearance:"none"}}>{options.map(o=><option key={o}>{o}</option>)}</select>;
 /**
@@ -950,7 +950,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
               unlock="Tarifa base y monto estimado para seguir con ajustes."
             />
           )}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
             <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
             <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
             <Fld label="Fecha"><input type="date" value={fe} onChange={e=>sfe(e.target.value)} style={si}/></Fld>
@@ -975,7 +975,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
       {step===2&&(
         <div style={cardS}>
           <p style={{...lb,color:G,margin:"0 0 10px"}}>Factores de ajuste</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
             <Fld label="Complejidad"><Sel value={co} onChange={sco} options={Object.keys(CF)}/></Fld>
             <Fld label="Urgencia"><Sel value={ur} onChange={sur} options={Object.keys(UF)}/></Fld>
             <Fld label="Tipo de cliente"><Sel value={tc} onChange={stc} options={Object.keys(KF)}/></Fld>
@@ -984,7 +984,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
             <Fld label="Redondeo (S/)"><Inp type="number" value={rd} onChange={srd} min="0"/></Fld>
           </div>
           <p style={{...lb,color:G,margin:"10px 0"}}>Adicionales</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
             <Fld label={`Reuniones extra (${moneySym} 240 c/u)`}><Inp type="number" value={rx} onChange={srx} min="0"/></Fld>
             <Fld label={`Visitas extra (${moneySym} 180 c/u)`}><Inp type="number" value={vx} onChange={svx} min="0"/></Fld>
             <Fld label={`Renders extra (${moneySym} 250 c/u)`}><Inp type="number" value={nx} onChange={snx} min="0"/></Fld>
@@ -995,7 +995,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
             {ig&&<div><div style={lb}>IGV</div><div style={{fontWeight:600,fontSize:12}}>{fmt(c.igv)}</div></div>}
             <div style={{marginLeft:"auto"}}><div style={lb}>Total estimado</div><div style={{fontWeight:800,fontSize:20,color:G}}>{fmt(c.tot)}</div></div>
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:14}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:14}}>
             <Btn v="ol" onClick={()=>ss(1)}>← Anterior</Btn>
             <Btn onClick={()=>ss(3)}>Ver resultado →</Btn>
           </div>
@@ -1004,7 +1004,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
 
       {/* Doc section — always in DOM for PDF export, visible only on step 3 */}
       {step===3 && (
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <Btn v="ol" onClick={()=>ss(2)}>← Editar</Btn>
           <Btn v="gd" onClick={onPrint}>🖨 Imprimir / PDF</Btn>
         </div>
@@ -1016,7 +1016,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
             <div style={{fontSize:26,fontWeight:800,color:G}}>{fmt(c.tot)}</div>
             <div style={{color:"#888",fontSize:9}}>Total {ig?"con IGV":"sin IGV"}</div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px",marginBottom:14}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px",marginBottom:14}}>
             {[["Cliente",cl||"—"],["Total",fmt(c.tot)],["Proyecto",pr||"—"],["Tarifa",`${moneySym} ${c.t}/m²`],["Fecha",fDate(fe)],["Complejidad",co],["Tipo",ti],["Urgencia",ur],["Etapa",et],["Cliente tipo",tc],["Modelo",mo],["Área",`${ar||0} m²`]].map(([k,v])=>(
               <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
                 <span style={{color:"#888",fontSize:10}}>{k}</span><span style={{fontWeight:600,fontSize:10}}>{v}</span>
@@ -1024,7 +1024,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
             ))}
           </div>
           <p style={{...lb,color:G,marginBottom:8}}>Desglose</p>
-          <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
+          <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
             <tbody>
               {[["Honorario base",c.b,`${ar||0} m² × S/ ${c.t}/m²`],["Ajustes",c.adj-c.b,"Complejidad, urgencia, cliente, modelo"],
                 ...(c.ext>0?[["Adicionales",c.ext,"Reuniones, visitas, renders"]]:[]),
@@ -1043,9 +1043,9 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
                 <td style={{padding:"9px 8px",fontSize:9,color:"#666"}}>Redond. a S/ {rd}</td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
           <p style={{...lb,color:G,marginBottom:8}}>Hitos de cobro</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
             {c.hitos.map(h=>(
               <div key={h.n} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:10,textAlign:"center"}}>
                 <div style={{...lb,margin:"0 0 4px"}}>{h.n}</div>
@@ -1152,7 +1152,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
             unlock="Listado filtrado de entregables para incluir/excluir y ajustar."
           />
         )}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"0 14px",marginBottom:12}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"0 14px",marginBottom:12}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Proyecto"/></Fld>
           <Fld label="Ubicación"><Inp value={ub} onChange={sub} placeholder="Ciudad / dirección"/></Fld>
@@ -1165,15 +1165,15 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
       </div>
 
       <div style={cardS}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{...lb,color:G,margin:0}}>Entregables — clic en ✓/○ para incluir o excluir</p>
-          <div style={{display:"flex",gap:8}}>
+          <div className="workspace-actions" style={{display:"flex",gap:8}}>
             <Btn v="ol" sm onClick={toggleAddPanel}>+ Agregar ítem</Btn>
             <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
           </div>
         </div>
         {showAdd&&(
-          <div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"12px 14px",marginBottom:14,display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr auto",gap:8,alignItems:"end"}}>
+          <div data-tool-grid style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"12px 14px",marginBottom:14,display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr auto",gap:8,alignItems:"end"}}>
             <Fld label="Entregable">
               <select value={newEnt} onChange={e=>handleEntSelect(e.target.value)} style={si}>
                 <option value="__custom__">— Entregable personalizado —</option>
@@ -1201,7 +1201,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
               <span style={{fontWeight:800,fontSize:11,textTransform:"uppercase",letterSpacing:"1px",color:etapaTextColor[etapa]||DK}}>{etapa}</span>
               <span style={{fontSize:10,color:"#AAA",marginLeft:"auto"}}>{(its as any[]).filter((i:any)=>i.on).length} / {(its as any[]).length} incluidos</span>
             </div>
-            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
+            <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
               <thead><tr style={{background:"#F8F6F1"}}>
                 <th style={{padding:"5px 8px",fontSize:9,fontWeight:700,color:"#888",width:28}}></th>
                 <th style={{padding:"5px 8px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left"}}>Entregable</th>
@@ -1227,7 +1227,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         ))}
         {Object.keys(byEtapa).length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#AAA",fontSize:12}}>No hay ítems para este paquete. Agrega uno con el botón de arriba.</div>}
@@ -1235,7 +1235,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
 
       <div data-doc-id={toolId} style={{...cardS,padding:28}}>
         <DocHeader title="Matriz de Entregables por Etapa" cl={cl} pr={pr} fe={fe}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 20px",marginBottom:16}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 20px",marginBottom:16}}>
           {[["Paquete",paq],["Ubicación",ub||"—"],["Fecha",fDate(fe)]].map(([k,v])=>(
             <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
               <span style={{color:"#888",fontSize:10}}>{k}</span><span style={{fontWeight:600,fontSize:10}}>{v}</span>
@@ -1251,7 +1251,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
               <div style={{background:DK,borderRadius:"4px 4px 0 0",padding:"6px 12px"}}>
                 <span style={{fontWeight:800,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",color:G}}>{etapa}</span>
               </div>
-              <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
+              <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
                 <thead><tr style={{background:"#F8F6F1"}}>
                   <th style={{padding:"5px 8px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left"}}>Entregable (incluye formato)</th>
                   <th style={{padding:"5px 8px",fontSize:9,fontWeight:700,color:"#888",textAlign:"center",width:70}}>Cantidad</th>
@@ -1266,7 +1266,7 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           );
         })}
@@ -1355,7 +1355,7 @@ export function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void
             unlock="Edición de ítems para mostrar al cliente con texto y estado."
           />
         )}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:"0 14px"}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:"0 14px"}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
           <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="COT-2026-001"/></Fld>
@@ -1364,16 +1364,16 @@ export function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void
         </div>
       </div>
       <div style={cardS}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <p style={{...lb,color:G,margin:0}}>Ítems — activa "Mostrar" para incluir en la presentación</p>
-          <div style={{display:"flex",gap:8}}>
+          <div className="workspace-actions" style={{display:"flex",gap:8}}>
             <Btn v="ol" sm onClick={()=>setShowAdd(s=>!s)}>+ Agregar ítem</Btn>
             <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
           </div>
         </div>
         {showAdd&&(
           <div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"12px 14px",marginBottom:14}}>
-            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"0 12px",marginBottom:8}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"0 12px",marginBottom:8}}>
               <Fld label="Ítem">
                 <select value={newItem} onChange={e=>handleBibSelect(e.target.value)} style={si}>
                   <option value="__biblioteca__">— Selecciona un ítem —</option>
@@ -1392,7 +1392,7 @@ export function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void
             </div>
           </div>
         )}
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr style={{background:"#F8F6F1"}}>
             <th style={{padding:"5px 8px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left",width:150}}>Categoría</th>
             <th style={{padding:"5px 8px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left",width:150}}>Ítem</th>
@@ -1423,12 +1423,12 @@ export function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       <div data-doc-id={toolId} style={{...cardS,padding:28}}>
         <DocHeader title="Exclusiones y Supuestos del Servicio" cl={cl} pr={pr} fe={fe}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"4px 20px",marginBottom:16}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"4px 20px",marginBottom:16}}>
           {[["Cliente",cl||"—"],["Proyecto",pr||"—"],["Código",cod||"—"],["Responsable",resp||"—"]].map(([k,v])=>(
             <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
               <span style={{color:"#888",fontSize:10}}>{k}</span><span style={{fontWeight:600,fontSize:10}}>{v}</span>
@@ -1441,7 +1441,7 @@ export function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void
             <div style={{background:DK,borderRadius:"4px 4px 0 0",padding:"7px 14px"}}>
               <span style={{fontWeight:800,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",color:G}}>{SECCION_LABEL[estado]}</span>
             </div>
-            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
+            <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
               <tbody>
                 {(its as any[]).map((it:any,i:number)=>(
                   <tr key={it.id} style={{background:i%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
@@ -1453,7 +1453,7 @@ export function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         ))}
         <div style={{borderTop:"1px solid #E5DDD0",paddingTop:10,color:"#AAA",fontSize:9,lineHeight:1.7,marginTop:8}}>
@@ -1536,19 +1536,19 @@ export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () =
             unlock="Visual de línea de tiempo y tabla lista para PDF."
           />
         )}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"0 14px"}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"0 14px"}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
           <Fld label="Fecha de propuesta"><input type="date" value={fe} onChange={e=>sfe(e.target.value)} style={si}/></Fld>
           <Fld label="Inicio estimado"><input type="date" value={inicio} onChange={e=>sInicio(e.target.value)} style={si}/></Fld>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:"0 14px"}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:"0 14px"}}>
           <Fld label={`Honorario total (${moneySym}) — opcional`}><input value={honorario} onChange={e=>setHonorario(e.target.value)} placeholder="Ej. 99500" style={si}/></Fld>
           <Fld label="Nota / condición de plazo"><input value={nota} onChange={e=>setNota(e.target.value)} placeholder="Los plazos están condicionados a aprobaciones oportunas del cliente." style={si}/></Fld>
         </div>
       </div>
       <div style={cardS}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{...lb,color:G,margin:0}}>Etapas y duraciones</p>
           <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
         </div>
@@ -1571,7 +1571,7 @@ export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () =
         {hon>0&&(
           <div style={{marginBottom:18}}>
             <p style={{...lb,color:G,marginBottom:8}}>Hitos de cobro (checklist)</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
               {hitos.map((h)=>(
                 <button
                   key={h.id}
@@ -1627,7 +1627,7 @@ export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () =
 
       <div data-doc-id={toolId} style={{...cardS,padding:28}}>
         <DocHeader title="Cronograma de Proyecto por Etapas" cl={cl} pr={pr} fe={fe}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 20px",marginBottom:18}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 20px",marginBottom:18}}>
           {[["Inicio estimado",fDate(inicio)],["Duración total",totalWeeks+" semanas"],["Entrega estimada",fDate(endDate)]].map(([k,v])=>(
             <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
               <span style={{color:"#888",fontSize:10}}>{k}</span><span style={{fontWeight:700,fontSize:10,color:k==="Entrega estimada"?G:DK}}>{v}</span>
@@ -1651,7 +1651,7 @@ export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () =
           })}
         </div>
         <p style={{...lb,color:G,marginBottom:8}}>Detalle por etapa</p>
-        <table style={{width:"100%",borderCollapse:"collapse",marginBottom:20}}>
+        <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:20}}>
           <thead><tr style={{background:DK}}>
             {["Etapa","Inicio","Entrega","Duración"].map(h=><th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:G,textAlign:"left"}}>{h}</th>)}
           </tr></thead>
@@ -1671,11 +1671,11 @@ export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () =
               <td style={{padding:"7px 10px",fontSize:10,fontWeight:700}}>{totalWeeks} semanas</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         {hon>0&&(
           <>
             <p style={{...lb,color:G,marginBottom:8}}>Hitos de cobro referenciales</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
               {hitos.map(h=>(
                 <div key={h.label} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:12,textAlign:"center"}}>
                   <div style={{...lb,margin:"0 0 4px"}}>{h.label}</div>
@@ -1747,12 +1747,12 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
             unlock="Comparativo, costos adicionales y bloque de aprobación."
           />
         )}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{...lb,color:G,margin:0}}>Datos del formulario</p>
           <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
         </div>
         <p style={{...lb,color:G,margin:"0 0 8px"}}>1. Datos generales</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
           <Fld label="Código OC"><Inp value={cod} onChange={scod} placeholder="OC-01"/></Fld>
@@ -1761,7 +1761,7 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
           <Fld label="Solicitado por"><Sel value={sol} onChange={ssol} options={SOLICITANTES}/></Fld>
         </div>
         <p style={{...lb,color:G,margin:"8px 0"}}>2. Resumen del cambio</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 14px"}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 14px"}}>
           <Fld label="Descripción del cambio"><textarea value={desc} onChange={e=>sdesc(e.target.value)} placeholder="Describe de forma concreta qué cambia." style={{...si,height:64,resize:"vertical"}}/></Fld>
           <Fld label="Documentos afectados"><textarea value={docsAfect} onChange={e=>sdocsAfect(e.target.value)} placeholder="Planos, cronograma, propuesta, matriz de entregables..." style={{...si,height:64,resize:"vertical"}}/></Fld>
           <Fld label="Motivo"><Sel value={motivo} onChange={smotivo} options={MOTIVOS}/></Fld>
@@ -1769,7 +1769,7 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
           <Fld label="Estado de resolución"><Sel value={estadoResolucion} onChange={(value)=>sEstadoResolucion(value as OcResolutionStatus)} options={["Pendiente","Resuelto"]}/></Fld>
         </div>
         <p style={{...lb,color:G,margin:"8px 0"}}>3. Detalle comparativo</p>
-        <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
+        <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
           <thead><tr style={{background:"#F8F6F1"}}>
             {["Ítem","Antes","Después"].map(h=><th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left",borderBottom:"1px solid #E5DDD0"}}>{h}</th>)}
           </tr></thead>
@@ -1786,9 +1786,9 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         <p style={{...lb,color:G,margin:"8px 0"}}>4. Impacto del cambio</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
           <Fld label="Honorario adicional (S/)"><Inp value={honorAd} onChange={shonorad} placeholder="0.00"/></Fld>
           <Fld label="Extensión de plazo"><Inp value={extPlazo} onChange={sextPlazo} placeholder="0 días / semanas"/></Fld>
           <Fld label="Nuevo total (S/)"><Inp value={nuevoTotal} onChange={snuevoTotal} placeholder="0.00"/></Fld>
@@ -1802,7 +1802,7 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
           <Fld label="Observación clave"><Inp value={obsKey} onChange={sobsKey} placeholder="Nota importante sobre este cambio"/></Fld>
         </div>
         <p style={{...lb,color:G,margin:"8px 0"}}>5. Aprobación</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px"}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px"}}>
           <div style={{border:"1px solid #E5DDD0",borderRadius:6,padding:12}}>
             <p style={{...lb,margin:"0 0 8px"}}>Emite — CURVA Arquitectos</p>
             <Fld label="Nombre"><Inp value={emiteNom} onChange={semiteNom} placeholder="Arquitecto responsable"/></Fld>
@@ -1821,7 +1821,7 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
       <div data-doc-id={toolId} style={{...cardS,padding:28}}>
         <DocHeader title="Orden de Cambio" cl={cl} pr={pr} fe={fe}/>
         <Sec n="1" title="Datos generales">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
             {row("Cliente",cl)}{row("Proyecto",pr)}{row("Código OC",cod)}{row("Fecha",fDate(fe))}{row("Cotización ref.",cot)}{row("Solicitado por",sol)}
           </div>
         </Sec>
@@ -1830,12 +1830,12 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
             <div style={lb}>Descripción del cambio</div>
             <div style={{fontSize:10,lineHeight:1.6,color:DK,padding:"6px 0"}}>{desc||"—"}</div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
             {row("Motivo",motivo)}{row("Impacto principal",impacto)}{row("Documentos afectados",docsAfect)}{row("Estado resolución",estadoResolucion)}
           </div>
         </Sec>
         <Sec n="3" title="Detalle comparativo">
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead><tr style={{background:"#F8F6F1"}}>
               {["Ítem","Antes","Después"].map(h=><th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left",borderBottom:"1px solid #E5DDD0"}}>{h}</th>)}
             </tr></thead>
@@ -1848,10 +1848,10 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </Sec>
         <Sec n="4" title="Impacto del cambio">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
             {row("Honorario adicional",honorAd?`${moneySym} ${honorAd}`:`${moneySym} 0.00`)}{row("Extensión de plazo",extPlazo||"—")}
             {row("Nuevo total",nuevoTotal?`${moneySym} ${nuevoTotal}`:"—")}{row("Hito de pago",hitoPago)}
             {row("Ajuste de cronograma",ajusteCron+(notaCron?" — "+notaCron:""))}{row("Observación clave",obsKey)}
@@ -1865,7 +1865,7 @@ export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void})
           ))}
         </Sec>
         <Sec n="6" title="Aprobación">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
             {[{titulo:"Emite — CURVA Arquitectos",nom:emiteNom,cargo:emiteCargo,fecha:fDate(emiteFe)},{titulo:"Aprueba — Cliente",nom:apruebaNom,cargo:apruebaCargo,fecha:fDate(apruebeFe)}].map(a=>(
               <div key={a.titulo} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"14px 16px"}}>
                 <div style={{...lb,color:G,marginBottom:10}}>{a.titulo}</div>
@@ -1989,22 +1989,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
 
   return (
     <div>
-      {/* Step nav */}
-      <div style={{display:"flex",gap:20,marginBottom:16,paddingBottom:12,borderBottom:"1px solid #E8E2D8"}}>
-        {STEPS.map((s,i)=>{
-          const n=i+1,done=step>n,active=step===n;
-          return (
-            <div key={i} onClick={()=>done&&setStep(n)}
-              style={{display:"flex",alignItems:"center",gap:5,color:active?DK:done?G:"#CCC",
-                fontSize:11,fontWeight:active||done?700:400,cursor:done?"pointer":"default"}}>
-              <span style={{width:16,height:16,borderRadius:"50%",background:done?G:active?DK:"#DDD",
-                color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:8,fontWeight:700,flexShrink:0}}>{done?"✓":n}</span>
-              {s}
-            </div>
-          );
-        })}
-      </div>
+      <StepNav steps={STEPS} current={step} onSelect={setStep} />
 
       {/* ─── STEP 1: IDENTIDAD ─── */}
       {step===1&&(
@@ -2019,7 +2004,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
             />
           )}
           <p style={{...lb,color:G,margin:"0 0 12px"}}>Datos de identificación del proyecto</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
             <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
             <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Nombre del proyecto"/></Fld>
             <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="PA-2026-001"/></Fld>
@@ -2052,16 +2037,16 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                 unlock="Totales por zona, porcentajes y lectura funcional."
               />
             )}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <p style={{...lb,color:G,margin:0}}>Programa de espacios</p>
-              <div style={{display:"flex",gap:8}}>
+              <div className="workspace-actions" style={{display:"flex",gap:8}}>
                 <Btn v="ol" sm onClick={addRow}>+ Espacio</Btn>
                 <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
               </div>
             </div>
 
             <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",minWidth:860}}>
+              <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",minWidth:860}}>
                 <thead>
                   <tr style={{background:"#F8F6F1"}}>
                     {["Zona","Espacio","Cant.","m² unit.","m² total","Usuarios","Relación","Prioridad","Obs.",""].map(h=>(
@@ -2135,7 +2120,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
 
             {/* Cuadro de áreas resumido */}
@@ -2173,7 +2158,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                 </button>
                 {matrixOpen&&(
                   <div style={{overflowX:"auto",marginTop:6}}>
-                    <table style={{borderCollapse:"collapse"}}>
+                    <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{borderCollapse:"collapse"}}>
                       <thead>
                         <tr>
                           <th style={{width:130}}/>
@@ -2206,7 +2191,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                     <p style={{fontSize:9,color:"#AAA",marginTop:6}}>
                       D = Directa · I = Indirecta · — = Sin relación · Clic para cambiar · La matriz es simétrica
                     </p>
@@ -2215,7 +2200,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
               </div>
             )}
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
             <Btn v="ol" onClick={()=>setStep(1)}>← Anterior</Btn>
             <Btn onClick={()=>setStep(3)}>Siguiente →</Btn>
           </div>
@@ -2237,7 +2222,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
           {/* Normativa */}
           <div style={cardS}>
             <p style={{...lb,color:G,margin:"0 0 12px"}}>Normativa</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
               {([
                 ["Normativa aplicable","normAplicable","Ej. RNE, zonificación, ordenanza..."],
                 ["Retiros","retiros","Front, lateral, posterior"],
@@ -2263,7 +2248,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
           {/* Técnicas */}
           <div style={cardS}>
             <p style={{...lb,color:G,margin:"0 0 12px"}}>Técnicas</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
               {([
                 ["Estado existente","estadoExist","Descripción del estado actual del inmueble"],
                 ["Limitaciones estructurales","limitEstructural","Muros portantes, juntas, etc."],
@@ -2282,7 +2267,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
           {/* Preferencias */}
           <div style={cardS}>
             <p style={{...lb,color:G,margin:"0 0 12px"}}>Preferencias del cliente</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
               {([
                 ["Materialidad","materialidad","Madera, concreto, piedra, vidrio..."],
                 ["Estilo / referente","estilo","Moderno, rústico, minimalista..."],
@@ -2301,7 +2286,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
             </div>
           </div>
 
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
             <Btn v="ol" onClick={()=>setStep(2)}>← Anterior</Btn>
             <Btn onClick={()=>setStep(4)}>Ver documento →</Btn>
           </div>
@@ -2310,7 +2295,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
 
       {/* Step 4 controls */}
       {step===4&&(
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <Btn v="ol" onClick={()=>setStep(3)}>← Editar</Btn>
           <Btn v="gd" onClick={onPrint}>🖨 Imprimir / PDF</Btn>
         </div>
@@ -2323,7 +2308,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
 
           {/* Bloque 1 */}
           <p style={{...lb,color:G,marginBottom:8}}>Identidad del proyecto</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 28px",marginBottom:18}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 28px",marginBottom:18}}>
             {([
               ["Cliente",cl],["Proyecto",pr],["Código",cod],
               ["Ubicación",ub],["Tipo de proyecto",tipoP],["Estado",estado],
@@ -2355,7 +2340,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                   <span style={{fontSize:9,color:"#AAA"}}>{zonaTotal.toFixed(1)} m²
                     {totalArea>0?" · "+(zonaTotal/totalArea*100).toFixed(0)+"%" : ""}</span>
                 </div>
-                <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
+                <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
                   <thead><tr style={{background:"#F8F6F1"}}>
                     {["Espacio","Cant.","m² unit.","m² total","Usuarios","Relación","Prioridad","Obs."].map(h=>(
                       <th key={h} style={{padding:"4px 8px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left"}}>{h}</th>
@@ -2384,7 +2369,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                       <td colSpan={4}/>
                     </tr>
                   </tbody>
-                </table>
+                </table></div>
               </div>
             );
           })}
@@ -2393,7 +2378,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
           {totalArea>0&&(
             <>
               <p style={{...lb,color:G,marginBottom:8,marginTop:18}}>Cuadro de áreas</p>
-              <table style={{width:"100%",borderCollapse:"collapse",marginBottom:18}}>
+              <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:18}}>
                 <thead><tr style={{background:DK}}>
                   {["Zona","Área (m²)","%"].map(h=>(
                     <th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:G,textAlign:"left"}}>{h}</th>
@@ -2420,7 +2405,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                     <td style={{padding:"7px 10px",fontSize:10,fontWeight:700}}>100%</td>
                   </tr>
                 </tbody>
-              </table>
+              </table></div>
             </>
           )}
 
@@ -2452,7 +2437,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                 <div style={{background:"#F8F6F1",borderRadius:"4px 4px 0 0",padding:"5px 12px",border:"1px solid #E5DDD0"}}>
                   <span style={{fontWeight:700,fontSize:10,color:"#888",textTransform:"uppercase",letterSpacing:"1px"}}>{sec.title}</span>
                 </div>
-                <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
+                <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
                   <tbody>
                     {filled.map(([k,v],i)=>(
                       <tr key={k} style={{background:i%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
@@ -2461,14 +2446,14 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             );
           })}
 
           {/* Footer firma */}
           <div style={{marginTop:24,borderTop:"1px solid #E5DDD0",paddingTop:16}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
               {[
                 {titulo:"Elaborado por — CURVA Arquitectos", nom:resp, fecha:fDate(feLev)},
                 {titulo:"Validado por — Cliente", nom:cl, fecha:"_______________"},
@@ -3327,21 +3312,21 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
 
           <div style={{...cardS,padding:18}}>
             <div style={{...lb,color:G,marginBottom:8}}>Datos base de cotización</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
               <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
               <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Nombre del proyecto"/></Fld>
               <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="COT-001"/></Fld>
               <Fld label="Ubicación"><Inp value={ub} onChange={sub} placeholder="Ciudad / distrito"/></Fld>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
               <Fld label="Fecha"><Inp type="date" value={fe} onChange={sfe}/></Fld>
             </div>
           </div>
 
           <div style={{...cardS,padding:18}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{...lb,color:G,margin:0}}>Categorías</div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <div className="workspace-actions" style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input value={newCategoria} onChange={(e) => setNewCategoria(e.target.value)} placeholder="Nueva categoría" style={{...si,width:170}}/>
                 <Btn v="ol" sm onClick={addCategoria}>+ Categoría</Btn>
               </div>
@@ -3371,7 +3356,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                   </span>
                 )}
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <div className="workspace-actions" style={{display:"flex",gap:8,alignItems:"center"}}>
                 <button
                   type="button"
                   onClick={() => setShowPendingOcrOnly((value) => !value)}
@@ -3401,7 +3386,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
               onChange={onPdfImportFileSelected}
             />
             <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead>
                   <tr style={{background:"#F8F6F1"}}>
                     {["Categoría","Cod. partida","Descripción","UND","Cant","Mano de obra","Materiales","Utilidad %","Riesgo %","Precio cliente",""].map((h) => (
@@ -3468,7 +3453,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                     <td/>
                   </tr>
                 </tfoot>
-              </table>
+              </table></div>
             </div>
           </div>
 
@@ -3482,21 +3467,21 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
         <div>
           <div style={{...cardS,padding:18}}>
             <div style={{...lb,color:G,marginBottom:8}}>Datos finales de pago y recargos</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
               <Fld label="Banco"><Inp value={banco} onChange={sBanco} placeholder="Banco"/></Fld>
               <Fld label="N.° cuenta"><Inp value={nCuenta} onChange={sNCuenta} placeholder="N.° de cuenta"/></Fld>
               <Fld label="CCI"><Inp value={cci} onChange={sCci} placeholder="CCI"/></Fld>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
               <Fld label="Gastos generales %"><input type="number" value={ggPct} onChange={(e) => sGgPct(Number(e.target.value) || 0)} style={si}/></Fld>
               <Fld label="Supervisión %"><input type="number" value={supPct} onChange={(e) => sSupPct(Number(e.target.value) || 0)} style={si}/></Fld>
               <Fld label="IGV %"><input type="number" value={igvPct} onChange={(e) => sIgvPct(Number(e.target.value) || 0)} style={si}/></Fld>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
               <Fld label="Condiciones de pago"><Inp value={condPago} onChange={sCondPago} placeholder="Condición acordada"/></Fld>
               <Fld label="Observaciones"><Inp value={obs} onChange={sObs} placeholder="Notas adicionales"/></Fld>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:4}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:4}}>
               {[
                 ["Subtotal partidas", fmtMoney2(sums.subtotalPartidas)],
                 [`Gastos generales (${Number(ggPct)||0}%)`, fmtMoney2(sums.ggMonto)],
@@ -3515,7 +3500,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
 
           <div data-doc-id={toolId} style={{...cardS,padding:26}}>
             <DocHeader title="Cotización de Obra" cl={cl} pr={pr} fe={fe}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>
               {[
                 ["Código", cod || "—"],
                 ["Ubicación", ub || "—"],
@@ -3530,7 +3515,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
             </div>
 
             <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:7}}>Detalle por partidas</div>
-            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",marginBottom:14}}>
+            <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",marginBottom:14}}>
               <thead>
                 <tr style={{background:"#1A1A1A"}}>
                   {["COD. PARTIDA","DESCRIPCIÓN","UND","CANT","PRECIO UNITARIO","PARCIAL","SUB-TOTAL"].map((h, i) => (
@@ -3570,9 +3555,9 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                   <td style={{padding:"7px 9px",fontSize:10,fontWeight:800,textAlign:"right",color:G}}>{fmtMoney2(sums.subtotalPartidas)}</td>
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
 
-            <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:16}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:16}}>
               <div style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"10px 12px"}}>
                 <div style={{...lb,color:G,marginBottom:8}}>Información de pago</div>
                 {[
@@ -3606,7 +3591,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
             {obs && <div style={{marginTop:12,borderTop:"1px solid #E5DDD0",paddingTop:8,fontSize:9,color:"#7A7A7A"}}><b>Observaciones:</b> {obs}</div>}
           </div>
 
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
             <Btn v="ol" onClick={() => setStep(1)}>← Anterior</Btn>
             <Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn>
           </div>
@@ -3614,7 +3599,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
       )}
       {ocrModalOpen && (
         <div style={{position:"fixed",inset:0,zIndex:140,background:"rgba(15,23,42,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
-          <div style={{width:"min(1220px,96vw)",maxHeight:"92vh",background:UI.card,border:`1px solid ${UI.border}`,borderRadius:10,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <div className="workspace-dialog" style={{width:"min(1220px,96vw)",maxHeight:"92vh",background:UI.card,border:`1px solid ${UI.border}`,borderRadius:10,display:"flex",flexDirection:"column",overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${UI.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
               <div>
                 <div style={{fontSize:11,fontWeight:800,color:DK}}>Importar PDF (OCR)</div>
@@ -3639,7 +3624,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
               )}
               {!ocrBusy && !ocrError && !ocrStatus && <div style={{fontSize:10,color:"#6B7280"}}>Carga un PDF para detectar partidas y revisarlas antes de importar.</div>}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1.5fr",gap:12,padding:14,minHeight:280,overflow:"hidden"}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1.5fr",gap:12,padding:14,minHeight:280,overflow:"hidden"}}>
               <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:0}}>
                 <div style={{fontSize:10,fontWeight:700,color:DK}}>Texto OCR (referencia)</div>
                 <textarea
@@ -3654,7 +3639,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                   <Btn v="ol" sm onClick={addOcrDraftRow}>+ Fila</Btn>
                 </div>
                 <div style={{overflow:"auto",border:`1px solid ${UI.border}`,borderRadius:6}}>
-                  <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
                     <thead>
                       <tr style={{background:"#F8F6F1"}}>
                         {["Categoría","Código","Descripción","UND","Cant","MO","Mat","Util%","Riesgo%",""].map((header) => (
@@ -3689,13 +3674,13 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </div>
               </div>
             </div>
             <div style={{padding:"10px 14px",borderTop:`1px solid ${UI.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
               <div style={{fontSize:10,color:UI.textMuted}}>Modo de importación: agregar al final.</div>
-              <div style={{display:"flex",gap:8}}>
+              <div className="workspace-actions" style={{display:"flex",gap:8}}>
                 <Btn v="ol" sm onClick={closeOcrModal}>Cancelar</Btn>
                 <button
                   type="button"
@@ -3905,13 +3890,13 @@ export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: 
     <div>
       {showEmpty && <InlineEmptyStateCard title="Cronograma de obra por partidas" context="Sincroniza partidas desde Cotización, define dependencias y obtén un Gantt detallado." build="Un cronograma técnico de obra con secuencia real y control de avance." first="Actualizar desde Cotización, luego asignar duración (días) y predecesoras." unlock="Fechas automáticas, checklist de dependencias y documento imprimible."/>}
       <div style={cardS}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
           <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Cliente"/></Fld>
           <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Proyecto"/></Fld>
           <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="OBR-001"/></Fld>
           <Fld label="Ubicación"><Inp value={ub} onChange={sub} placeholder="Ciudad / distrito"/></Fld>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
           <Fld label="Fecha"><Inp type="date" value={fe} onChange={sfe}/></Fld>
           <Fld label="Inicio obra (Lun–Sáb)"><Inp type="date" value={inicio} onChange={sInicio}/></Fld>
           <Fld label="Responsable"><Inp value={resp} onChange={sResp} placeholder="Ing. residente / PM"/></Fld>
@@ -3922,14 +3907,14 @@ export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: 
       <div style={cardS}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
           <div style={{...lb,color:G,margin:0}}>Partidas + dependencias (Fin a Inicio · Inicio a Inicio · Fin a Fin + Desfase)</div>
-          <div style={{display:"flex",gap:8}}>
+          <div className="workspace-actions" style={{display:"flex",gap:8}}>
             <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
             <Btn v="gd" sm onClick={syncFromCotizacion}>Actualizar desde Cotización</Btn>
           </div>
         </div>
         <div style={{fontSize:9,color:"#8A93A0",marginBottom:10}}>{syncAt ? `Última sincronización: ${new Date(syncAt).toLocaleString("es-PE")}` : "Sincroniza para traer partidas de Cotización."}</div>
         <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead><tr style={{background:"#F8F6F1"}}>{["Categoría","Cod.","Descripción","UND","Cant.","Dur. días","Predecesora","Tipo","Desfase","Avance %","Inicio","Fin","Checklist",""].map((h) => <th key={h} style={{padding:"6px 7px",fontSize:9,color:"#888",textAlign:h==="Descripción"?"left":"right",borderBottom:"1px solid #E5DDD0",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
             <tbody>
               {!partidas.length && <tr><td colSpan={14} style={{padding:"20px 0",textAlign:"center",fontSize:10,color:"#AAA"}}>No hay partidas. Sincroniza o agrega manualmente.</td></tr>}
@@ -3953,7 +3938,7 @@ export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: 
                 </tr>;
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
 
@@ -3962,7 +3947,7 @@ export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: 
           <div style={{...lb,color:G,margin:0}}>Diagrama de Gantt detallado (color por categoría)</div>
           <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{Object.entries(catColors).map(([cat, color]) => <span key={cat} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 7px",borderRadius:999,border:"1px solid #E5DDD0",fontSize:8,color:"#6A737D",background:"#FBF9F4"}}><span style={{width:8,height:8,borderRadius:"50%",background:color}}/>{cat}</span>)}</div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
           {[["Inicio",fDate(plan.startProject)],["Cierre estimado",fDate(plan.maxDate)],["Duración",`${plan.totalDias} días`],["Conflictos",plan.conflictCount?`${plan.conflictCount} detectado(s)`:"0"]].map(([k,v])=><div key={k} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"8px 10px",background:"#FBF9F4"}}><div style={{fontSize:9,color:"#888",marginBottom:4}}>{k}</div><div style={{fontSize:11,fontWeight:800,color:k==="Conflictos"&&plan.conflictCount?"#A63B2A":DK}}>{v}</div></div>)}
         </div>
         <div style={{overflowX:"auto",paddingBottom:4}}>
@@ -3981,11 +3966,11 @@ export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: 
 
       <div data-doc-id={toolId} style={{...cardS,padding:26}}>
         <DocHeader title="Cronograma de Obra" cl={cl} pr={pr} fe={fe}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>{[["Código",cod||"—"],["Ubicación",ub||"—"],["Inicio de obra",fDate(plan.startProject)],["Cierre estimado",fDate(plan.maxDate)]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #F0EBE0"}}><span style={{fontSize:10,color:"#888"}}>{k}</span><span style={{fontSize:10,fontWeight:700}}>{v}</span></div>)}</div>
+        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>{[["Código",cod||"—"],["Ubicación",ub||"—"],["Inicio de obra",fDate(plan.startProject)],["Cierre estimado",fDate(plan.maxDate)]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #F0EBE0"}}><span style={{fontSize:10,color:"#888"}}>{k}</span><span style={{fontSize:10,fontWeight:700}}>{v}</span></div>)}</div>
         <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:7}}>Ruta crítica estimada</div>
         <div style={{fontSize:9,color:"#5E6873",lineHeight:1.6,marginBottom:12,whiteSpace:"pre-line"}}>{plan.criticalIds.length ? plan.criticalIds.map((id) => { const row = plan.rowsById.get(id); return row ? `• ${row.codPartida || `#${row.id}`} · ${row.descripcion || "Partida"} (${fDateShort(row.inicioPlan)} → ${fDateShort(row.finPlan)})` : ""; }).filter(Boolean).join("\n") : "No hay ruta crítica calculable todavía."}</div>
         {obs && <div style={{borderTop:"1px solid #E5DDD0",paddingTop:8,fontSize:9,color:"#7A7A7A",marginBottom:8}}><b>Observaciones:</b> {obs}</div>}
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}><span style={{fontSize:9,color:"#8A93A0"}}>Responsable: {resp || "—"}</span><Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn></div>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}><span style={{fontSize:9,color:"#8A93A0"}}>Responsable: {resp || "—"}</span><Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn></div>
       </div>
     </div>
   );
@@ -4088,7 +4073,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
 
   return (
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+      <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <div style={{fontSize:10,fontWeight:700,color:"#888"}}>Flujo de valorización</div>
         <div style={{display:"flex",gap:6}}>
           <Btn v={view==="form"?"dk":"ol"} sm onClick={() => setView("form")}>✎ Editar</Btn>
@@ -4115,7 +4100,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
 
           <div style={{...cardS,padding:18}}>
             <div style={{...lb,color:G,marginBottom:8}}>Datos generales</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
               <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
               <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción del proyecto"/></Fld>
               <Fld label="Código"><Inp value={cod} onChange={scod} placeholder="VAL-001"/></Fld>
@@ -4129,7 +4114,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
 
           <div style={{...cardS,padding:18}}>
             <div style={{...lb,color:G,marginBottom:8}}>Contrato</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14}}>
               <Fld label="Monto contratado (S/)"><input type="number" value={mc} onChange={(e) => smc(Number(e.target.value) || 0)} style={si}/></Fld>
               <Fld label="Adicionales aprobados (S/)"><input type="number" value={ad} onChange={(e) => sad(Number(e.target.value) || 0)} style={si}/></Fld>
               <Fld label="Deductivos aprobados (S/)"><input type="number" value={de} onChange={(e) => sde(Number(e.target.value) || 0)} style={si}/></Fld>
@@ -4146,7 +4131,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
               Val. acumulado = Presupuesto × % acumulado · Val. período = Val. acumulado − Val. acumulado anterior · Saldo = Presupuesto − Val. acumulado
             </p>
             <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead>
                   <tr style={{background:"#F8F6F1"}}>
                     {["Código","Descripción","Presupuesto (S/)","Val. acum. anterior (S/)","% acum. a la fecha","Val. acumulado (S/)","Val. período (S/)","Saldo x ejecutar (S/)",""].map((h) => (
@@ -4192,13 +4177,13 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
                     <td/>
                   </tr>
                 </tfoot>
-              </table>
+              </table></div>
             </div>
           </div>
 
           <div style={{...cardS,padding:18}}>
             <div style={{...lb,color:G,marginBottom:9}}>Resumen económico</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
               {[
                 ["Contrato actualizado", fmtMoney2(totals.ca), DK],
                 ["Val. período", fmtMoney2(totals.tPer), G],
@@ -4233,7 +4218,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
         <div>
           <div data-doc-id={toolId} style={{...cardS,padding:26}}>
             <DocHeader title="Valorización de Avance de Obra" cl={cl} pr={pr} fe={fe}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
               {[
                 ["Código", cod || "—"],
                 ["N.° valorización", nv || "—"],
@@ -4248,7 +4233,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
             </div>
 
             <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>Resumen económico</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
               {[
                 ["Monto contratado", fmtMoney2(mc)],
                 ["Adicionales aprobados", fmtMoney2(ad)],
@@ -4279,7 +4264,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
             </div>
 
             <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>Partidas valorizadas del período</div>
-            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",marginBottom:18}}>
+            <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",marginBottom:18}}>
               <thead>
                 <tr style={{background:"#1A1A1A"}}>
                   {["Código","Descripción","Presupuesto","Val. ant.","% acum.","Val. acumulado","Val. período","Saldo x ejec."].map((h, i) => (
@@ -4318,9 +4303,9 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
                   <td style={{padding:"6px 8px",fontSize:10,textAlign:"right"}}>{fmtMoney2(totals.tSal)}</td>
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
 
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginTop:14}}>
+            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginTop:14}}>
               {[
                 ["Elaborado por", el || "___________________________"],
                 ["Revisado por", "___________________________"],
@@ -4338,7 +4323,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
             </div>
           </div>
 
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
             <Btn v="ol" onClick={() => setView("form")}>← Editar</Btn>
             <Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn>
           </div>
