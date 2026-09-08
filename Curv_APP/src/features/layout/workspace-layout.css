@@ -1,0 +1,91 @@
+[data-workspace-page] {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
+  font-family: Inter, "Helvetica Neue", sans-serif;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+[data-workspace-page] > header { flex-shrink: 0; }
+
+[data-workspace-shell] {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+[data-workspace-main] {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 24px 24px;
+  background: var(--ui-bg);
+}
+
+@media screen and (max-width: 860px) {
+  /* Every ancestor must grow: an auto-height tool inside a clipped 100vh page
+     makes the last fields unreachable, particularly with the mobile keyboard. */
+  [data-workspace-page] {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  [data-workspace-shell] {
+    flex: none;
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  [data-workspace-shell] [data-tour-id="sidebar"] {
+    width: 100%;
+    height: auto;
+    max-height: 48vh;
+    max-height: 48svh;
+    border-right: 0;
+    border-bottom: 1px solid var(--ui-border);
+    box-shadow: none;
+  }
+
+  [data-workspace-main] {
+    flex: none;
+    width: 100%;
+    overflow: visible;
+    /* Leave the final action above the floating help button and the home indicator. */
+    padding: 14px 14px calc(84px + env(safe-area-inset-bottom));
+  }
+}
+
+@media screen and (max-width: 860px) {
+  /* Keep editable fields readable without letting wide tables resize the page. */
+  [data-workspace-main] [data-tool-grid]:not([data-doc-id], [data-doc-id] *) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  [data-workspace-main] [data-tool-grid] > * { min-width: 0; }
+  [data-workspace-main] [data-doc-id],
+  [data-workspace-main] .workspace-table {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  [data-workspace-main] .workspace-table > table { min-width: 600px; }
+  [data-workspace-main] .workspace-actions { flex-wrap: wrap; gap: 8px; min-width: 0; }
+  [data-workspace-main] input:not([type="checkbox"]):not([type="radio"]),
+  [data-workspace-main] select,
+  [data-workspace-main] textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+}
+
+@media screen and (max-width: 860px) {
+  .workspace-dialog { max-height: 90dvh !important; overflow-y: auto !important; }
+  .workspace-dialog > div { flex-shrink: 0; }
+}

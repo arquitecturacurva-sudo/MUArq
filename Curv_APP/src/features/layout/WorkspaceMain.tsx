@@ -7,7 +7,6 @@ import {
   G,
   IconCalc,
   TOOL_ICONS,
-  UI,
   trackLocalProductEvent,
 } from "../runtime/runtime";
 
@@ -81,7 +80,7 @@ export default function WorkspaceMain({
   };
 
   return (
-    <div data-workspace-main style={{flex: 1, overflowY: "auto", padding: "18px 24px 24px", background: UI.bg}}>
+    <div data-workspace-main>
       <div data-tour-id="workspace" style={{maxWidth: 940, margin: "0 auto"}}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-solid border-border-soft bg-card px-4 py-3">
           <div className="flex items-center gap-2.5">

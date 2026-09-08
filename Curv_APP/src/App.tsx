@@ -29,6 +29,7 @@ import LandingView from "./features/layout/LandingView";
 import HomeView from "./features/layout/HomeView";
 import OnboardingTour from "./features/layout/OnboardingTour";
 import WorkspaceMain from "./features/layout/WorkspaceMain";
+import { WorkspaceBody, WorkspacePage } from "./features/layout/WorkspaceLayout";
 import WorkspaceSidebar from "./features/layout/WorkspaceSidebar";
 import {
   APP_TOUR_STEPS,
@@ -2212,28 +2213,8 @@ export default function App() {
   }
 
   return (
-    <div data-theme={darkMode?"dark":"light"} style={{...themeVars,display:"flex",flexDirection:"column",height:"100vh",fontFamily:"'Inter','Helvetica Neue',sans-serif",background:UI.bg,color:DK,overflow:"hidden"}}>
+    <WorkspacePage darkMode={darkMode} themeVars={themeVars}>
       <style>{`
-        @media (max-width: 860px) {
-          [data-workspace-shell] {
-            flex-direction: column !important;
-            height: auto !important;
-            min-height: 100vh;
-            overflow: visible !important;
-          }
-          [data-workspace-shell] [data-tour-id="sidebar"] {
-            width: 100% !important;
-            height: auto !important;
-            max-height: 48vh;
-            border-right: 0 !important;
-            border-bottom: 1px solid #1F2733;
-            box-shadow: none !important;
-          }
-          [data-workspace-shell] [data-workspace-main] {
-            overflow: visible !important;
-            padding: 14px 14px 22px !important;
-          }
-        }
         [data-theme="dark"] {
           color-scheme: dark;
         }
@@ -2384,7 +2365,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <div data-workspace-shell style={{display: "flex", flex: 1, minHeight: 0, overflow: "hidden"}}>
+      <WorkspaceBody>
       <WorkspaceSidebar
         activeProject={workspaceProject}
         activeProjectId={workspaceProjectId}
@@ -2422,7 +2403,7 @@ export default function App() {
         current={current}
         />
       </DocumentBrandThemeProvider>
-      </div>
+      </WorkspaceBody>
 
       {!isDemoWorkspace && (
         <OnboardingTour
@@ -2446,6 +2427,6 @@ export default function App() {
           onBackToDemos={returnToDemoGallery}
         />
       )}
-    </div>
+    </WorkspacePage>
   );
 }
