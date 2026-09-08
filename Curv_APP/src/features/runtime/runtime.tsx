@@ -995,7 +995,7 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
             {ig&&<div><div style={lb}>IGV</div><div style={{fontWeight:600,fontSize:12}}>{fmt(c.igv)}</div></div>}
             <div style={{marginLeft:"auto"}}><div style={lb}>Total estimado</div><div style={{fontWeight:800,fontSize:20,color:G}}>{fmt(c.tot)}</div></div>
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:14}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:14}}>
             <Btn v="ol" onClick={()=>ss(1)}>← Anterior</Btn>
             <Btn onClick={()=>ss(3)}>Ver resultado →</Btn>
           </div>
@@ -2200,7 +2200,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
               </div>
             )}
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
             <Btn v="ol" onClick={()=>setStep(1)}>← Anterior</Btn>
             <Btn onClick={()=>setStep(3)}>Siguiente →</Btn>
           </div>
@@ -2286,7 +2286,7 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
             </div>
           </div>
 
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
             <Btn v="ol" onClick={()=>setStep(2)}>← Anterior</Btn>
             <Btn onClick={()=>setStep(4)}>Ver documento →</Btn>
           </div>
@@ -3591,7 +3591,7 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
             {obs && <div style={{marginTop:12,borderTop:"1px solid #E5DDD0",paddingTop:8,fontSize:9,color:"#7A7A7A"}}><b>Observaciones:</b> {obs}</div>}
           </div>
 
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
             <Btn v="ol" onClick={() => setStep(1)}>← Anterior</Btn>
             <Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn>
           </div>
@@ -3970,7 +3970,7 @@ export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: 
         <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:7}}>Ruta crítica estimada</div>
         <div style={{fontSize:9,color:"#5E6873",lineHeight:1.6,marginBottom:12,whiteSpace:"pre-line"}}>{plan.criticalIds.length ? plan.criticalIds.map((id) => { const row = plan.rowsById.get(id); return row ? `• ${row.codPartida || `#${row.id}`} · ${row.descripcion || "Partida"} (${fDateShort(row.inicioPlan)} → ${fDateShort(row.finPlan)})` : ""; }).filter(Boolean).join("\n") : "No hay ruta crítica calculable todavía."}</div>
         {obs && <div style={{borderTop:"1px solid #E5DDD0",paddingTop:8,fontSize:9,color:"#7A7A7A",marginBottom:8}}><b>Observaciones:</b> {obs}</div>}
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}><span style={{fontSize:9,color:"#8A93A0"}}>Responsable: {resp || "—"}</span><Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn></div>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}><span style={{fontSize:9,color:"#8A93A0"}}>Responsable: {resp || "—"}</span><Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn></div>
       </div>
     </div>
   );
@@ -4323,7 +4323,7 @@ export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPri
             </div>
           </div>
 
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
+          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
             <Btn v="ol" onClick={() => setView("form")}>← Editar</Btn>
             <Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn>
           </div>

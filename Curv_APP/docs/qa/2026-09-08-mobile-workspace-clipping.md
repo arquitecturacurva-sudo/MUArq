@@ -36,3 +36,24 @@ Additional checks:
 - ESLint and production build passed; the existing large-bundle warning remains.
 
 Limitations: verification used Microsoft Edge with mobile/touch emulation. Reduced viewport height models keyboard-constrained space but is not a physical iOS Safari keyboard test. No live Firebase, payment, deployment or complete PDF-export flow was exercised.
+
+
+## Follow-up: consistency across all nine tools
+
+Expanded the mobile audit to 19 tool/view combinations at 320x568, 384x360, 844x390 and 1280x800, including all persisted steps and the optional add panels for deliverables and exclusions. Across 76 combinations, 2,786 visible enabled controls passed scrolling and hit-testing, with no page-width overflow or browser JavaScript errors.
+
+The expanded audit found and corrected two additional layout cases:
+
+- The deliverable add form retained a desktop grid-column span, creating implicit mobile columns and compressing controls. Form grid children now reset their column placement on mobile; document grids remain excluded.
+- Final navigation/action rows now share the wrapping behavior, including the quotation PDF action that extended past a 320px screen.
+
+Interaction checks used a separate browser context with local demo data:
+
+- Edited and remounted each of the nine tools; the edited value persisted. For Matriz de Entregables, added a custom deliverable and verified it survived switching tools.
+- Changed the shared client name and verified the same value in all nine tools.
+- Clicked through Calculadora, Cotizacion, Programa Arquitectonico and Valorizacion to their document/result views.
+- Verified that each tool's print button invokes its supplied print handler. This checks button wiring, not PDF generation.
+- Corrected an extra-script-text error in the untracked local preview page and verified its width at 320px.
+- Re-ran all 188 tests, ESLint and the production build successfully. The existing bundle-size warning remains.
+
+The interactive local preview is retained for user testing. The automated audit fixture was removed. Verification still uses Edge emulation, not a physical iPhone or live cloud services.

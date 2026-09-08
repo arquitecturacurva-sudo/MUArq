@@ -70,6 +70,10 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
   [data-workspace-main] [data-tool-grid] > * { min-width: 0; }
+  /* Clear desktop column spans so optional add/edit panels do not create implicit columns. */
+  [data-workspace-main] [data-tool-grid]:not([data-doc-id], [data-doc-id] *) > * {
+    grid-column: auto !important;
+  }
   [data-workspace-main] [data-doc-id],
   [data-workspace-main] .workspace-table {
     max-width: 100%;
