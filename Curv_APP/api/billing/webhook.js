@@ -1,5 +1,6 @@
 import { getBillingProvider } from "../_lib/billing/provider.js";
 import { readRawBody } from "../_lib/http.js";
+import { beginApiRequest, reportApiFailure } from "../_lib/observability.js";
 
 const parseJsonBody = (rawBody) => {
   if (!rawBody?.length) return {};
@@ -11,6 +12,7 @@ const parseJsonBody = (rawBody) => {
 };
 
 export default async function handler(req, res) {
+  const requestContext = beginApiRequest(req, res, "billing.webhook");
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
@@ -36,6 +38,10 @@ export default async function handler(req, res) {
     const message =
       error instanceof Error ? error.message : "Webhook processing failed.";
     const status = message.includes("signature") ? 400 : 500;
-    return res.status(status).json({ error: message });
+    reportApiFailure(requestContext, error, { stage: "webhook", status });
+    return res.status(status).json({
+      error: message,
+      requestId: requestContext.requestId,
+    });
   }
 }

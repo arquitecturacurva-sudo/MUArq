@@ -1,5 +1,6 @@
 import {
   PROJECT_SNAPSHOT_TOOL_PREFIXES,
+  isProjectSnapshotToolKey,
   stableValue,
   type ProjectSnapshotTools,
 } from "./projectSnapshot";
@@ -91,6 +92,7 @@ export const partitionProjectSnapshotTools = (
 ): ProjectToolPartition => {
   const partitioned: ProjectToolPartition = { tools: {}, shared: [] };
   Object.entries(tools || {}).forEach(([key, value]) => {
+    if (!isProjectSnapshotToolKey(key)) return;
     const toolId = resolveToolIdForStorageKey(key);
     if (!toolId) {
       partitioned.shared.push({ key, value });

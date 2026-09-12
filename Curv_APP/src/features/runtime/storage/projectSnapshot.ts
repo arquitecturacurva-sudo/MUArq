@@ -42,7 +42,9 @@ export const isProjectSnapshotToolKey = (rawKey: string) => (
 export const sanitizeProjectSnapshotTools = (
   tools?: ProjectSnapshotTools | null
 ): ProjectSnapshotTools => Object.fromEntries(
-  Object.entries(tools || {}).filter(([key]) => key !== PROJECT_SNAPSHOT_UPDATED_AT_KEY)
+  Object.entries(tools || {}).filter(([key]) => (
+    key !== PROJECT_SNAPSHOT_UPDATED_AT_KEY && isProjectSnapshotToolKey(key)
+  ))
 );
 
 export type ProjectSnapshotCopyTarget = {

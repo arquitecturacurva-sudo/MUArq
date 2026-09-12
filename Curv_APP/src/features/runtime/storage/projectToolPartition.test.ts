@@ -93,11 +93,11 @@ describe("partition", () => {
     expect(mergeProjectToolPartition(partitionProjectSnapshotTools(fixture))).toEqual(fixture);
   });
 
-  it("preserves a key matching no known prefix rather than dropping it", () => {
+  it("drops a key outside the snapshot allow-list", () => {
     const stray = { "totally.unknown": 7 };
     const partition = partitionProjectSnapshotTools(stray);
-    expect(partition.shared).toEqual([{ key: "totally.unknown", value: 7 }]);
-    expect(mergeProjectToolPartition(partition)).toEqual(stray);
+    expect(partition.shared).toEqual([]);
+    expect(mergeProjectToolPartition(partition)).toEqual({});
   });
 
   it("handles an empty snapshot", () => {

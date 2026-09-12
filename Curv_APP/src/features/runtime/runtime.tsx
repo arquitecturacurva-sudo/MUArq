@@ -16,6 +16,14 @@ import type {
   ProjectSnapshotTools,
 } from "./storage/projectSnapshot";
 import { commitPersistentStateTransition } from "./storage/persistentStateTransition";
+import { calculateProfessionalFees } from "./calculations/fees";
+import {
+  FEE_BASE_RATES,
+  FEE_CLIENT_FACTORS,
+  FEE_COMPLEXITY_FACTORS,
+  FEE_CONTRACT_FACTORS,
+  FEE_URGENCY_FACTORS,
+} from "./domain/fees";
 
 export {
   PROJECT_SNAPSHOT_UPDATED_AT_KEY,
@@ -906,11 +914,11 @@ export const ZONA_COLOR: Record<string,string> = {
   "Exterior":"#BA4A00","Técnica":"#6C3483","Comercial":"#17A589","Común":"#717D7E",
 };
 
-export const TAR: Record<string, Record<string, number>> = {"Vivienda":{Levantamiento:8,Anteproyecto:35,"Proyecto arquitectónico":55,"Expediente técnico":78,Supervisión:12},"Comercial":{Levantamiento:10,Anteproyecto:38,"Proyecto arquitectónico":60,"Expediente técnico":85,Supervisión:14},"Oficina":{Levantamiento:9,Anteproyecto:36,"Proyecto arquitectónico":58,"Expediente técnico":82,Supervisión:13},"Remodelación":{Levantamiento:12,Anteproyecto:42,"Proyecto arquitectónico":68,"Expediente técnico":95,Supervisión:16},"Interiorismo":{Levantamiento:11,Anteproyecto:40,"Proyecto arquitectónico":65,"Expediente técnico":90,Supervisión:15},"Industrial pequeño":{Levantamiento:8,Anteproyecto:30,"Proyecto arquitectónico":48,"Expediente técnico":70,Supervisión:12}};
-export const CF: Record<string, number> = {"Baja":0.9,"Media":1,"Alta":1.15,"Muy alta":1.3};
-export const UF: Record<string, number> = {"Normal":1,"Rápido":1.1,"Urgente":1.2};
-export const KF: Record<string, number> = {"Particular":1,"Empresa":1.08,"Institucional":1.15};
-export const MF: Record<string, number> = {"Suma alzada":1,"Precios unitarios":1.05,"Cost + Fee":0.95,"Gestión de obra":0.9,"Diseño + Build":1.12};
+export const TAR = FEE_BASE_RATES;
+export const CF = FEE_COMPLEXITY_FACTORS;
+export const UF = FEE_URGENCY_FACTORS;
+export const KF = FEE_CLIENT_FACTORS;
+export const MF = FEE_CONTRACT_FACTORS;
 
 export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
@@ -925,12 +933,20 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
   const [rx,srx]=usePersistentState("calc.rx",0); const [vx,svx]=usePersistentState("calc.vx",0); const [nx,snx]=usePersistentState("calc.nx",0);
 
   const c=useMemo(()=>{
-    const a=+ar||0,t=(TAR[ti]||{})[et]||0,b=t*a;
-    const adj=b*(CF[co]||1)*(UF[ur]||1)*(KF[tc]||1)*(MF[mo]||1)*(1+(+mg||0)/100)*(1-(+dc||0)/100);
-    const ext=(+rx||0)*240+(+vx||0)*180+(+nx||0)*250;
-    const sub=adj+ext,igv=ig?sub*.18:0,tot=rnd(sub+igv,+rd||0);
-    return {t,b,adj,ext,sub,igv,tot,rMin:Math.round(tot*.92),rMax:Math.round(tot*1.08),
-      hitos:[{n:"Adelanto",p:.5},{n:"Mitad",p:.25},{n:"Entrega",p:.25}].map(h=>({...h,m:rnd(tot*h.p,10)}))};
+    const result = calculateProfessionalFees({
+      projectType: ti, serviceStage: et, area: +ar || 0, complexity: co, urgency: ur,
+      clientType: tc, contractModel: mo, additionalMarginPct: +mg || 0,
+      discountPct: +dc || 0, roundingStep: +rd || 0, includesTax: ig,
+      extraMeetings: +rx || 0, extraVisits: +vx || 0, extraRenders: +nx || 0,
+    });
+    return {
+      t: result.baseRate, b: result.baseFee, adj: result.adjustedFee, ext: result.extras,
+      sub: result.subtotal, igv: result.tax, tot: result.total,
+      rMin: result.rangeMin, rMax: result.rangeMax,
+      hitos: result.milestones.map((milestone) => ({
+        n: milestone.name, p: milestone.share, m: milestone.amount,
+      })),
+    };
   },[ti,et,ar,co,ur,tc,mo,mg,dc,rd,ig,rx,vx,nx]);
 
   const ST=["Datos del proyecto","Factores y extras","Resultado"];
@@ -4441,13 +4457,12 @@ export const calcDesignHonorario = (projectId: string) => {
   const rx = Number(readScopedValue<number | string>(projectId, "calc.rx", 0)) || 0;
   const vx = Number(readScopedValue<number | string>(projectId, "calc.vx", 0)) || 0;
   const nx = Number(readScopedValue<number | string>(projectId, "calc.nx", 0)) || 0;
-  const t = (TAR[ti] || {})[et] || 0;
-  const b = t * ar;
-  const adj = b * (CF[co] || 1) * (UF[ur] || 1) * (KF[tc] || 1) * (MF[mo] || 1) * (1 + mg / 100) * (1 - dc / 100);
-  const ext = rx * 240 + vx * 180 + nx * 250;
-  const sub = adj + ext;
-  const igv = ig ? sub * 0.18 : 0;
-  return rnd(sub + igv, rd);
+  return calculateProfessionalFees({
+    projectType: ti, serviceStage: et, area: ar, complexity: co, urgency: ur,
+    clientType: tc, contractModel: mo, additionalMarginPct: mg, discountPct: dc,
+    roundingStep: rd, includesTax: ig, extraMeetings: rx, extraVisits: vx,
+    extraRenders: nx,
+  }).total;
 };
 
 export const normalizeCronHitos = (value: unknown): CronHitoCobro[] => {

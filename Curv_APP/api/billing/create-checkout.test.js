@@ -80,6 +80,7 @@ describe("billing create-checkout handler", () => {
 
     expect(res.statusCode).toBe(401);
     expect(res.payload).toEqual({ error: "Missing Firebase ID token." });
+    expect(res.headers["X-Curv-Request-Id"]).toBeTruthy();
     expect(mocks.verifyIdToken).not.toHaveBeenCalled();
     expect(mocks.createCheckout).not.toHaveBeenCalled();
   });

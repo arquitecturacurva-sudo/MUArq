@@ -18,7 +18,11 @@ import {
   isProjectCurrency,
   isValidCommercialStatus,
 } from "../../features/runtime/runtime";
-import { getProjectSnapshotFingerprint } from "../../features/runtime/storage/projectSnapshot";
+import {
+  getProjectSnapshotFingerprint,
+  sanitizeProjectSnapshotTools,
+} from "../../features/runtime/storage/projectSnapshot";
+import { assertProjectSnapshotContract } from "../../features/runtime/storage/projectSnapshotContract";
 import {
   EMPTY_TOOL_FINGERPRINT,
   PROJECT_TOOL_IDS,
@@ -27,6 +31,7 @@ import {
   getProjectToolFingerprint,
   mergeProjectToolPartition,
   partitionProjectSnapshotTools,
+  resolveToolIdForStorageKey,
   type ProjectSharedEntry,
   type ProjectToolId,
   type ProjectToolPartition,
@@ -346,6 +351,7 @@ const normalizeProjectSnapshot = (
   if (!isRecord(payload)) return undefined;
   const rawSnapshot = isRecord(payload.snapshot) ? payload.snapshot : null;
   if (!rawSnapshot) return undefined;
+  if (rawSnapshot.version !== undefined && rawSnapshot.version !== 1) return undefined;
   const rawTools = isRecord(rawSnapshot.tools) ? rawSnapshot.tools : {};
   const rawBaseMeta = isRecord(rawSnapshot.baseMeta)
     ? rawSnapshot.baseMeta as Partial<ProjectBaseMetadata>
@@ -356,9 +362,9 @@ const normalizeProjectSnapshot = (
     version: 1,
     revision: getStoredProjectRevision(payload),
     updatedAt:
-      typeof rawSnapshot.updatedAt === "string" && rawSnapshot.updatedAt.trim()
+      typeof rawSnapshot.updatedAt === "string" && Number.isFinite(Date.parse(rawSnapshot.updatedAt))
         ? rawSnapshot.updatedAt
-        : typeof payload.updatedAt === "string"
+        : typeof payload.updatedAt === "string" && Number.isFinite(Date.parse(payload.updatedAt))
           ? payload.updatedAt
           : nowIso(),
     baseMeta: {
@@ -372,7 +378,7 @@ const normalizeProjectSnapshot = (
       code: typeof rawBaseMeta.code === "string" ? rawBaseMeta.code : fallbackBaseMeta.code,
       currency: getCurrency(rawBaseMeta.currency, fallbackBaseMeta.currency),
     },
-    tools: rawTools,
+    tools: sanitizeProjectSnapshotTools(rawTools),
   };
 };
 
@@ -383,6 +389,7 @@ const normalizeSnapshotIndex = (
   if (!isRecord(payload)) return undefined;
   const raw = isRecord(payload.snapshotIndex) ? payload.snapshotIndex : null;
   if (!raw) return undefined;
+  if (raw.version !== 1 || raw.shape !== "toolDocs") return undefined;
 
   const shared: ProjectSharedEntry[] = Array.isArray(raw.shared)
     ? raw.shared.flatMap((entry) => (
@@ -545,7 +552,13 @@ export const fetchProjectSnapshotByClient = async (
   projectId: string,
   hydration: ProjectHydrationSnapshot
 ): Promise<ProjectSnapshot | undefined> => {
-  if (hydration.snapshot) return hydration.snapshot;
+  if (hydration.snapshot) {
+    return assertProjectSnapshotContract({
+      snapshot: hydration.snapshot,
+      expectedProjectId: projectId,
+      expectedClientId: clientId,
+    });
+  }
   const index = hydration.snapshotIndex;
   if (!index) return undefined;
 
@@ -554,8 +567,20 @@ export const fetchProjectSnapshotByClient = async (
   toolDocs.forEach((toolDoc) => {
     if (!isKnownToolId(toolDoc.id)) return;
     const data = toolDoc.data();
-    if (!isRecord(data) || !isRecord(data.data)) return;
-    partition.tools[toolDoc.id] = data.data as Record<string, unknown>;
+    if (
+      !isRecord(data)
+      || data.version !== 1
+      || data.projectId !== projectId
+      || data.clientId !== clientId
+      || data.toolId !== toolDoc.id
+      || data.revision !== hydration.revision
+      || !isRecord(data.data)
+      || data.fingerprint !== getProjectToolFingerprint(data.data)
+    ) return;
+    const sanitizedData = sanitizeProjectSnapshotTools(data.data);
+    if (Object.keys(sanitizedData).length !== Object.keys(data.data).length) return;
+    if (Object.keys(sanitizedData).some((key) => resolveToolIdForStorageKey(key) !== toolDoc.id)) return;
+    partition.tools[toolDoc.id] = sanitizedData;
   });
 
   const assembled: ProjectSnapshot = {
@@ -565,8 +590,14 @@ export const fetchProjectSnapshotByClient = async (
     revision: hydration.revision,
     updatedAt: index.updatedAt,
     baseMeta: index.baseMeta,
-    tools: mergeProjectToolPartition(partition),
+    tools: sanitizeProjectSnapshotTools(mergeProjectToolPartition(partition)),
   };
+
+  assertProjectSnapshotContract({
+    snapshot: assembled,
+    expectedProjectId: projectId,
+    expectedClientId: clientId,
+  });
 
   if (getProjectSnapshotFingerprint(assembled) !== index.fingerprint) {
     console.warn(
@@ -667,10 +698,18 @@ export const upsertProjectByClient = async (
   const db = ensureDb();
   const ref = projectDocRef(clientId, project.id);
 
+  const validatedSnapshot = snapshot
+    ? assertProjectSnapshotContract({
+      snapshot,
+      expectedProjectId: project.id,
+      expectedClientId: clientId,
+    })
+    : undefined;
+
   // Partition and size-check before opening the transaction: this work is pure, and throwing here
   // costs nothing.
-  const partition = snapshot
-    ? partitionProjectSnapshotTools(snapshot.tools)
+  const partition = validatedSnapshot
+    ? partitionProjectSnapshotTools(validatedSnapshot.tools)
     : { tools: {}, shared: [] } as ProjectToolPartition;
   const nextFingerprints = new Map<ProjectToolId, string>(
     PROJECT_TOOL_IDS.map((toolId) => [
@@ -678,7 +717,7 @@ export const upsertProjectByClient = async (
       getProjectToolFingerprint(partition.tools[toolId] || {}),
     ])
   );
-  if (snapshot) assertToolDocsWithinLimits(partition);
+  if (validatedSnapshot) assertToolDocsWithinLimits(partition);
 
   return runTransaction(db, async (transaction) => {
     const currentSnapshot = await transaction.get(ref);
@@ -696,16 +735,16 @@ export const upsertProjectByClient = async (
     // The diff basis comes from the parent's own index, read inside this transaction under the
     // expectedRevision gate, so it is provably the state being committed against.
     const previousFingerprints = readToolFingerprintsFromIndex(currentPayload);
-    const changedToolIds = snapshot
+    const changedToolIds = validatedSnapshot
       ? PROJECT_TOOL_IDS.filter((toolId) => (
         (previousFingerprints.get(toolId) || EMPTY_TOOL_FINGERPRINT)
           !== (nextFingerprints.get(toolId) || EMPTY_TOOL_FINGERPRINT)
       ))
       : [];
 
-    const snapshotIndex = snapshot
+    const snapshotIndex = validatedSnapshot
       ? buildSnapshotIndex(
-        { ...snapshot, projectId: project.id, clientId, revision, updatedAt },
+        { ...validatedSnapshot, projectId: project.id, clientId, revision, updatedAt },
         partition,
         nextFingerprints,
         updatedAt
@@ -744,9 +783,9 @@ export const upsertProjectByClient = async (
       baseMeta,
       syncRevision: revision,
       ...(snapshotIndex ? { snapshotIndex } : {}),
-      ...(WRITE_LEGACY_SNAPSHOT_BLOB && snapshot ? {
+      ...(WRITE_LEGACY_SNAPSHOT_BLOB && validatedSnapshot ? {
         snapshot: {
-          ...snapshot,
+          ...validatedSnapshot,
           projectId: project.id,
           clientId,
           revision,
@@ -776,12 +815,19 @@ export const batchUpsertProjectsByClient = async (
     const updatedAt = project.updatedAt || nowIso();
     const canonical = runtimeToProjectDoc(clientId, ownerUid, project, baseMeta, updatedAt);
     const rawSnapshot = readSnapshotByProjectId?.(project.id, clientId);
+    const validatedSnapshot = rawSnapshot
+      ? assertProjectSnapshotContract({
+        snapshot: rawSnapshot,
+        expectedProjectId: project.id,
+        expectedClientId: clientId,
+      })
+      : undefined;
 
     // Only ever creates (the exists() guard above), so there is nothing to diff: write every
     // non-empty tool document plus a complete index.
     let snapshotIndex: ProjectSnapshotIndex | undefined;
-    if (rawSnapshot) {
-      const partition = partitionProjectSnapshotTools(rawSnapshot.tools);
+    if (validatedSnapshot) {
+      const partition = partitionProjectSnapshotTools(validatedSnapshot.tools);
       assertToolDocsWithinLimits(partition);
       const fingerprints = new Map<ProjectToolId, string>(
         PROJECT_TOOL_IDS.map((toolId) => [
@@ -790,7 +836,7 @@ export const batchUpsertProjectsByClient = async (
         ])
       );
       snapshotIndex = buildSnapshotIndex(
-        { ...rawSnapshot, projectId: project.id, clientId, revision: 0, updatedAt },
+        { ...validatedSnapshot, projectId: project.id, clientId, revision: 0, updatedAt },
         partition,
         fingerprints,
         updatedAt
@@ -818,8 +864,8 @@ export const batchUpsertProjectsByClient = async (
       baseMeta,
       syncRevision: 0,
       ...(snapshotIndex ? { snapshotIndex } : {}),
-      ...(WRITE_LEGACY_SNAPSHOT_BLOB && rawSnapshot ? {
-        snapshot: { ...rawSnapshot, projectId: project.id, clientId, revision: 0 },
+      ...(WRITE_LEGACY_SNAPSHOT_BLOB && validatedSnapshot ? {
+        snapshot: { ...validatedSnapshot, projectId: project.id, clientId, revision: 0 },
       } : {}),
     };
     transaction.set(ref, payload);

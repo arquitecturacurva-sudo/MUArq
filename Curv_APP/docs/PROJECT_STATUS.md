@@ -2,12 +2,23 @@
 
 **Audit date:** 2026-07-09
 **Firestore sync update:** 2026-07-26
+**Stabilization update:** 2026-09-12
 **Auditor role:** Technical / SaaS readiness review  
 **Repository:** `curv-app` v0.0.0
 
 ---
 
 ## Executive summary
+
+### Stabilization implementation update — 2026-09-12
+
+- Added an explicit v1 project snapshot contract with target identity, schema, JSON-safety, and payload limits.
+- Tool-document hydration now verifies tenant, project, tool ownership, revision, and fingerprint before replacing local data.
+- Added local sync/billing failure diagnostics and structured API failure logs correlated by request id.
+- Added app and Functions CI gates, commit-level web build provenance, and signed desktop artifact attestations.
+- Extracted the Honorarios domain constants and pure calculation behind typed inputs/results; `runtime.tsx` remains the compatibility facade.
+- Production negative billing probes pass (`401` without authentication). Authenticated multi-profile sync and complete BASE/PRO payment lifecycle checks remain open until QA identities are available on a commit-verified Preview.
+- Operational gates and remaining deployed evidence are tracked in `docs/operations/stabilization-matrix.md`.
 
 Curv App is a **commercial/technical workspace for architecture firms** (CURVA). It supports proposals, deliverables, fee calculation, construction quoting, progress valuation, architectural briefs, and change orders — organized across three tracks: **Diseño**, **Construcción**, and **Seguimiento**.
 

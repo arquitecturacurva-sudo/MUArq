@@ -269,6 +269,20 @@ describe("read path", () => {
         docs.forEach((d) => fn({ id: d.id, data: () => d.data })),
     });
   };
+  const toolDoc = (toolId: string, data: Record<string, unknown>, revision = 3) => ({
+    id: toolId,
+    data: {
+      id: toolId,
+      toolId,
+      projectId: "p1",
+      clientId: "c1",
+      version: 1,
+      revision,
+      updatedAt: "2026-07-09T16:00:00.000Z",
+      fingerprint: getProjectToolFingerprint(data),
+      data,
+    },
+  });
 
   it("never reads tool data while listing projects", async () => {
     listDocs([{
@@ -326,8 +340,8 @@ describe("read path", () => {
   it("reassembles a snapshot from tool documents", async () => {
     const tools = { "cot.a": 1, "calc.area": 5 };
     listDocs([
-      { id: "cot", data: { data: { "cot.a": 1 } } },
-      { id: "calc", data: { data: { "calc.area": 5 } } },
+      toolDoc("cot", { "cot.a": 1 }),
+      toolDoc("calc", { "calc.area": 5 }),
       { id: "not-a-tool", data: { data: { "zzz.x": 9 } } },
     ]);
 
@@ -341,10 +355,25 @@ describe("read path", () => {
 
   it("refuses to hydrate a reassembly that does not match the parent fingerprint", async () => {
     // A torn read: the subcollection is missing a tool the index says should be there.
-    listDocs([{ id: "cot", data: { data: { "cot.a": 1 } } }]);
+    listDocs([toolDoc("cot", { "cot.a": 1 })]);
     const snapshot = await fetchProjectSnapshotByClient("c1", "p1", {
       project, baseMeta, revision: 3,
       snapshotIndex: indexFor({ "cot.a": 1, "calc.area": 5 }) as never,
+    });
+    expect(snapshot).toBeUndefined();
+  });
+
+  it.each([
+    ["cross-project identity", { projectId: "p2" }],
+    ["stale revision", { revision: 2 }],
+    ["wrong fingerprint", { fingerprint: "wrong" }],
+    ["wrong tool ownership", { data: { "calc.area": 1 } }],
+  ])("refuses a tool document with %s", async (_label, override) => {
+    const valid = toolDoc("cot", { "cot.a": 1 });
+    listDocs([{ id: valid.id, data: { ...valid.data, ...override } }]);
+    const snapshot = await fetchProjectSnapshotByClient("c1", "p1", {
+      project, baseMeta, revision: 3,
+      snapshotIndex: indexFor({ "cot.a": 1 }) as never,
     });
     expect(snapshot).toBeUndefined();
   });
