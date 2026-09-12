@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Curv_APP
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Curv_APP/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Test
+        run: npm test
+      - name: Lint
+        run: npm run lint
+      - name: Build with provenance
+        run: npm run build
+      - name: Verify provenance commit
+        run: node -e "const p=require('./dist/build-provenance.json'); if(p.commit !== process.env.GITHUB_SHA) process.exit(1)"
+      - name: Publish build provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-provenance-${{ github.sha }}
+          path: Curv_APP/dist/build-provenance.json
+          if-no-files-found: error
+          retention-days: 90
+
+  functions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Curv_APP/functions
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Curv_APP/functions/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build and test
+        run: npm test

@@ -2,6 +2,7 @@ import { getBillingProvider } from "../_lib/billing/provider.js";
 import { getClientSubscriptionId } from "../_lib/billing/repository.js";
 import { adminAuth, adminDb } from "../_lib/firebase-admin.js";
 import { readJsonBody } from "../_lib/http.js";
+import { beginApiRequest, reportApiFailure } from "../_lib/observability.js";
 
 const readBearerToken = (req) => {
   const raw = String(req.headers.authorization || req.headers.Authorization || "").trim();
@@ -27,6 +28,7 @@ const canManageClientBilling = async (uid, clientId) => {
 };
 
 export default async function handler(req, res) {
+  const requestContext = beginApiRequest(req, res, "billing.cancel-subscription");
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
@@ -77,7 +79,9 @@ export default async function handler(req, res) {
       provider: provider.id,
     });
   } catch (error) {
+    reportApiFailure(requestContext, error, { stage: "cancel" });
     return res.status(500).json({
+      requestId: requestContext.requestId,
       error:
         error instanceof Error
           ? error.message

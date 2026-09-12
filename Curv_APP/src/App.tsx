@@ -137,6 +137,34 @@ const isStringArray = (value: unknown): value is string[] => (
   Array.isArray(value) && value.every((item) => typeof item === "string")
 );
 
+const reportOperationalFailure = ({
+  area,
+  operation,
+  error,
+  projectId,
+  kind = "terminal",
+}: {
+  area: "project-sync" | "billing";
+  operation: string;
+  error?: unknown;
+  projectId?: string;
+  kind?: string;
+}) => {
+  const rawCode = error && typeof error === "object" && "code" in error
+    ? String((error as { code?: unknown }).code || "")
+    : "";
+  trackLocalProductEvent({
+    name: `${area}.failure`,
+    projectId,
+    payload: {
+      operation,
+      kind,
+      code: rawCode || (error instanceof Error ? error.name : "unknown"),
+      online: typeof navigator === "undefined" ? null : navigator.onLine,
+    },
+  });
+};
+
 export default function App() {
   const [authUser,setAuthUser]=useState<User | null>(null);
   const [authReady,setAuthReady]=useState(false);
@@ -743,6 +771,12 @@ export default function App() {
               );
               if (!isCurrentSession()) return;
               if (!snapshot) {
+                reportOperationalFailure({
+                  area: "project-sync",
+                  operation: "hydrate-integrity",
+                  projectId: item.projectId,
+                  kind: "integrity",
+                });
                 markProjectSyncError(
                   item.projectId,
                   "No se pudo reconstruir la copia en la nube. Se conservo la copia local."
@@ -752,6 +786,13 @@ export default function App() {
               applyRemoteSnapshot(item.projectId, item.revision, snapshot);
             } catch (error) {
               if (!isCurrentSession()) return;
+              reportOperationalFailure({
+                area: "project-sync",
+                operation: "hydrate",
+                projectId: item.projectId,
+                error,
+                kind: classifyProjectSyncError(error),
+              });
               console.warn("[client-projects] tool hydration failed", error);
               markProjectSyncError(
                 item.projectId,
@@ -779,6 +820,12 @@ export default function App() {
         if (!isCurrentSession()) return;
         cloudHydratedRef.current = false;
         const kind = classifyProjectSyncError(error);
+        reportOperationalFailure({
+          area: "project-sync",
+          operation: "reconcile",
+          error,
+          kind,
+        });
         if (kind === "transient") {
           const delay = getProjectSyncRetryDelay(reconcileRetryAttemptRef.current);
           reconcileRetryAttemptRef.current += 1;
@@ -855,6 +902,7 @@ export default function App() {
         setClientAccess(resolveClientAccess(billing));
       } catch (error) {
         if (cancelled) return;
+        reportOperationalFailure({ area: "billing", operation: "refresh", error });
         console.warn("[billing] refresh failed", error);
         setClientBilling(null);
         setClientAccess(resolveClientAccess(null));
@@ -964,6 +1012,13 @@ export default function App() {
           const kind = error instanceof ProjectRevisionConflictError
             ? "conflict"
             : classifyProjectSyncError(error);
+          reportOperationalFailure({
+            area: "project-sync",
+            operation: "save",
+            projectId: project.id,
+            error,
+            kind,
+          });
           if (kind === "conflict") {
             let remoteEntry: ProjectSyncEntry | null = null;
             try {
@@ -1011,12 +1066,26 @@ export default function App() {
         cloudHydratedRef.current = false;
         setReconcileTick((value) => value + 1);
       } else if (classifyProjectSyncError(error) === "transient") {
+        reportOperationalFailure({
+          area: "project-sync",
+          operation: "writer-lease",
+          projectId: project.id,
+          error,
+          kind: "transient",
+        });
         scheduleProjectRetry(project.id);
       } else {
         const message = error instanceof Error
           ? error.message
           : "No se pudo coordinar el guardado entre pestañas.";
         markProjectSyncError(project.id, message);
+        reportOperationalFailure({
+          area: "project-sync",
+          operation: "writer-lease",
+          projectId: project.id,
+          error,
+          kind: "terminal",
+        });
         console.warn("[client-projects] sync lease failed", error);
       }
       setSyncTick((value) => value + 1);
@@ -1591,6 +1660,7 @@ export default function App() {
       window.location.assign(checkout.url);
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo iniciar el checkout.";
+      reportOperationalFailure({ area: "billing", operation: "checkout", error });
       window.alert(message);
     } finally {
       setCheckoutBusyPlan(null);
@@ -1723,6 +1793,13 @@ export default function App() {
           clearScheduledProjectRetry(project.id);
         } else {
         const message = error instanceof Error ? error.message : "No se pudo eliminar el proyecto en la nube.";
+        reportOperationalFailure({
+          area: "project-sync",
+          operation: "delete",
+          projectId: project.id,
+          error,
+          kind: classifyProjectSyncError(error),
+        });
         if (
           error instanceof ProjectRevisionConflictError
           || classifyProjectSyncError(error) === "conflict"

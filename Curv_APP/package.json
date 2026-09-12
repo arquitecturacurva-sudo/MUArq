@@ -8,7 +8,7 @@
   "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite --configLoader native",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/write-build-provenance.mjs",
     "typecheck": "tsc -b",
     "build:standalone:only": "node scripts/build-standalone.mjs",
     "build:standalone": "npm run build && npm run build:standalone:only",
@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "qa:provision": "node scripts/provision-qa-user.mjs",
+    "verify:deployment": "node scripts/verify-deployment.mjs",
     "preview": "vite preview"
   },
   "build": {
