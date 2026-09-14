@@ -16,7 +16,7 @@ describe("tenant provisioning rule contracts", () => {
   it("drops the legacy ownerId read bypass", () => {
     // A stale pre-rename field must not be able to grant tenant access.
     expect(firestoreRules).not.toContain("resource.data.ownerId");
-    expect(firestoreRules).toContain("match /clients/{clientId} {\n      allow read: if isMember(clientId);");
+    expect(firestoreRules).toContain("allow read: if isEditor(clientId);");
   });
 
   it("makes tenant creation server-only", () => {

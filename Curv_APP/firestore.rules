@@ -12,7 +12,9 @@ service cloud.firestore {
 
     function isMember(clientId) {
       return signedIn()
-        && exists(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.get("status", "active") == "active"
+        && get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role in ["admin", "owner", "editor", "viewer", "observer"];
     }
 
     function isAdmin(clientId) {
@@ -23,12 +25,27 @@ service cloud.firestore {
         );
     }
 
+    function isOwner(clientId) {
+      return isAdmin(clientId) && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
+    }
+
     function isEditor(clientId) {
       return isAdmin(clientId)
         || (
           isMember(clientId)
           && get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role == "editor"
         );
+    }
+
+    function canReadProject(clientId, projectId) {
+      let member = get(/databases/$(database)/documents/clients/$(clientId)/members/$(request.auth.uid)).data;
+      let scope = member.get("accessScope", {});
+      return isMember(clientId) && (
+        isEditor(clientId)
+        || (member.role in ["viewer", "observer"]
+          && scope.get("kind", "") == "projects"
+          && projectId in scope.get("projectIds", []))
+      );
     }
 
     function validBrandFont(data) {
@@ -135,13 +152,14 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      allow read: if isMember(clientId);
+      // This document includes billing; viewers must use a future sanitized summary.
+      allow read: if isEditor(clientId);
       // Tenant creation is server-only: functions/src/tenant/ensureTenant.ts. This is strictly
       // stronger than the old bootstrap rule -- a browser can now create zero tenant documents
       // rather than one -- so tenant-id squatting is impossible by construction and the
       // self-serve cap lives in the callable, where a future invite flow can relax it.
       allow create: if false;
-      allow update: if isAdmin(clientId)
+      allow update: if isOwner(clientId)
         && request.resource.data.id == clientId
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.name is string
@@ -152,11 +170,10 @@ service cloud.firestore {
     }
 
     match /clients/{clientId}/members/{memberId} {
-      allow read: if isMember(clientId);
-      // Self-bootstrap removed: the owner membership is written by ensureTenant alongside the
-      // tenant document. Admins can still invite.
-      allow create: if isAdmin(clientId);
-      allow update, delete: if isAdmin(clientId);
+      allow read: if isEditor(clientId) || (isMember(clientId) && memberId == request.auth.uid);
+      // Server-only until atomic member/seat operations exist. Browser writes cannot
+      // protect a last-admin aggregate reliably; deny owner edits, demotions and revokes.
+      allow create, update, delete: if false;
     }
 
     match /{path=**}/members/{memberId} {
@@ -168,7 +185,7 @@ service cloud.firestore {
     }
 
     match /clients/{clientId}/projects/{projectId} {
-      allow read: if isMember(clientId);
+      allow read: if canReadProject(clientId, projectId);
       allow create, update: if isEditor(clientId)
         && request.resource.data.id == projectId
         && request.resource.data.clientId == clientId;
@@ -181,7 +198,7 @@ service cloud.firestore {
     // a bug cannot create an unbounded subcollection under a project. Adding a tenth tool
     // requires a rules deploy; a ?raw containment test keeps this list in sync with the code.
     match /clients/{clientId}/projects/{projectId}/toolData/{toolId} {
-      allow read: if isMember(clientId);
+      allow read: if canReadProject(clientId, projectId);
       allow create, update: if isEditor(clientId)
         && toolId in [
           "calc", "matrix", "excl", "cron", "cot", "cronobra", "val", "brief", "oc"
@@ -193,14 +210,14 @@ service cloud.firestore {
     match /clients/{clientId}/settings/{settingId} {
       allow read: if settingId == "brand" && isMember(clientId);
       allow create: if settingId == "brand"
-        && isAdmin(clientId)
+        && isOwner(clientId)
         && validBrandProfile(clientId)
         && request.resource.data.createdAt == request.time
         && request.resource.data.profileRevision == 1
         && !("logoUrl" in request.resource.data)
         && !("logoStoragePath" in request.resource.data);
       allow update: if settingId == "brand"
-        && isAdmin(clientId)
+        && isOwner(clientId)
         && validBrandProfile(clientId)
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.profileRevision == (

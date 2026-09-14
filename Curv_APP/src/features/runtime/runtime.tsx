@@ -1,21 +1,128 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button as KitButton } from "@/components/ui/button";
-import { StepNav } from "../ui/kit/stepNav";
+import { BG, panelS, badgeS, metricS } from "../ui/tokens";
+import { PROJECT_SNAPSHOT_UPDATED_AT_KEY, PROJECT_SNAPSHOT_TOOL_PREFIXES, isProjectSnapshotToolKey, shouldHydrateRemoteSnapshot } from "../../domain/project/snapshot";
+import type { ProjectSnapshotTools } from "../../domain/project/snapshot";
+import type { TrackId } from "../../domain/project/project";
+import type { TrackState } from "../../domain/project/project";
+import { useState } from "react";
+import { UI } from "../ui/tokens";
+import { DK } from "../ui/tokens";
+import { G } from "../ui/tokens";
 import { useDocumentBrandTheme } from "../../lib/branding/documentBranding";
-import {
-  PROJECT_SNAPSHOT_UPDATED_AT_KEY,
-  PROJECT_SNAPSHOT_TOOL_PREFIXES,
-  collectProjectSnapshotFromStorage,
-  getScopedProjectStorageKeysFromStorage,
-  hydrateProjectSnapshotToStorage,
-  isProjectSnapshotToolKey,
-  shouldHydrateRemoteSnapshot,
-} from "./storage/projectSnapshot";
-import type {
-  ProjectSnapshot as StorageProjectSnapshot,
-  ProjectSnapshotTools,
-} from "./storage/projectSnapshot";
-import { commitPersistentStateTransition } from "./storage/persistentStateTransition";
+import { fDate } from "../../domain/project/calendar";
+import { readProjectBaseMetadata } from "./projectServices";
+import { currencySymbol } from "../../domain/project/currency";
+import { usePersistentState } from "./storage/usePersistentState";
+import { useSharedProjectTextField } from "./storage/usePersistentState";
+import { SHARED_PROJECT_CLIENT_KEY } from "../../domain/project/project";
+import { PROJECT_CLIENT_LEGACY_KEYS } from "../../domain/project/project";
+import { SHARED_PROJECT_NAME_KEY } from "../../domain/project/project";
+import { PROJECT_NAME_LEGACY_KEYS } from "../../domain/project/project";
+import { useMemo } from "react";
+import { TAR } from "../../domain/project/toolDefaults";
+import { CF } from "../../domain/project/toolDefaults";
+import { UF } from "../../domain/project/toolDefaults";
+import { KF } from "../../domain/project/toolDefaults";
+import { MF } from "../../domain/project/toolDefaults";
+import { rnd } from "../../domain/project/currency";
+import { StepNav } from "../ui/kit/stepNav";
+import { cardS } from "../ui/tokens";
+import { InlineEmptyStateCard } from "../ui/form-primitives";
+import { Fld } from "../ui/form-primitives";
+import { Inp } from "../ui/form-primitives";
+import { si } from "../ui/tokens";
+import { Sel } from "../ui/form-primitives";
+import { lb } from "../ui/tokens";
+import { fmt } from "./projectServices";
+import { Btn } from "../ui/form-primitives";
+import { SHARED_PROJECT_LOCATION_KEY } from "../../domain/project/project";
+import { PROJECT_LOCATION_LEGACY_KEYS } from "../../domain/project/project";
+import { ITEMS_BASE } from "../../domain/project/toolDefaults";
+import { ETAPAS_MX } from "../../domain/project/toolDefaults";
+import { PAQUETES } from "../../domain/project/toolDefaults";
+import { SHARED_PROJECT_CODE_KEY } from "../../domain/project/project";
+import { PROJECT_CODE_LEGACY_KEYS } from "../../domain/project/project";
+import { BIBLIOTECA_BASE } from "../../domain/project/toolDefaults";
+import { MOSTRAR_DEFAULT } from "../../domain/project/toolDefaults";
+import { CATEGORIAS } from "../../domain/project/toolDefaults";
+import { ESTADOS } from "../../domain/project/toolDefaults";
+import { ETAPAS_CRON } from "../../domain/project/toolDefaults";
+import type { CronHitoCobro } from "../../domain/project/project";
+import { CRON_HITOS_BASE } from "../../domain/project/project";
+import { addWeeks } from "../../domain/project/calendar";
+import { normalizeCronHitos } from "../../domain/project/project";
+import { fDateShort } from "../../domain/project/calendar";
+import type { OcResolutionStatus } from "../../domain/project/project";
+import { isValidOcResolutionStatus } from "../../domain/project/project";
+import React from "react";
+import { SOLICITANTES } from "../../domain/project/toolDefaults";
+import { MOTIVOS } from "../../domain/project/toolDefaults";
+import { IMPACTOS } from "../../domain/project/toolDefaults";
+import { isStringRecord } from "../../domain/project/values";
+import { ZONAS_B } from "../../domain/project/toolDefaults";
+import { TIPO_PROY } from "../../domain/project/toolDefaults";
+import { ESTADO_ACT } from "../../domain/project/toolDefaults";
+import { RELACION_B } from "../../domain/project/toolDefaults";
+import { PRIORIDAD_B } from "../../domain/project/toolDefaults";
+import { pdfTextItemsToLines } from "../../domain/project/quotationImport";
+import { COT_CATEGORIES_BASE } from "../../domain/project/toolDefaults";
+import { isStringArray } from "../../domain/project/values";
+import type { CotPartida } from "../../domain/project/construction";
+import { newCotPartida } from "../../domain/project/construction";
+import { useRef } from "react";
+import type { CotOcrDraftRow } from "../../domain/project/quotationImport";
+import type { CotOcrImportMode } from "../../domain/project/quotationImport";
+import { countCotOcrIncompleteRows } from "../../domain/project/quotationImport";
+import { useEffect } from "react";
+import { trackLocalProductEvent } from "./projectServices";
+import { resolveProjectScopeId } from "../../infrastructure/project/browserStorage";
+import type { CotOcrEditableKey } from "../../domain/project/quotationImport";
+import { COT_OCR_NUMERIC_KEYS } from "../../domain/project/quotationImport";
+import type { CotOcrNumericKey } from "../../domain/project/quotationImport";
+import { ocrNumber } from "../../domain/project/quotationImport";
+import { newCotOcrDraftRow } from "../../domain/project/quotationImport";
+import { hasUsefulEmbeddedPdfText } from "../../domain/project/quotationImport";
+import { parseCotRowsFromOcrText } from "../../domain/project/quotationImport";
+import type { CotImportSource } from "../../domain/project/construction";
+import { normalizeCotUnit } from "../../domain/project/quotationImport";
+import { COT_UNITS } from "../../domain/project/toolDefaults";
+import { fmtMoney2 } from "./projectServices";
+import { getCotOcrDraftIssue } from "../../domain/project/quotationImport";
+import type { ObraDepTipo } from "../../domain/project/construction";
+import type { ObraPartida } from "../../domain/project/construction";
+import { readStorage } from "../../infrastructure/project/browserStorage";
+import { newObraPartida } from "../../domain/project/construction";
+import { normalizeWorkDate } from "../../domain/project/calendar";
+import { addWorkDaysMonSat } from "../../domain/project/calendar";
+import { cmpDateISO } from "../../domain/project/calendar";
+import type { ObraPlan } from "../../domain/project/construction";
+import { diffDateDays } from "../../domain/project/calendar";
+import type { ValPartida } from "../../domain/project/construction";
+import { newValPartida } from "../../domain/project/construction";
+import type { PersistedToolState } from "../../domain/project/project";
+// Temporary compatibility facade for extracted project/domain/storage services.
+export { resolveValue, isPlainObject, isStringRecord, isString, isStringArray } from "../../domain/project/values";
+export { fDate, fDateShort, addWeeks, parseDateISO, toISODate, isWorkDayMonSat, alignToWorkDay, normalizeWorkDate, addWorkDaysMonSat, cmpDateISO, diffDateDays } from "../../domain/project/calendar";
+export { currencySymbol, formatMoneyByCurrency, rnd } from "../../domain/project/currency";
+export { DEFAULT_TRACKS, COMMERCIAL_STATUS_OPTIONS, CRON_HITOS_BASE, isValidTrackId, isValidCommercialStatus, isValidOcResolutionStatus, normalizeTracks, SHARED_PROJECT_CLIENT_KEY, SHARED_PROJECT_NAME_KEY, SHARED_PROJECT_LOCATION_KEY, SHARED_PROJECT_CODE_KEY, SHARED_PROJECT_CURRENCY_KEY, PROJECT_CLIENT_LEGACY_KEYS, PROJECT_NAME_LEGACY_KEYS, PROJECT_LOCATION_LEGACY_KEYS, PROJECT_CODE_LEGACY_KEYS, PROJECT_CURRENCY_OPTIONS, isProjectCurrency, normalizeCronHitos, isValidToolStateArray, TRACK_TOOLS, TRACK_REQUIRED_TOOL, TRACK_DEFAULT_ORDER, getTrackForTool } from "../../domain/project/project";
+export type { TrackId, TrackState, CommercialStatus, OcResolutionStatus, CronHitoCobro, ProjectRecord, DashboardMetrics, ProjectCurrency, ProjectBaseMetadata, PersistedToolState } from "../../domain/project/project";
+export { createProjectId, nowIso, toProjectRecord, isProjectRecordArray, normalizeProjectRecords, createProjectRecord } from "../../application/project/projectRecords";
+export { LOCAL_PRODUCT_EVENTS_STORAGE_KEY, LOCAL_PRODUCT_EVENTS_LIMIT, isLocalProductEventArray, sanitizeLocalEventPayload } from "../../domain/project/productEvents";
+export type { LocalProductEventPayloadValue, LocalProductEventPayload, LocalProductEvent } from "../../domain/project/productEvents";
+export { ZONAS_B, PRIORIDAD_B, RELACION_B, TIPO_PROY, ESTADO_ACT, TAR, CF, UF, KF, MF, PAQUETES, ETAPAS_MX, ITEMS_BASE, ESTADOS, CATEGORIAS, BIBLIOTECA_BASE, MOSTRAR_DEFAULT, ETAPAS_CRON, MOTIVOS, IMPACTOS, SOLICITANTES, COT_CATEGORIES_BASE, COT_UNITS } from "../../domain/project/toolDefaults";
+export { newCotPartida, newObraPartida, newValPartida } from "../../domain/project/construction";
+export type { CotImportSource, CotReviewStatus, CotPartida, ObraDepTipo, ObraPartida, ObraPlan, ValPartida } from "../../domain/project/construction";
+export { COT_OCR_HEADER_ALIASES, normalizeOcrHeader, normalizeCotUnit, splitOcrColumns, parseOcrFlexibleNumber, isNumericLikeToken, ocrNumber, isLikelyCotHeaderLine, shouldSkipOcrLine, newCotOcrDraftRow, parseRowsFromHeaderBasedOcr, parseOcrLineHeuristically, parseRowsFromHeuristicOcr, parseCotRowsFromOcrText, COT_OCR_NUMERIC_KEYS, getCotOcrDraftIssue, countCotOcrIncompleteRows, hasUsefulEmbeddedPdfText, pdfTextItemsToLines } from "../../domain/project/quotationImport";
+export type { CotOcrDraftRow, CotOcrEditableKey, CotOcrNumericKey, CotOcrImportMode } from "../../domain/project/quotationImport";
+export { PROJECT_STORAGE_PREFIX, PROJECT_STORAGE_EVENT, PROJECT_SCOPE_SEGMENT, GLOBAL_STORAGE_KEYS, LEGACY_MIGRATION_FLAG_KEY, activeStorageProjectId, setActiveStorageProjectId, resolveProjectScopeId, isGlobalStorageKey, storageKey, extractRawStorageKey, isScopedStorageRawKey, projectScopePrefix, getScopedProjectStorageKeys, notifyStorageChange, readStorage, writeStorage, removeStorage, clearProjectStorage, hasSavedProjectData, migrateLegacyStorageToProject } from "../../infrastructure/project/browserStorage";
+export type { ProjectStorageChangeDetail } from "../../infrastructure/project/browserStorage";
+export { firstStoredNonEmptyString, readSharedProjectTextValue, readProjectBaseMetadata, writeProjectBaseMetadata, collectProjectSnapshot, hydrateProjectSnapshot, readLocalProductEvents, trackLocalProductEvent, clearLocalProductEvents, formatMoneyByProject, fmt, fmtMoney2 } from "./projectServices";
+export type { ProjectSnapshot } from "../../application/project/projectDataService";
+export { readScopedValue, calcDesignHonorario, calcDesignCobrado, calcDesignMiniGantt, calcConstruccionMetrics, computeObraPlanSummary, calcObraMiniGantt, calcSeguimientoMetrics, getTrackState, computeDashboardMetrics } from "./projectServices";
+export { usePersistentState, useSharedProjectTextField } from "./storage/usePersistentState";
+
+export { G, DK, BG, UI, si, lb, cardS, panelS, badgeS, metricS };
+export { Btn, Fld, Inp, Sel, InlineEmptyStateCard };
+export type { BtnProps, BtnVariant, FldProps, InpProps, SelProps, InlineEmptyStateCardProps } from "../ui/form-primitives.types";
 
 export {
   PROJECT_SNAPSHOT_UPDATED_AT_KEY,
@@ -34,228 +141,12 @@ export type ReadmeStep = { n: number; t: string; d: string };
 export type ReadmeEntry = { title: string; steps: ReadmeStep[]; nota?: string };
 export type ReadmeMap = Record<string, ReadmeEntry>;
 
-export type FldProps = { label: React.ReactNode; children?: React.ReactNode };
-export type InpProps = {
-  value: any;
-  onChange: (v: any) => void;
-  type?: React.HTMLInputTypeAttribute;
-  placeholder?: string;
-  min?: string | number;
-};
-export type SelProps = {
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-};
-export type BtnVariant = "dk" | "ol" | "gd";
-export type BtnProps = {
-  children?: React.ReactNode;
-  onClick: React.MouseEventHandler<HTMLButtonElement>;
-  v?: BtnVariant;
-  sm?: boolean;
-};
-export type InlineEmptyStateCardProps = {
-  title: string;
-  context: string;
-  build: string;
-  first: string;
-  unlock: string;
-};
 export type TourStep = {
   id: string;
   title: string;
   desc: string;
   target: string;
 };
-
-export const G="var(--ui-accent)", DK="var(--ui-text)", BG="var(--ui-bg)";
-export const UI = {
-  accent: G,
-  accentSoft: "var(--ui-accent-soft)",
-  accentInk: "var(--ui-accent-ink)",
-  text: DK,
-  textMuted: "var(--ui-text-muted)",
-  textSubtle: "var(--ui-text-subtle)",
-  bg: BG,
-  bgBand: "var(--ui-bg-band)",
-  card: "var(--ui-card)",
-  panel: "var(--ui-panel)",
-  border: "var(--ui-border)",
-  borderSoft: "var(--ui-border-soft)",
-  dark: "var(--ui-dark)",
-  darkPanel: "var(--ui-dark-panel)",
-  success: "var(--ui-success)",
-  warning: "var(--ui-warning)",
-  danger: "var(--ui-danger)",
-  info: "var(--ui-info)",
-  shadow: "var(--ui-shadow)",
-  shadowLift: "var(--ui-shadow-lift)",
-};
-export const currencySymbol = (currency?: "PEN" | "USD" | "MXN") => (
-  currency === "USD" ? "$" : currency === "MXN" ? "MX$" : "S/"
-);
-export const formatMoneyByCurrency = (n: any, currency: ProjectCurrency = "PEN") => (
-  `${currencySymbol(currency)} ${Number(n || 0).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2})}`
-);
-export const formatMoneyByProject = (n: any, projectId?: string) => (
-  formatMoneyByCurrency(n, readProjectBaseMetadata(projectId).currency)
-);
-export const fmt = (n: any, projectId?: string) => (
-  `${currencySymbol(readProjectBaseMetadata(projectId).currency)} ${Math.round(Number(n) || 0).toLocaleString("es-PE")}`
-);
-export const rnd = (n: number, s: any) => {
-  const step = Number(s) || 0;
-  return step > 0 ? Math.round(n/step)*step : Math.round(n);
-};
-export const fDate = (d: string) => {
-  if(!d) return "—";
-  const [y,m,day] = d.split("-");
-  const ms=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  return `${+day} de ${ms[(+m)-1]} de ${y}`;
-};
-export const fDateShort = (d: string) => {
-  if(!d) return "";
-  const [,m,day] = d.split("-");
-  const ms=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-  return `${+day} ${ms[+m-1]}`;
-};
-export const addWeeks = (dateStr: string, weeks: number) => {
-  const d = new Date(dateStr); d.setDate(d.getDate() + weeks * 7);
-  return d.toISOString().split("T")[0];
-};
-export const parseDateISO = (value: string) => {
-  const [y, m, d] = (value || "").split("-").map((n) => Number(n));
-  if (!y || !m || !d) return new Date();
-  return new Date(y, m - 1, d);
-};
-export const toISODate = (date: Date) => {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-};
-export const isWorkDayMonSat = (date: Date) => date.getDay() !== 0;
-export const alignToWorkDay = (date: Date, direction: 1 | -1 = 1) => {
-  const aligned = new Date(date);
-  while (!isWorkDayMonSat(aligned)) aligned.setDate(aligned.getDate() + direction);
-  return aligned;
-};
-export const normalizeWorkDate = (value: string) => toISODate(alignToWorkDay(parseDateISO(value), 1));
-export const addWorkDaysMonSat = (value: string, delta: number) => {
-  const cursor = alignToWorkDay(parseDateISO(value), delta >= 0 ? 1 : -1);
-  if (delta === 0) return toISODate(cursor);
-  const step = delta > 0 ? 1 : -1;
-  let remaining = Math.abs(delta);
-  while (remaining > 0) {
-    cursor.setDate(cursor.getDate() + step);
-    if (isWorkDayMonSat(cursor)) remaining -= 1;
-  }
-  return toISODate(cursor);
-};
-export const cmpDateISO = (a: string, b: string) => parseDateISO(a).getTime() - parseDateISO(b).getTime();
-export const diffDateDays = (a: string, b: string) => {
-  const start = parseDateISO(a).getTime();
-  const end = parseDateISO(b).getTime();
-  return Math.round((end - start) / 86400000);
-};
-
-// Matched to the shadcn <Input> metrics (h-9 / text-sm / rounded-md) so legacy tool
-// fields and kit fields are the same size and shape on screen.
-export const si: React.CSSProperties = {width:"100%",minHeight:36,padding:"7px 12px",border:`1px solid ${UI.border}`,borderRadius:6,background:"var(--ui-input-bg,#fff)",color:"var(--ui-input-text,var(--ui-text))",fontSize:14,boxSizing:"border-box",outline:"none",fontFamily:"inherit",lineHeight:1.45};
-// One label treatment app-wide: no uppercase micro-type, no third font size.
-export const lb: React.CSSProperties = {fontSize:14,fontWeight:500,color:UI.textMuted,marginBottom:6,display:"block",lineHeight:1.45};
-export const cardS: React.CSSProperties = {background:UI.card,borderRadius:8,padding:22,border:`1px solid ${UI.borderSoft}`,boxShadow:UI.shadow,marginBottom:16};
-export const panelS: React.CSSProperties = {background:UI.panel,borderRadius:8,border:`1px solid ${UI.border}`,boxShadow:UI.shadow};
-export const badgeS: React.CSSProperties = {display:"inline-flex",alignItems:"center",gap:5,border:`1px solid ${UI.border}`,borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:800,lineHeight:1.2,whiteSpace:"nowrap"};
-export const metricS: React.CSSProperties = {border:`1px solid ${UI.borderSoft}`,borderRadius:8,padding:"12px 13px",background:"var(--ui-metric-bg,var(--ui-card))"};
-
-export const Fld = ({label,children}: FldProps) => <div style={{marginBottom:12,minWidth:0}}><label style={lb}>{label}</label>{children}</div>;
-export const Inp = ({value,onChange,type="text",placeholder,min}: InpProps) => <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} min={min} style={si}/>;
-export const Sel = ({value,onChange,options}: SelProps) => <select value={value} onChange={e=>onChange(e.target.value)} style={{...si,appearance:"none"}}>{options.map(o=><option key={o}>{o}</option>)}</select>;
-/**
- * Legacy button API kept as a facade over the shadcn <Button>, so the ~100 existing
- * `Btn` call sites across the nine tools pick up the standard control without edits.
- * New code should import Button from features/ui/kit directly.
- */
-const BTN_VARIANT: Record<BtnVariant, "default" | "outline" | "brand"> = {
-  dk: "default",
-  ol: "outline",
-  gd: "brand",
-};
-export const Btn = ({children,onClick,v="dk",sm}: BtnProps) => (
-  <KitButton variant={BTN_VARIANT[v]} size={sm ? "sm" : "default"} onClick={onClick}>
-    {children}
-  </KitButton>
-);
-export const InlineEmptyStateCard = ({title,context,build,first,unlock}: InlineEmptyStateCardProps) => (
-  <div style={{background:"var(--ui-empty-bg,#FCFAF5)",border:"1px solid var(--ui-empty-border,#DCCBAA)",borderRadius:8,padding:"11px 12px",marginBottom:12,boxShadow:"var(--ui-empty-shadow,none)"}}>
-    <div style={{fontSize:11,fontWeight:900,color:"var(--ui-empty-title,#1A1A1A)",marginBottom:5}}>{title}</div>
-    <div style={{fontSize:10,color:"var(--ui-empty-text,#777)",lineHeight:1.55,marginBottom:8,maxWidth:760}}>{context}</div>
-    {[
-      ["Que estas construyendo",build],
-      ["Que llenar primero",first],
-      ["Que desbloquea ese paso",unlock],
-    ].map(([label,value])=>(
-      <div key={label} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:4}}>
-        <span style={{color:G,fontSize:10,fontWeight:800,lineHeight:1.4}}>•</span>
-        <div style={{fontSize:9,lineHeight:1.5,color:"var(--ui-empty-text,#666)"}}>
-          <span style={{fontWeight:700,color:"var(--ui-empty-label,#8A6D3A)"}}>{label}:</span> {value}
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-export const PROJECT_STORAGE_PREFIX = "curva.project.v1";
-export const PROJECT_STORAGE_EVENT = "curva-project-storage-change";
-export const PROJECT_SCOPE_SEGMENT = "p";
-export const GLOBAL_STORAGE_KEYS = new Set([
-  "app.projects",
-  "app.activeProjectId",
-  "app.route",
-  "app.darkMode",
-  "app.onboardingSeen",
-  "app.migrated.multiProject.v1",
-  "app.localEvents.v1",
-  "app.deletedProjectIds.v1",
-]);
-
-export type TrackId = "diseno" | "construccion" | "seguimiento";
-export type TrackState = "No iniciado" | "En curso" | "Completado";
-export type CommercialStatus = "Lead" | "Propuesta" | "Negociacion" | "Ganado" | "Perdido";
-export type OcResolutionStatus = "Pendiente" | "Resuelto";
-export type CronHitoCobro = { id: string; label: string; pct: number; when: string; checked: boolean };
-export type ProjectRecord = {
-  id: string;
-  name: string;
-  type: string;
-  location: string;
-  tracks: Record<TrackId, boolean>;
-  archived: boolean;
-  commercialStatus: CommercialStatus;
-  createdAt: string;
-  updatedAt: string;
-};
-export type DashboardMetrics = {
-  states: Record<TrackId, TrackState>;
-  diseno: { honorario: number; cobrado: number; pctCobrado: number };
-  construccion: { cotizado: number; cronTotalDias: number; cronConflictos: number; cronPct: number };
-  seguimiento: { pctAvance: number; valorizadoAc: number; ocPendiente: boolean };
-};
-
-export const DEFAULT_TRACKS: Record<TrackId, boolean> = {
-  diseno: true,
-  construccion: true,
-  seguimiento: true,
-};
-
-export const COMMERCIAL_STATUS_OPTIONS: CommercialStatus[] = ["Lead", "Propuesta", "Negociacion", "Ganado", "Perdido"];
-export const CRON_HITOS_BASE: CronHitoCobro[] = [
-  { id: "adelanto", label: "Adelanto", pct: 50, when: "Al inicio / firma", checked: false },
-  { id: "mitad", label: "Mitad", pct: 25, when: "A mitad del proyecto", checked: false },
-  { id: "entrega", label: "Entrega", pct: 25, when: "Entrega final", checked: false },
-];
-export const LEGACY_MIGRATION_FLAG_KEY = "app.migrated.multiProject.v1";
 export const TRACK_LABELS: Record<TrackId, string> = {
   diseno: "Diseño",
   construccion: "Construcción",
@@ -266,449 +157,7 @@ export const TRACK_STATUS_COLORS: Record<TrackState, string> = {
   "En curso": "#C9A96E",
   "Completado": "#3E8B5D",
 };
-
-export let activeStorageProjectId = "";
-export const setActiveStorageProjectId = (projectId: string) => {
-  activeStorageProjectId = projectId.trim();
-};
-
-export const isValidTrackId = (value: unknown): value is TrackId => (
-  value === "diseno" || value === "construccion" || value === "seguimiento"
-);
-export const isValidCommercialStatus = (value: unknown): value is CommercialStatus => (
-  value === "Lead" || value === "Propuesta" || value === "Negociacion" || value === "Ganado" || value === "Perdido"
-);
-export const isValidOcResolutionStatus = (value: unknown): value is OcResolutionStatus => (
-  value === "Pendiente" || value === "Resuelto"
-);
-export const createProjectId = () => (
-  `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-);
-export const nowIso = () => new Date().toISOString();
-export const normalizeTracks = (value: unknown): Record<TrackId, boolean> => {
-  if (!isPlainObject(value)) return {...DEFAULT_TRACKS};
-  return {
-    diseno: typeof value.diseno === "boolean" ? value.diseno : true,
-    construccion: typeof value.construccion === "boolean" ? value.construccion : true,
-    seguimiento: typeof value.seguimiento === "boolean" ? value.seguimiento : true,
-  };
-};
-export const toProjectRecord = (value: unknown): ProjectRecord | null => {
-  if (!isPlainObject(value)) return null;
-  if (typeof value.id !== "string" || !value.id.trim()) return null;
-  return {
-    id: value.id,
-    name: typeof value.name === "string" && value.name.trim() ? value.name : "Proyecto sin nombre",
-    type: typeof value.type === "string" ? value.type : "",
-    location: typeof value.location === "string" ? value.location : "",
-    tracks: normalizeTracks(value.tracks),
-    archived: Boolean(value.archived),
-    commercialStatus: isValidCommercialStatus(value.commercialStatus) ? value.commercialStatus : "Lead",
-    createdAt: typeof value.createdAt === "string" ? value.createdAt : nowIso(),
-    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : nowIso(),
-  };
-};
-export const isProjectRecordArray = (value: unknown): value is ProjectRecord[] => (
-  Array.isArray(value) && value.every((item) => toProjectRecord(item) !== null)
-);
-export const normalizeProjectRecords = (value: unknown): ProjectRecord[] => (
-  Array.isArray(value)
-    ? value.map((item) => toProjectRecord(item)).filter((item): item is ProjectRecord => item !== null)
-    : []
-);
-export const createProjectRecord = (seed?: Partial<ProjectRecord>): ProjectRecord => {
-  const createdAt = nowIso();
-  return {
-    id: seed?.id || createProjectId(),
-    name: seed?.name?.trim() || "Nuevo proyecto",
-    type: seed?.type || "",
-    location: seed?.location || "",
-    tracks: seed?.tracks ? normalizeTracks(seed.tracks) : {...DEFAULT_TRACKS},
-    archived: Boolean(seed?.archived),
-    commercialStatus: seed?.commercialStatus && isValidCommercialStatus(seed.commercialStatus) ? seed.commercialStatus : "Lead",
-    createdAt: seed?.createdAt || createdAt,
-    updatedAt: seed?.updatedAt || createdAt,
-  };
-};
-
-export const resolveProjectScopeId = (scopeProjectId?: string) => {
-  if (typeof scopeProjectId === "string") return scopeProjectId.trim();
-  return activeStorageProjectId.trim();
-};
-export const isGlobalStorageKey = (key: string) => GLOBAL_STORAGE_KEYS.has(key);
-export const storageKey = (key: string, scopeProjectId?: string) => {
-  if (isGlobalStorageKey(key)) return `${PROJECT_STORAGE_PREFIX}.${key}`;
-  const projectId = resolveProjectScopeId(scopeProjectId);
-  if (!projectId) return `${PROJECT_STORAGE_PREFIX}.${key}`;
-  return `${PROJECT_STORAGE_PREFIX}.${PROJECT_SCOPE_SEGMENT}.${projectId}.${key}`;
-};
-export const extractRawStorageKey = (fullKey: string) => (
-  fullKey.startsWith(`${PROJECT_STORAGE_PREFIX}.`) ? fullKey.slice(PROJECT_STORAGE_PREFIX.length + 1) : fullKey
-);
-export const isScopedStorageRawKey = (rawKey: string) => rawKey.startsWith(`${PROJECT_SCOPE_SEGMENT}.`);
-export const projectScopePrefix = (projectId: string) => `${PROJECT_STORAGE_PREFIX}.${PROJECT_SCOPE_SEGMENT}.${projectId}.`;
-export const resolveValue = <T,>(value: T | (() => T)): T => (
-  typeof value === "function" ? (value as () => T)() : value
-);
-export const isPlainObject = (value: unknown): value is Record<string, unknown> => (
-  typeof value === "object" && value !== null && !Array.isArray(value)
-);
-export const isStringRecord = (value: unknown): value is Record<string, string> => (
-  isPlainObject(value) && Object.values(value).every((item) => typeof item === "string")
-);
-export const isString = (value: unknown): value is string => typeof value === "string";
-
-export const SHARED_PROJECT_CLIENT_KEY = "project.client";
-export const SHARED_PROJECT_NAME_KEY = "project.name";
-export const SHARED_PROJECT_LOCATION_KEY = "project.location";
-export const SHARED_PROJECT_CODE_KEY = "project.code";
-export const SHARED_PROJECT_CURRENCY_KEY = "project.currency";
-
-export const PROJECT_CLIENT_LEGACY_KEYS = ["calc.cl", "matrix.cl", "excl.cl", "cron.cl", "oc.cl", "brief.cl", "cot.cl", "obra.cl", "cronobra.cl", "val.cl"];
-export const PROJECT_NAME_LEGACY_KEYS = ["calc.pr", "matrix.pr", "excl.pr", "cron.pr", "oc.pr", "brief.pr", "cot.pr", "obra.pr", "cronobra.pr", "val.pr"];
-export const PROJECT_LOCATION_LEGACY_KEYS = ["matrix.ub", "brief.ub", "cot.ub", "obra.ub", "cronobra.ub"];
-export const PROJECT_CODE_LEGACY_KEYS = ["cot.cod", "obra.cod", "cronobra.cod", "val.cod", "brief.cod", "excl.cod", "oc.cot"];
-export const PROJECT_CURRENCY_OPTIONS = ["PEN", "USD", "MXN"] as const;
-export type ProjectCurrency = (typeof PROJECT_CURRENCY_OPTIONS)[number];
-export type ProjectBaseMetadata = {
-  client: string;
-  projectName: string;
-  location: string;
-  code: string;
-  currency: ProjectCurrency;
-};
 export type { ProjectSnapshotTools };
-export type ProjectSnapshot = StorageProjectSnapshot<ProjectBaseMetadata>;
-export const isProjectCurrency = (value: unknown): value is ProjectCurrency => (
-  value === "PEN" || value === "USD" || value === "MXN"
-);
-export const firstStoredNonEmptyString = (keys: readonly string[], scopeProjectId?: string) => {
-  for (const key of keys) {
-    const value = readStorage<string>(key, "", isString, scopeProjectId);
-    if (value.trim()) return value;
-  }
-  return "";
-};
-
-export type LocalProductEventPayloadValue = string | number | boolean | null;
-export type LocalProductEventPayload = Record<string, LocalProductEventPayloadValue>;
-export type LocalProductEvent = {
-  id: string;
-  name: string;
-  ts: string;
-  projectId?: string;
-  toolId?: string;
-  payload?: LocalProductEventPayload;
-};
-export const readSharedProjectTextValue = (
-  sharedKey: string,
-  legacyKeys: readonly string[],
-  initialValue = "",
-  scopeProjectId?: string
-) => {
-  const sharedValue = readStorage<string>(sharedKey, "", isString, scopeProjectId);
-  if (sharedValue.trim()) return sharedValue;
-  const legacyValue = firstStoredNonEmptyString(legacyKeys, scopeProjectId);
-  return legacyValue || initialValue;
-};
-export const readProjectBaseMetadata = (scopeProjectId?: string): ProjectBaseMetadata => ({
-  client: readSharedProjectTextValue(SHARED_PROJECT_CLIENT_KEY, PROJECT_CLIENT_LEGACY_KEYS, "", scopeProjectId),
-  projectName: readSharedProjectTextValue(SHARED_PROJECT_NAME_KEY, PROJECT_NAME_LEGACY_KEYS, "", scopeProjectId),
-  location: readSharedProjectTextValue(SHARED_PROJECT_LOCATION_KEY, PROJECT_LOCATION_LEGACY_KEYS, "", scopeProjectId),
-  code: readSharedProjectTextValue(SHARED_PROJECT_CODE_KEY, PROJECT_CODE_LEGACY_KEYS, "", scopeProjectId),
-  currency: readStorage<ProjectCurrency>(SHARED_PROJECT_CURRENCY_KEY, "PEN", isProjectCurrency, scopeProjectId),
-});
-export const writeProjectBaseMetadata = (meta: Partial<ProjectBaseMetadata>, scopeProjectId?: string) => {
-  if (typeof meta.client === "string") writeStorage(SHARED_PROJECT_CLIENT_KEY, meta.client, scopeProjectId);
-  if (typeof meta.projectName === "string") writeStorage(SHARED_PROJECT_NAME_KEY, meta.projectName, scopeProjectId);
-  if (typeof meta.location === "string") writeStorage(SHARED_PROJECT_LOCATION_KEY, meta.location, scopeProjectId);
-  if (typeof meta.code === "string") writeStorage(SHARED_PROJECT_CODE_KEY, meta.code, scopeProjectId);
-  if (isProjectCurrency(meta.currency)) writeStorage(SHARED_PROJECT_CURRENCY_KEY, meta.currency, scopeProjectId);
-};
-
-export const getScopedProjectStorageKeys = (projectId: string) => {
-  if (typeof window === "undefined") return [];
-  try {
-    return getScopedProjectStorageKeysFromStorage({
-      projectId,
-      localStorage: window.localStorage,
-      projectScopePrefix,
-    });
-  } catch {
-    return [];
-  }
-};
-
-export const collectProjectSnapshot = (projectId: string, clientId = ""): ProjectSnapshot => {
-  return collectProjectSnapshotFromStorage({
-    projectId,
-    clientId,
-    getScopedProjectStorageKeys,
-    readStorage: (key, scopeProjectId) => readStorage<unknown>(key, null, undefined, scopeProjectId),
-    readBaseMeta: readProjectBaseMetadata,
-    nowIso,
-  });
-};
-
-export const hydrateProjectSnapshot = (projectId: string, snapshot: ProjectSnapshot) => {
-  if (typeof window === "undefined") return;
-  hydrateProjectSnapshotToStorage({
-    projectId,
-    snapshot,
-    writeBaseMeta: writeProjectBaseMetadata,
-    writeStorage: (key, value, scopeProjectId) => writeStorage(key, value, scopeProjectId),
-    updatedAtKey: PROJECT_SNAPSHOT_UPDATED_AT_KEY,
-    notifyStorageChange,
-  });
-};
-
-export type ProjectStorageChangeDetail = { key?: string };
-
-export const notifyStorageChange = (key?: string) => {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent<ProjectStorageChangeDetail>(
-    PROJECT_STORAGE_EVENT,
-    { detail: key ? { key } : {} }
-  ));
-};
-
-export const readStorage = <T,>(
-  key: string,
-  fallback: T | (() => T),
-  validate?: (value: unknown) => value is T,
-  scopeProjectId?: string
-): T => {
-  const fallbackValue = resolveValue(fallback);
-  if (typeof window === "undefined") return fallbackValue;
-  try {
-    const raw = window.localStorage.getItem(storageKey(key, scopeProjectId));
-    if (raw === null) return fallbackValue;
-    const parsed: unknown = JSON.parse(raw);
-    if (validate && !validate(parsed)) return fallbackValue;
-    return parsed as T;
-  } catch {
-    return fallbackValue;
-  }
-};
-
-export const writeStorage = <T,>(key: string, value: T, scopeProjectId?: string) => {
-  if (typeof window === "undefined") return;
-  try {
-    const keyName = storageKey(key, scopeProjectId);
-    const serializedValue = JSON.stringify(value);
-    if (window.localStorage.getItem(keyName) === serializedValue) return;
-    window.localStorage.setItem(keyName, serializedValue);
-    notifyStorageChange(keyName);
-  } catch {
-    // localStorage can fail in private mode or quota issues
-  }
-};
-
-export const removeStorage = (key: string, scopeProjectId?: string) => {
-  if (typeof window === "undefined") return;
-  try {
-    const keyName = storageKey(key, scopeProjectId);
-    if (window.localStorage.getItem(keyName) === null) return;
-    window.localStorage.removeItem(keyName);
-    notifyStorageChange(keyName);
-  } catch {
-    // no-op
-  }
-};
-
-export const LOCAL_PRODUCT_EVENTS_STORAGE_KEY = "app.localEvents.v1";
-export const LOCAL_PRODUCT_EVENTS_LIMIT = 250;
-
-export const isLocalProductEventArray = (value: unknown): value is LocalProductEvent[] => (
-  Array.isArray(value) && value.every((item) => {
-    if (!isPlainObject(item)) return false;
-    return typeof item.id === "string" && typeof item.name === "string" && typeof item.ts === "string";
-  })
-);
-
-export const sanitizeLocalEventPayload = (payload?: LocalProductEventPayload): LocalProductEventPayload | undefined => {
-  if (!payload || !isPlainObject(payload)) return undefined;
-  const cleanEntries = Object.entries(payload).filter(([, value]) => (
-    value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean"
-  ));
-  if (!cleanEntries.length) return undefined;
-  return Object.fromEntries(cleanEntries.slice(0, 16));
-};
-
-export const readLocalProductEvents = () => (
-  readStorage<LocalProductEvent[]>(LOCAL_PRODUCT_EVENTS_STORAGE_KEY, [], isLocalProductEventArray)
-    .slice(0, LOCAL_PRODUCT_EVENTS_LIMIT)
-);
-
-export const trackLocalProductEvent = ({
-  name,
-  projectId,
-  toolId,
-  payload,
-}: {
-  name: string;
-  projectId?: string;
-  toolId?: string;
-  payload?: LocalProductEventPayload;
-}) => {
-  if (!name.trim()) return;
-  const event: LocalProductEvent = {
-    id: `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-    name: name.trim(),
-    ts: nowIso(),
-  };
-  if (projectId?.trim()) event.projectId = projectId.trim();
-  if (toolId?.trim()) event.toolId = toolId.trim();
-  const cleanPayload = sanitizeLocalEventPayload(payload);
-  if (cleanPayload) event.payload = cleanPayload;
-  writeStorage(LOCAL_PRODUCT_EVENTS_STORAGE_KEY, [event, ...readLocalProductEvents()].slice(0, LOCAL_PRODUCT_EVENTS_LIMIT));
-};
-
-export const clearLocalProductEvents = () => removeStorage(LOCAL_PRODUCT_EVENTS_STORAGE_KEY);
-
-export const clearProjectStorage = (scopeProjectId?: string) => {
-  if (typeof window === "undefined") return;
-  try {
-    const keysToDelete: string[] = [];
-    const projectId = resolveProjectScopeId(scopeProjectId);
-    const scopedPrefix = projectId ? projectScopePrefix(projectId) : "";
-    for (let i = 0; i < window.localStorage.length; i += 1) {
-      const key = window.localStorage.key(i);
-      if (!key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) continue;
-      if (!projectId) {
-        if (!isGlobalStorageKey(extractRawStorageKey(key))) keysToDelete.push(key);
-        continue;
-      }
-      if (key.startsWith(scopedPrefix)) keysToDelete.push(key);
-    }
-    if (!keysToDelete.length) return;
-    keysToDelete.forEach((key) => window.localStorage.removeItem(key));
-    notifyStorageChange();
-  } catch {
-    // no-op
-  }
-};
-
-export const hasSavedProjectData = (scopeProjectId?: string) => {
-  if (typeof window === "undefined") return false;
-  try {
-    const projectId = resolveProjectScopeId(scopeProjectId);
-    const scopedPrefix = projectId ? projectScopePrefix(projectId) : "";
-    for (let i = 0; i < window.localStorage.length; i += 1) {
-      const key = window.localStorage.key(i);
-      if (!key?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) continue;
-      if (!projectId) {
-        const rawKey = extractRawStorageKey(key);
-        if (!isGlobalStorageKey(rawKey)) return true;
-      } else if (key.startsWith(scopedPrefix)) {
-        return true;
-      }
-    }
-    return false;
-  } catch {
-    return false;
-  }
-};
-
-export function usePersistentState<T>(
-  key: string,
-  initialValue: T | (() => T),
-  validate?: (value: unknown) => value is T,
-  preserveInitialValue = false
-) {
-  const initialRef = React.useRef<T>(resolveValue(initialValue));
-  const keyRef = React.useRef(key);
-  const [state, setState] = useState<T>(() => readStorage(key, initialRef.current, validate));
-  const stateRef = React.useRef(state);
-  stateRef.current = state;
-
-  useEffect(() => {
-    if (keyRef.current === key) return;
-    keyRef.current = key;
-    const initial = resolveValue(initialValue);
-    initialRef.current = initial;
-    const nextValue = readStorage(key, initial, validate);
-    stateRef.current = nextValue;
-    setState(nextValue);
-  }, [initialValue, key, validate]);
-
-  useEffect(() => {
-    const fullKey = storageKey(key);
-    const syncFromAnotherTab = (event: StorageEvent) => {
-      if (event.key !== fullKey) return;
-      const nextValue = readStorage(key, initialRef.current, validate);
-      setState((current) => {
-        try {
-          if (JSON.stringify(current) === JSON.stringify(nextValue)) return current;
-        } catch {
-          if (Object.is(current, nextValue)) return current;
-        }
-        stateRef.current = nextValue;
-        return nextValue;
-      });
-    };
-    window.addEventListener("storage", syncFromAnotherTab);
-    return () => window.removeEventListener("storage", syncFromAnotherTab);
-  }, [key, validate]);
-
-  const setPersistentState = React.useCallback<React.Dispatch<React.SetStateAction<T>>>((value) => {
-    const current = stateRef.current;
-    const nextValue = typeof value === "function"
-      ? (value as (previous: T) => T)(current)
-      : value;
-    commitPersistentStateTransition({
-      stateRef,
-      nextValue,
-      initialValue: initialRef.current,
-      preserveInitialValue,
-      persistValue: (next) => writeStorage(key, next),
-      removeValue: () => removeStorage(key),
-      applyState: setState,
-    });
-  }, [key, preserveInitialValue]);
-
-  return [state, setPersistentState] as const;
-}
-
-export function useSharedProjectTextField(
-  sharedKey: string,
-  legacyKeys: readonly string[],
-  initialValue = ""
-) {
-  const [value, setValue] = usePersistentState<string>(
-    sharedKey,
-    () => readSharedProjectTextValue(sharedKey, legacyKeys, initialValue),
-    isString,
-    true
-  );
-  const migratedRef = React.useRef(false);
-
-  useEffect(() => {
-    if (migratedRef.current) return;
-    migratedRef.current = true;
-
-    const sharedValue = readStorage<string>(sharedKey, "", isString);
-    if (!sharedValue.trim()) {
-      const legacyValue = firstStoredNonEmptyString(legacyKeys);
-      if (legacyValue.trim()) writeStorage(sharedKey, legacyValue);
-    }
-  }, [legacyKeys, sharedKey]);
-
-  useEffect(() => {
-    const syncFromStorage = () => {
-      const nextValue = readSharedProjectTextValue(sharedKey, legacyKeys, initialValue);
-      setValue((current) => (current === nextValue ? current : nextValue));
-    };
-    window.addEventListener(PROJECT_STORAGE_EVENT, syncFromStorage);
-    window.addEventListener("storage", syncFromStorage);
-    return () => {
-      window.removeEventListener(PROJECT_STORAGE_EVENT, syncFromStorage);
-      window.removeEventListener("storage", syncFromStorage);
-    };
-  }, [initialValue, legacyKeys, setValue, sharedKey]);
-
-  return [value, setValue] as const;
-}
 
 // ── PRINT ─────────────────────────────────────────────────────────────
 export function openPrint(html: string) {
@@ -888,14 +337,6 @@ export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: stri
   );
 };
 
-// ══ CALCULADORA ═══════════════════════════════════════════════════════
-// ── BRIEF CONSTANTES ──────────────────────────────────────────────────
-export const ZONAS_B = ["Pública","Privada","Servicio","Exterior","Técnica","Comercial","Común"];
-export const PRIORIDAD_B = ["Alta","Media","Baja"];
-export const RELACION_B = ["Directa","Indirecta","Sin relación"];
-export const TIPO_PROY = ["Arquitectura nueva","Remodelación","Interiorismo","Oficina","Comercial","Industrial pequeño","Consultoría"];
-export const ESTADO_ACT = ["Idea","Brief confirmado","Diseño en curso","Expediente","Obra","Cerrado"];
-
 export const PRIORIDAD_COLOR: Record<string,{bg:string,c:string}> = {
   "Alta":  {bg:"#FCEBEB",c:"#A32D2D"},
   "Media": {bg:"#FAEEDA",c:"#854F0B"},
@@ -905,12 +346,6 @@ export const ZONA_COLOR: Record<string,string> = {
   "Pública":"#2471A3","Privada":"#1E8449","Servicio":"#B7950B",
   "Exterior":"#BA4A00","Técnica":"#6C3483","Comercial":"#17A589","Común":"#717D7E",
 };
-
-export const TAR: Record<string, Record<string, number>> = {"Vivienda":{Levantamiento:8,Anteproyecto:35,"Proyecto arquitectónico":55,"Expediente técnico":78,Supervisión:12},"Comercial":{Levantamiento:10,Anteproyecto:38,"Proyecto arquitectónico":60,"Expediente técnico":85,Supervisión:14},"Oficina":{Levantamiento:9,Anteproyecto:36,"Proyecto arquitectónico":58,"Expediente técnico":82,Supervisión:13},"Remodelación":{Levantamiento:12,Anteproyecto:42,"Proyecto arquitectónico":68,"Expediente técnico":95,Supervisión:16},"Interiorismo":{Levantamiento:11,Anteproyecto:40,"Proyecto arquitectónico":65,"Expediente técnico":90,Supervisión:15},"Industrial pequeño":{Levantamiento:8,Anteproyecto:30,"Proyecto arquitectónico":48,"Expediente técnico":70,Supervisión:12}};
-export const CF: Record<string, number> = {"Baja":0.9,"Media":1,"Alta":1.15,"Muy alta":1.3};
-export const UF: Record<string, number> = {"Normal":1,"Rápido":1.1,"Urgente":1.2};
-export const KF: Record<string, number> = {"Particular":1,"Empresa":1.08,"Institucional":1.15};
-export const MF: Record<string, number> = {"Suma alzada":1,"Precios unitarios":1.05,"Cost + Fee":0.95,"Gestión de obra":0.9,"Diseño + Build":1.12};
 
 export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
@@ -1062,33 +497,6 @@ export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void
     </div>
   );
 }
-
-// ══ MATRIZ ════════════════════════════════════════════════════════════
-export const PAQUETES=["Diagnóstico / consultoría","Anteproyecto","Proyecto arquitectónico","Expediente técnico","Supervisión de obra","Diseño + ejecución"];
-export const ETAPAS_MX=["Levantamiento","Anteproyecto","Desarrollo","Expediente","Obra"];
-export const ITEMS_BASE=[
-  {id:"ITM-001",paquete:"Diagnóstico / consultoría",etapa:"Levantamiento",entregable:"Ficha de requerimientos + información base del encargo.",formato:"PDF",cantidad:"1",notas:"Documento de inicio que consolida el programa, el usuario y las condicionantes del proyecto."},
-  {id:"ITM-002",paquete:"Proyecto arquitectónico",etapa:"Levantamiento",entregable:"Ficha de requerimientos + información base del encargo.",formato:"PDF",cantidad:"1",notas:"Documento de inicio que consolida el programa, el usuario y las condicionantes del proyecto."},
-  {id:"ITM-003",paquete:"Anteproyecto",etapa:"Levantamiento",entregable:"Ficha de requerimientos + información base del encargo.",formato:"PDF",cantidad:"1",notas:"Documento de inicio que consolida el programa, el usuario y las condicionantes del proyecto."},
-  {id:"ITM-004",paquete:"Expediente técnico",etapa:"Levantamiento",entregable:"Ficha de requerimientos + información base del encargo.",formato:"PDF",cantidad:"1",notas:"Documento de inicio que consolida el programa, el usuario y las condicionantes del proyecto."},
-  {id:"ITM-005",paquete:"Anteproyecto",etapa:"Anteproyecto",entregable:"Diagnóstico + recomendaciones de intervención y próximos pasos.",formato:"PDF",cantidad:"1",notas:"Análisis del estado actual con conclusiones técnicas y recomendaciones de alcance."},
-  {id:"ITM-006",paquete:"Anteproyecto",etapa:"Anteproyecto",entregable:"Propuesta de layout / distribución preliminar.",formato:"PDF",cantidad:"1",notas:"Planteamiento espacial inicial para validar el programa y la organización funcional."},
-  {id:"ITM-007",paquete:"Anteproyecto",etapa:"Anteproyecto",entregable:"Moodboard + criterios de materialidad referencial.",formato:"PDF",cantidad:"1",notas:"Referencias visuales de estilo, atmósfera y materialidad para alinear la identidad del proyecto."},
-  {id:"ITM-008",paquete:"Anteproyecto",etapa:"Anteproyecto",entregable:"Plantas preliminares + cortes/elevaciones base.",formato:"PDF",cantidad:"1 paquete",notas:"Juego de planos a nivel de anteproyecto para comunicar la propuesta arquitectónica al cliente."},
-  {id:"ITM-009",paquete:"Anteproyecto",etapa:"Anteproyecto",entregable:"Vistas 3D / renders base (según alcance).",formato:"JPG/PDF",cantidad:"3–5",notas:"Imágenes de representación para apoyar la comunicación de la propuesta."},
-  {id:"ITM-010",paquete:"Proyecto arquitectónico",etapa:"Desarrollo",entregable:"Plantas, cortes y elevaciones desarrolladas.",formato:"PDF",cantidad:"1 paquete",notas:"Documentación gráfica completa que define geometría, cotas y relaciones espaciales."},
-  {id:"ITM-011",paquete:"Proyecto arquitectónico",etapa:"Desarrollo",entregable:"Detalles arquitectónicos críticos (según proyecto).",formato:"PDF",cantidad:"8–15",notas:"Soluciones constructivas en escala ampliada para los encuentros, carpinterías y elementos singulares."},
-  {id:"ITM-012",paquete:"Anteproyecto",etapa:"Desarrollo",entregable:"Cuadro de acabados / criterios base (si aplica).",formato:"PDF",cantidad:"1",notas:"Especificación referencial de materiales y acabados por ambiente."},
-  {id:"ITM-013",paquete:"Anteproyecto",etapa:"Desarrollo",entregable:"Acta de decisiones / acuerdos de revisión.",formato:"PDF",cantidad:"1",notas:"Registro formal de los acuerdos tomados en cada revisión."},
-  {id:"ITM-014",paquete:"Expediente técnico",etapa:"Expediente",entregable:"Planos arquitectónicos para obra (set).",formato:"PDF",cantidad:"1 set",notas:"Set completo de planos constructivos para la ejecución de obra."},
-  {id:"ITM-015",paquete:"Anteproyecto",etapa:"Expediente",entregable:"Memoria descriptiva arquitectónica.",formato:"PDF",cantidad:"1",notas:"Documento técnico que describe el partido, criterios de diseño y características generales."},
-  {id:"ITM-016",paquete:"Expediente técnico",etapa:"Expediente",entregable:"Lista de pendientes y criterios para coordinación.",formato:"PDF",cantidad:"1",notas:"Documento de interfaz con especialidades. Instalaciones no incluidas salvo acuerdo expreso."},
-  {id:"ITM-017",paquete:"Supervisión de obra",etapa:"Obra",entregable:"Visitas programadas + informe por visita.",formato:"PDF",cantidad:"4–8",notas:"Inspección periódica para verificar fidelidad al proyecto."},
-  {id:"ITM-018",paquete:"Anteproyecto",etapa:"Obra",entregable:"Absolución de consultas y revisiones puntuales.",formato:"Email/PDF",cantidad:"Según obra",notas:"Respuesta a consultas del contratista sobre interpretación de planos."},
-  {id:"ITM-019",paquete:"Anteproyecto",etapa:"Obra",entregable:"Registro de cambios y adicionales (si aplica).",formato:"PDF",cantidad:"1",notas:"Documento que formaliza las modificaciones aprobadas al proyecto original."},
-  {id:"ITM-020",paquete:"Diseño + ejecución",etapa:"Obra",entregable:"Cronograma base + control de hitos.",formato:"PDF",cantidad:"1",notas:"Programa de obra con hitos de entrega y pagos vinculados."},
-  {id:"ITM-021",paquete:"Diseño + ejecución",etapa:"Obra",entregable:"Acta de cierre y entrega final.",formato:"PDF",cantidad:"1",notas:"Documento que formaliza la entrega del proyecto terminado."},
-];
 
 export const etapaColor: Record<string,string>={"Levantamiento":"#E8F0FB","Anteproyecto":"#EBF6EE","Desarrollo":"#FEF9E7","Expediente":"#FDF0E8","Obra":"#F5EEF8"};
 export const etapaTextColor: Record<string,string>={"Levantamiento":"#2471A3","Anteproyecto":"#1E8449","Desarrollo":"#B7950B","Expediente":"#BA4A00","Obra":"#6C3483"};
@@ -1275,37 +683,6 @@ export function ToolMatrix({toolId, onPrint}: {toolId: string; onPrint: () => vo
     </div>
   );
 }
-
-// ══ EXCLUSIONES ═══════════════════════════════════════════════════════
-export const ESTADOS=["Excluido","Supuesto","Revisión"];
-export const CATEGORIAS=["Exclusiones generales","Exclusiones específicas","Supuestos técnicos","Supuestos comerciales","Supuestos de plazo","Eventos de recotización"];
-export const BIBLIOTECA_BASE=[
-  {cat:"Exclusiones generales",item:"Trámites y licencias",texto:"No incluye gestión municipal, licencias ni aprobación ante entidades.",estado:"Excluido"},
-  {cat:"Exclusiones generales",item:"Tasas y derechos",texto:"No incluye pagos por tasas, derechos, impuestos ni costos municipales.",estado:"Excluido"},
-  {cat:"Exclusiones generales",item:"Topografía / estudios previos",texto:"No incluye levantamiento topográfico, mecánica de suelos ni estudios especializados.",estado:"Excluido"},
-  {cat:"Exclusiones generales",item:"Especialidades",texto:"No incluye desarrollo de estructuras, sanitarias, eléctricas, HVAC u otras especialidades.",estado:"Excluido"},
-  {cat:"Exclusiones generales",item:"Mobiliario y equipamiento",texto:"No incluye mobiliario suelto, equipamiento ni compras directas.",estado:"Excluido"},
-  {cat:"Exclusiones generales",item:"Paisajismo / señalética / branding",texto:"No incluye diseño de paisaje, branding, señalética ni gráfica ambiental.",estado:"Excluido"},
-  {cat:"Exclusiones generales",item:"Renders extra / impresiones",texto:"No incluye visualizaciones adicionales ni impresiones físicas fuera de lo acordado.",estado:"Excluido"},
-  {cat:"Exclusiones generales",item:"Supervisión permanente / ejecución",texto:"No incluye ejecución de obra, administración integral ni presencia permanente en campo.",estado:"Excluido"},
-  {cat:"Exclusiones específicas",item:"Intervenciones fuera del área definida",texto:"No incluye áreas no contempladas expresamente en el alcance base.",estado:"Excluido"},
-  {cat:"Exclusiones específicas",item:"Requerimientos no informados al inicio",texto:"No incluye exigencias o partidas que no hayan sido informadas al momento de cotizar.",estado:"Excluido"},
-  {cat:"Supuestos técnicos",item:"Información base entregada por el cliente",texto:"Se asume que medidas, planos y data base entregada por el cliente son suficientes y confiables.",estado:"Supuesto"},
-  {cat:"Supuestos técnicos",item:"Condiciones existentes regulares",texto:"Se asume que el inmueble no presenta contingencias ocultas no visibles al momento de la propuesta.",estado:"Supuesto"},
-  {cat:"Supuestos técnicos",item:"Acceso y levantamiento",texto:"Se asume acceso razonable al inmueble para visitas, levantamiento y validaciones.",estado:"Supuesto"},
-  {cat:"Supuestos comerciales",item:"Número de reuniones",texto:"Se asume un número acotado de reuniones según la cotización aprobada.",estado:"Supuesto"},
-  {cat:"Supuestos comerciales",item:"Número de revisiones",texto:"Se asume un máximo de rondas de cambios/revisión según lo ofertado.",estado:"Supuesto"},
-  {cat:"Supuestos comerciales",item:"Aprobaciones por etapa",texto:"Se asume que el cliente valida cada etapa antes de avanzar a la siguiente.",estado:"Supuesto"},
-  {cat:"Supuestos comerciales",item:"Cambios fuera de alcance",texto:"Todo cambio fuera del alcance aprobado se cotiza aparte.",estado:"Supuesto"},
-  {cat:"Supuestos de plazo",item:"Inicio sujeto a adelanto o aprobación",texto:"El inicio corre desde la aprobación formal y/o pago inicial.",estado:"Supuesto"},
-  {cat:"Supuestos de plazo",item:"Retroalimentación oportuna del cliente",texto:"Los plazos suponen respuestas y validaciones del cliente dentro de tiempos razonables.",estado:"Supuesto"},
-  {cat:"Supuestos de plazo",item:"Terceros y entidades externas",texto:"No se consideran demoras atribuibles a terceros, proveedores, comités o entidades.",estado:"Supuesto"},
-  {cat:"Eventos de recotización",item:"Cambio de alcance",texto:"Cualquier cambio de alcance, área o nivel de detalle genera recotización.",estado:"Revisión"},
-  {cat:"Eventos de recotización",item:"Nuevas especialidades o visitas",texto:"Nuevas especialidades, visitas extra o reuniones extraordinarias generan adicional.",estado:"Revisión"},
-  {cat:"Eventos de recotización",item:"Rediseño tras aprobación",texto:"Cambios posteriores a una aprobación de etapa se consideran trabajo adicional.",estado:"Revisión"},
-  {cat:"Eventos de recotización",item:"Información base incorrecta",texto:"Errores u omisiones en la información base que alteren el servicio generan ajuste económico/plazo.",estado:"Revisión"},
-];
-export const MOSTRAR_DEFAULT=["Trámites y licencias","Tasas y derechos","Supervisión permanente / ejecución","Intervenciones fuera del área definida","Requerimientos no informados al inicio","Condiciones existentes regulares","Número de revisiones","Aprobaciones por etapa","Cambios fuera de alcance","Inicio sujeto a adelanto o aprobación","Retroalimentación oportuna del cliente","Terceros y entidades externas","Cambio de alcance"];
 export const SECCION_LABEL: Record<string,string>={"Excluido":"EXCLUSIONES","Supuesto":"SUPUESTOS","Revisión":"EVENTOS QUE GENERAN RECOTIZACIÓN"};
 export const ESTADO_BADGE: Record<string,{bg:string,c:string}>={"Excluido":{bg:"#FDEBD0",c:"#BA4A00"},"Supuesto":{bg:"#D5F5E3",c:"#1E8449"},"Revisión":{bg:"#D6EAF8",c:"#2471A3"}};
 
@@ -1463,15 +840,6 @@ export function ToolExcl({toolId, onPrint}: {toolId: string; onPrint: () => void
     </div>
   );
 }
-
-// ══ CRONOGRAMA ════════════════════════════════════════════════════════
-export const ETAPAS_CRON=[
-  {id:"lev",label:"Levantamiento",color:"#2471A3",semanas:1,activa:true},
-  {id:"ant",label:"Anteproyecto",color:"#1E8449",semanas:3,activa:true},
-  {id:"des",label:"Desarrollo",color:"#B7950B",semanas:4,activa:true},
-  {id:"exp",label:"Expediente técnico",color:"#BA4A00",semanas:3,activa:true},
-  {id:"sup",label:"Supervisión / Obra",color:"#6C3483",semanas:12,activa:false},
-];
 
 export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
@@ -1694,11 +1062,6 @@ export function ToolCronograma({toolId, onPrint}: {toolId: string; onPrint: () =
     </div>
   );
 }
-
-// ══ ORDEN DE CAMBIO ═══════════════════════════════════════════════════
-export const MOTIVOS=["Pedido del cliente","Ajuste técnico","Compatibilización","Contingencia en obra","Error u omisión en información base","Ampliación de alcance","Otro"];
-export const IMPACTOS=["Alcance","Plazo","Honorarios","Entregables","Secuencia","Alcance + Plazo","Alcance + Honorarios","Alcance + Plazo + Honorarios"];
-export const SOLICITANTES=["Cliente","Arquitecto","Obra","Contratista"];
 
 export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today=new Date().toISOString().split("T")[0];
@@ -2480,408 +1843,6 @@ export function ToolBrief({toolId, onPrint}: {toolId:string; onPrint:()=>void}) 
     </div>
   );
 }
-
-// ══ COTIZACION DE OBRA ═════════════════════════════════════════════════
-export const COT_CATEGORIES_BASE = ["Trabajos preliminares","Estructuras","Arquitectura","Carpinteria","Instalaciones"];
-export const COT_UNITS = ["UND","M2","M3","ML","GLB","DIA","KG"];
-export const fmtMoney2 = (n: any, projectId?: string) => formatMoneyByProject(n, projectId);
-export const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
-export type CotImportSource = "pdf-embedded" | "pdf-ocr";
-export type CotReviewStatus = "pending" | "reviewed";
-
-export type CotPartida = {
-  id: number;
-  categoria: string;
-  codPartida: string;
-  descripcion: string;
-  und: string;
-  cant: number;
-  manoObra: number;
-  materiales: number;
-  utilidadPct: number;
-  riesgoPct: number;
-  importSource?: CotImportSource;
-  reviewStatus?: CotReviewStatus;
-  importBatchId?: string;
-};
-
-export const newCotPartida = (id: number, categoria: string): CotPartida => ({
-  id,
-  categoria,
-  codPartida: "",
-  descripcion: "",
-  und: "UND",
-  cant: 1,
-  manoObra: 0,
-  materiales: 0,
-  utilidadPct: 0,
-  riesgoPct: 0,
-});
-
-export type CotOcrDraftRow = {
-  draftId: string;
-  categoria: string;
-  codPartida: string;
-  descripcion: string;
-  und: string;
-  cant: number;
-  manoObra: number;
-  materiales: number;
-  utilidadPct: number;
-  riesgoPct: number;
-};
-
-export const COT_OCR_HEADER_ALIASES: Record<string, keyof Omit<CotOcrDraftRow, "draftId">> = {
-  categoria: "categoria",
-  category: "categoria",
-  rubro: "categoria",
-  capitulo: "categoria",
-  especialidad: "categoria",
-  codigopartida: "codPartida",
-  codpartida: "codPartida",
-  codigo: "codPartida",
-  cod: "codPartida",
-  item: "codPartida",
-  partidaid: "codPartida",
-  descripcion: "descripcion",
-  descripcionpartida: "descripcion",
-  descripciondelapartida: "descripcion",
-  partida: "descripcion",
-  concepto: "descripcion",
-  detalle: "descripcion",
-  actividad: "descripcion",
-  recurso: "descripcion",
-  und: "und",
-  unidad: "und",
-  unidades: "und",
-  um: "und",
-  unidadmedida: "und",
-  unidaddemedida: "und",
-  cant: "cant",
-  cantidad: "cant",
-  qty: "cant",
-  metrados: "cant",
-  metrado: "cant",
-  manoobra: "manoObra",
-  manodeobra: "manoObra",
-  mo: "manoObra",
-  materiales: "materiales",
-  material: "materiales",
-  precio: "materiales",
-  preciounitario: "materiales",
-  preciounit: "materiales",
-  punitario: "materiales",
-  pu: "materiales",
-  unitario: "materiales",
-  costo: "materiales",
-  costounitario: "materiales",
-  utilidad: "utilidadPct",
-  utilidadpct: "utilidadPct",
-  utilidadporcentaje: "utilidadPct",
-  riesgo: "riesgoPct",
-  riesgopct: "riesgoPct",
-  riesgoporcentaje: "riesgoPct",
-};
-
-export const normalizeOcrHeader = (value: string) => (
-  String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
-);
-
-export const normalizeCotUnit = (value: string) => {
-  const normalized = normalizeOcrHeader(value).toUpperCase();
-  const mapped = normalized === "M2" || normalized === "MT2"
-    ? "M2"
-    : normalized === "M3" || normalized === "MT3"
-      ? "M3"
-      : normalized === "ML" || normalized === "M1" || normalized === "M"
-        ? "ML"
-        : normalized === "UND" || normalized === "UN" || normalized === "UNID" || normalized === "UNIDAD"
-          ? "UND"
-          : normalized === "GBL" || normalized === "GLB" || normalized === "GLOBAL"
-            ? "GLB"
-            : normalized;
-  return COT_UNITS.includes(mapped) ? mapped : "";
-};
-
-export const splitOcrColumns = (line: string) => (
-  line
-    .replace(/[;]+/g, "|")
-    .split(/\t+|\|+|\s{2,}/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-);
-
-export const parseOcrFlexibleNumber = (value: string) => {
-  let cleaned = String(value || "").trim().replace(/[^\d,.-]/g, "");
-  if (!cleaned || !/[0-9]/.test(cleaned)) return null;
-  const negative = cleaned.startsWith("-");
-  cleaned = cleaned.replace(/-/g, "");
-  const lastComma = cleaned.lastIndexOf(",");
-  const lastDot = cleaned.lastIndexOf(".");
-  if (lastComma >= 0 && lastDot >= 0) {
-    const decimalSep = lastComma > lastDot ? "," : ".";
-    const thousandsSep = decimalSep === "," ? "." : ",";
-    cleaned = cleaned.replace(new RegExp(`\\${thousandsSep}`, "g"), "").replace(decimalSep, ".");
-  } else if (lastComma >= 0) {
-    const parts = cleaned.split(",");
-    cleaned = parts.length === 2 && parts[1].length <= 2
-      ? `${parts[0].replace(/\./g, "")}.${parts[1]}`
-      : cleaned.replace(/,/g, "");
-  } else if ((cleaned.match(/\./g) || []).length > 1) {
-    const parts = cleaned.split(".");
-    const decimals = parts.pop() || "";
-    cleaned = `${parts.join("")}.${decimals}`;
-  }
-  const parsed = Number(`${negative ? "-" : ""}${cleaned}`);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-export const isNumericLikeToken = (value: string) => {
-  const raw = String(value || "").trim();
-  if (!raw || /[a-zA-Z]{2,}/.test(raw.replace(/S\/|USD|PEN|MXN/gi, ""))) return false;
-  return parseOcrFlexibleNumber(raw) !== null;
-};
-
-export const ocrNumber = (value: string) => {
-  return parseOcrFlexibleNumber(value) ?? 0;
-};
-
-export const isLikelyCotHeaderLine = (columns: string[]) => {
-  const mapped = columns
-    .map((item) => COT_OCR_HEADER_ALIASES[normalizeOcrHeader(item)] || null)
-    .filter(Boolean);
-  const mappedCount = mapped.length;
-  return mappedCount >= 2 && mapped.includes("descripcion");
-};
-
-export const shouldSkipOcrLine = (line: string) => {
-  const lowered = line.toLowerCase();
-  return (
-    lowered.includes("subtotal") ||
-    lowered.includes("gastos generales") ||
-    lowered.includes("supervision") ||
-    lowered.includes("base imponible") ||
-    lowered.includes("total final") ||
-    lowered.includes("detalle por partidas") ||
-    lowered.includes("precio cliente") ||
-    lowered.includes("forma de pago") ||
-    lowered.includes("validez") ||
-    lowered.includes("igv")
-  );
-};
-
-export const newCotOcrDraftRow = (idSeed: string, categoria: string): CotOcrDraftRow => ({
-  draftId: idSeed,
-  categoria: categoria || "General",
-  codPartida: "",
-  descripcion: "",
-  und: "UND",
-  cant: 0,
-  manoObra: 0,
-  materiales: 0,
-  utilidadPct: 0,
-  riesgoPct: 0,
-});
-
-export const parseRowsFromHeaderBasedOcr = (ocrText: string, categoriaDefault: string): CotOcrDraftRow[] => {
-  const lines = ocrText
-    .split(/\r?\n/g)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (!lines.length) return [];
-
-  const headerIndex = lines.findIndex((line) => isLikelyCotHeaderLine(splitOcrColumns(line)));
-  if (headerIndex < 0) return [];
-
-  const headerColumns = splitOcrColumns(lines[headerIndex]);
-  const mappedColumns = headerColumns.map((header) => COT_OCR_HEADER_ALIASES[normalizeOcrHeader(header)] || null);
-  if (!mappedColumns.includes("descripcion")) return [];
-
-  const rows: CotOcrDraftRow[] = [];
-  for (let index = headerIndex + 1; index < lines.length; index += 1) {
-    const rawLine = lines[index];
-    if (!rawLine || shouldSkipOcrLine(rawLine)) continue;
-    const columns = splitOcrColumns(rawLine);
-    if (!columns.length || isLikelyCotHeaderLine(columns)) continue;
-
-    const draft = newCotOcrDraftRow(`ocr-h-${index}`, categoriaDefault);
-    let hasData = false;
-    for (let colIndex = 0; colIndex < mappedColumns.length; colIndex += 1) {
-      const key = mappedColumns[colIndex];
-      if (!key) continue;
-      const cellValue = columns[colIndex] ?? "";
-      if (!cellValue.trim()) continue;
-      hasData = true;
-      if (key === "cant" || key === "manoObra" || key === "materiales" || key === "utilidadPct" || key === "riesgoPct") {
-        draft[key] = ocrNumber(cellValue);
-      } else {
-        draft[key] = cellValue.trim();
-      }
-    }
-    if (!hasData || !draft.descripcion.trim()) {
-      const heuristicDraft = parseOcrLineHeuristically(rawLine, index, categoriaDefault, "ocr-hf");
-      if (heuristicDraft) rows.push(heuristicDraft);
-      continue;
-    }
-    draft.und = normalizeCotUnit(draft.und) || "UND";
-    draft.categoria = draft.categoria.trim() || categoriaDefault;
-    rows.push(draft);
-  }
-  return rows;
-};
-
-export const parseOcrLineHeuristically = (
-  rawLine: string,
-  index: number,
-  categoriaDefault: string,
-  idPrefix = "ocr-f"
-): CotOcrDraftRow | null => {
-  if (shouldSkipOcrLine(rawLine)) return null;
-  const columns = splitOcrColumns(rawLine);
-  if (columns.length < 2 || isLikelyCotHeaderLine(columns)) return null;
-
-  const unitCandidate = columns.find((column) => normalizeCotUnit(column));
-  const codeCandidate = columns.find((column, columnIndex) => {
-    const token = column.trim();
-    if (!/^[A-Z]?\d+([.-]\d+)*[A-Z]?$/i.test(token)) return false;
-    return /[.-]/.test(token) || (columnIndex === 0 && columns.length >= 4);
-  }) || "";
-  const numericColumns = columns
-    .filter((column) => column !== unitCandidate && column !== codeCandidate && isNumericLikeToken(column))
-    .map((column) => ocrNumber(column));
-  const tailNumbers = numericColumns.slice(-5);
-
-  let cant = 0;
-  let manoObra = 0;
-  let materiales = 0;
-  let utilidadPct = 0;
-  let riesgoPct = 0;
-  if (tailNumbers.length >= 5) {
-    [cant, manoObra, materiales, utilidadPct, riesgoPct] = tailNumbers;
-  } else if (tailNumbers.length === 4) {
-    [cant, manoObra, materiales, utilidadPct] = tailNumbers;
-  } else if (tailNumbers.length === 3) {
-    [cant, manoObra, materiales] = tailNumbers;
-  } else if (tailNumbers.length === 2) {
-    [cant, materiales] = tailNumbers;
-  } else if (tailNumbers.length === 1) {
-    [cant] = tailNumbers;
-  }
-
-  const descriptionParts = columns.filter((column) => {
-    if (unitCandidate && column === unitCandidate) return false;
-    if (codeCandidate && column === codeCandidate) return false;
-    if (isNumericLikeToken(column)) return false;
-    const normalized = normalizeOcrHeader(column);
-    if (["s", "soles", "pen", "usd", "mxn"].includes(normalized)) return false;
-    return true;
-  });
-  const descripcion = descriptionParts.join(" ").replace(/\s+/g, " ").trim();
-  if (!descripcion || descripcion.length < 3) return null;
-
-  return {
-    draftId: `${idPrefix}-${index}`,
-    categoria: categoriaDefault,
-    codPartida: codeCandidate.trim(),
-    descripcion,
-    und: unitCandidate ? normalizeCotUnit(unitCandidate) || "UND" : "UND",
-    cant,
-    manoObra,
-    materiales,
-    utilidadPct,
-    riesgoPct,
-  };
-};
-
-export const parseRowsFromHeuristicOcr = (ocrText: string, categoriaDefault: string): CotOcrDraftRow[] => {
-  const lines = ocrText
-    .split(/\r?\n/g)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (!lines.length) return [];
-
-  const rows: CotOcrDraftRow[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const draft = parseOcrLineHeuristically(lines[index], index, categoriaDefault);
-    if (draft) rows.push(draft);
-  }
-  return rows;
-};
-
-export const parseCotRowsFromOcrText = (ocrText: string, categoriaDefault: string): CotOcrDraftRow[] => {
-  const byHeaders = parseRowsFromHeaderBasedOcr(ocrText, categoriaDefault);
-  if (byHeaders.length) return byHeaders;
-  return parseRowsFromHeuristicOcr(ocrText, categoriaDefault);
-};
-
-export type CotOcrEditableKey = keyof Omit<CotOcrDraftRow, "draftId">;
-export type CotOcrNumericKey = "cant" | "manoObra" | "materiales" | "utilidadPct" | "riesgoPct";
-export const COT_OCR_NUMERIC_KEYS = new Set<CotOcrNumericKey>(["cant", "manoObra", "materiales", "utilidadPct", "riesgoPct"]);
-export type CotOcrImportMode = "idle" | "embedded-text" | "ocr";
-
-export const getCotOcrDraftIssue = (row: CotOcrDraftRow) => {
-  if (!String(row.descripcion || "").trim() || String(row.descripcion || "").trim().length < 3) return "Falta descripcion";
-  if (!normalizeCotUnit(row.und)) return "Unidad no reconocida";
-  if ((Number(row.cant) || 0) <= 0) return "Cantidad en cero";
-  if ((Number(row.manoObra) || 0) <= 0 && (Number(row.materiales) || 0) <= 0) return "Sin costo unitario";
-  return "";
-};
-
-export const countCotOcrIncompleteRows = (rows: CotOcrDraftRow[]) => (
-  rows.filter((row) => getCotOcrDraftIssue(row)).length
-);
-
-export const hasUsefulEmbeddedPdfText = (text: string) => (
-  String(text || "").replace(/\s+/g, " ").trim().length >= 40
-);
-
-export const pdfTextItemsToLines = (items: unknown[]) => {
-  const positioned = items
-    .map((item) => {
-      const source = item as { str?: unknown; transform?: unknown; width?: unknown };
-      const str = String(source?.str || "").trim();
-      const transform = Array.isArray(source?.transform) ? source.transform : [];
-      return {
-        str,
-        x: Number(transform[4]) || 0,
-        y: Number(transform[5]) || 0,
-        width: Number(source?.width) || Math.max(8, str.length * 4),
-      };
-    })
-    .filter((item) => item.str);
-  if (!positioned.length) return [];
-
-  const sorted = [...positioned].sort((a, b) => (Math.abs(b.y - a.y) > 2 ? b.y - a.y : a.x - b.x));
-  const lines: { y: number; items: typeof positioned }[] = [];
-  sorted.forEach((item) => {
-    const found = lines.find((line) => Math.abs(line.y - item.y) <= 3);
-    if (found) {
-      found.items.push(item);
-      found.y = (found.y + item.y) / 2;
-    } else {
-      lines.push({y: item.y, items: [item]});
-    }
-  });
-
-  return lines
-    .sort((a, b) => b.y - a.y)
-    .map((line) => {
-      const parts = [...line.items].sort((a, b) => a.x - b.x);
-      let previousRight = 0;
-      return parts.reduce((text, item, index) => {
-        const gap = index === 0 ? 0 : item.x - previousRight;
-        previousRight = Math.max(previousRight, item.x + item.width);
-        if (!text) return item.str;
-        return `${text}${gap > 16 ? "\t" : " "}${item.str}`;
-      }, "");
-    })
-    .map((line) => line.replace(/[ \t]+$/g, "").trim())
-    .filter(Boolean);
-};
 
 export const extractEmbeddedPdfText = async (
   doc: { numPages: number; getPage: (pageNumber: number) => Promise<any> },
@@ -3698,49 +2659,8 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
     </div>
   );
 }
-
-// ══ CRONOGRAMA DE OBRA ════════════════════════════════════════════════
-export type ObraDepTipo = "FS" | "SS" | "FF";
-export type ObraPartida = {
-  id: number;
-  sourceCotId: number | null;
-  categoria: string;
-  codPartida: string;
-  descripcion: string;
-  und: string;
-  cant: number;
-  duracionDias: number;
-  predecesoraId: number | null;
-  tipoDep: ObraDepTipo;
-  desfaseDias: number;
-  avancePct: number;
-};
-export type ObraPlan = ObraPartida & {
-  inicioPlan: string;
-  finPlan: string;
-  depLista: boolean;
-  depTexto: string;
-  estado: "Bloqueada" | "Lista" | "En progreso" | "Completada" | "Conflicto";
-  ciclo: boolean;
-  avanceNorm: number;
-};
 export const OBRA_DEP_LABEL: Record<ObraDepTipo, string> = {FS:"Fin a Inicio",SS:"Inicio a Inicio",FF:"Fin a Fin"};
 export const OBRA_COLORS = ["#C9A96E","#4C7EA8","#5F8D62","#A66D5B","#8A6FB5","#5F9EA0","#A5822A","#8C6E63","#4E9D8F","#B16D7C"];
-export const newObraPartida = (id: number, seed?: Partial<ObraPartida>): ObraPartida => ({
-  id,
-  sourceCotId: null,
-  categoria: "General",
-  codPartida: "",
-  descripcion: "",
-  und: "UND",
-  cant: 1,
-  duracionDias: 1,
-  predecesoraId: null,
-  tipoDep: "FS",
-  desfaseDias: 0,
-  avancePct: 0,
-  ...seed,
-});
 
 export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today = new Date().toISOString().split("T")[0];
@@ -3975,18 +2895,6 @@ export function ToolCronogramaObra({toolId, onPrint}: {toolId: string; onPrint: 
     </div>
   );
 }
-
-// ══ VALORIZACION DE AVANCE ════════════════════════════════════════════
-export type ValPartida = {
-  id: number;
-  cod: string;
-  desc: string;
-  pre: number;
-  ant: number;
-  pct: number;
-};
-
-export const newValPartida = (id: number): ValPartida => ({id,cod:"",desc:"",pre:0,ant:0,pct:0});
 
 export function ToolValorizacionAvance({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
   const today = new Date().toISOString().split("T")[0];
@@ -4402,291 +3310,4 @@ export const APP_TOUR_STEPS: TourStep[] = [
   {id:"status", title:"Estado guardado", desc:"Este badge confirma si los cambios se están guardando automáticamente.", target:"saved-state"},
   {id:"export", title:"Exporta propuesta", desc:"Cuando tengas avances, exporta todo el paquete en PDF desde aquí.", target:"export"},
 ];
-export type PersistedToolState = { id: string; checked: boolean };
 export const DEFAULT_TOOL_STATES: PersistedToolState[] = DEFAULT_TOOLS.map((tool) => ({id: tool.id, checked: tool.checked}));
-export const isValidToolStateArray = (value: unknown): value is PersistedToolState[] => Array.isArray(value);
-export const TRACK_TOOLS: Record<TrackId, string[]> = {
-  diseno: ["calc", "matrix", "excl", "cron"],
-  construccion: ["cot", "cronobra", "brief"],
-  seguimiento: ["val", "oc"],
-};
-export const TRACK_REQUIRED_TOOL: Record<TrackId, string> = {
-  diseno: "calc",
-  construccion: "cot",
-  seguimiento: "val",
-};
-export const TRACK_DEFAULT_ORDER: TrackId[] = ["diseno", "construccion", "seguimiento"];
-
-export const getTrackForTool = (toolId: string): TrackId => {
-  const found = TRACK_DEFAULT_ORDER.find((track) => TRACK_TOOLS[track].includes(toolId));
-  return found || "diseno";
-};
-
-export const readScopedValue = <T,>(projectId: string, key: string, fallback: T | (() => T), validate?: (value: unknown) => value is T) => (
-  readStorage<T>(key, fallback, validate, projectId)
-);
-
-export const calcDesignHonorario = (projectId: string) => {
-  const ti = readScopedValue<string>(projectId, "calc.ti", "Vivienda", isString);
-  const et = readScopedValue<string>(projectId, "calc.et", "Anteproyecto", isString);
-  const ar = Number(readScopedValue<string>(projectId, "calc.ar", "", isString)) || 0;
-  const co = readScopedValue<string>(projectId, "calc.co", "Media", isString);
-  const ur = readScopedValue<string>(projectId, "calc.ur", "Normal", isString);
-  const tc = readScopedValue<string>(projectId, "calc.tc", "Particular", isString);
-  const mo = readScopedValue<string>(projectId, "calc.mo", "Suma alzada", isString);
-  const mg = Number(readScopedValue<number | string>(projectId, "calc.mg", 0)) || 0;
-  const dc = Number(readScopedValue<number | string>(projectId, "calc.dc", 0)) || 0;
-  const rd = Number(readScopedValue<number | string>(projectId, "calc.rd", 50)) || 0;
-  const ig = Boolean(readScopedValue<boolean>(projectId, "calc.ig", true, (value): value is boolean => typeof value === "boolean"));
-  const rx = Number(readScopedValue<number | string>(projectId, "calc.rx", 0)) || 0;
-  const vx = Number(readScopedValue<number | string>(projectId, "calc.vx", 0)) || 0;
-  const nx = Number(readScopedValue<number | string>(projectId, "calc.nx", 0)) || 0;
-  const t = (TAR[ti] || {})[et] || 0;
-  const b = t * ar;
-  const adj = b * (CF[co] || 1) * (UF[ur] || 1) * (KF[tc] || 1) * (MF[mo] || 1) * (1 + mg / 100) * (1 - dc / 100);
-  const ext = rx * 240 + vx * 180 + nx * 250;
-  const sub = adj + ext;
-  const igv = ig ? sub * 0.18 : 0;
-  return rnd(sub + igv, rd);
-};
-
-export const normalizeCronHitos = (value: unknown): CronHitoCobro[] => {
-  if (!Array.isArray(value)) return CRON_HITOS_BASE.map((item) => ({...item}));
-  const incoming = value.filter((item) => isPlainObject(item));
-  return CRON_HITOS_BASE.map((base) => {
-    const found = incoming.find((item) => item.id === base.id);
-    return {
-      ...base,
-      checked: found && typeof found.checked === "boolean" ? found.checked : base.checked,
-    };
-  });
-};
-
-export const calcDesignCobrado = (projectId: string, honorario: number) => {
-  const hitos = normalizeCronHitos(readScopedValue(projectId, "cron.hitosCobro", CRON_HITOS_BASE, Array.isArray));
-  const pct = hitos.reduce((sum, item) => sum + (item.checked ? item.pct : 0), 0);
-  const cobrado = honorario * (pct / 100);
-  return {
-    cobrado,
-    pctCobrado: honorario > 0 ? Math.max(0, Math.min(100, (cobrado / honorario) * 100)) : 0,
-  };
-};
-
-export const calcDesignMiniGantt = (projectId: string) => {
-  const etapas = readScopedValue<any[]>(projectId, "cron.etapas", ETAPAS_CRON, Array.isArray)
-    .filter((item) => isPlainObject(item) && typeof item.activa === "boolean" && item.activa);
-  const inicio = readScopedValue<string>(projectId, "cron.inicio", new Date().toISOString().split("T")[0], isString);
-  const total = etapas.reduce((sum, item) => sum + Math.max(1, Number(item.semanas) || 1), 0);
-  let cursor = inicio;
-  return etapas.map((item) => {
-    const semanas = Math.max(1, Number(item.semanas) || 1);
-    const start = cursor;
-    const end = addWeeks(start, semanas);
-    cursor = end;
-    return {
-      id: String(item.id || ""),
-      label: String(item.label || "Etapa"),
-      color: String(item.color || G),
-      pct: total > 0 ? (semanas / total) * 100 : 0,
-      start,
-      end,
-    };
-  });
-};
-
-export const calcConstruccionMetrics = (projectId: string) => {
-  const ggPct = Number(readScopedValue<number | string>(projectId, "cot.ggPct", 0)) || 0;
-  const supPct = Number(readScopedValue<number | string>(projectId, "cot.supPct", 0)) || 0;
-  const igvPct = Number(readScopedValue<number | string>(projectId, "cot.igvPct", 18)) || 0;
-  const partidas = readScopedValue<CotPartida[]>(projectId, "cot.partidas", [], Array.isArray).filter((item) => isPlainObject(item));
-  const subtotalPartidas = partidas.reduce((acc, item) => {
-    const costoBase = (Number((item as CotPartida).manoObra) || 0) + (Number((item as CotPartida).materiales) || 0);
-    const precioUnitario = costoBase * (1 + (Number((item as CotPartida).utilidadPct) || 0) / 100) * (1 + (Number((item as CotPartida).riesgoPct) || 0) / 100);
-    return acc + precioUnitario * (Number((item as CotPartida).cant) || 0);
-  }, 0);
-  const ggMonto = subtotalPartidas * (ggPct / 100);
-  const supMonto = subtotalPartidas * (supPct / 100);
-  const baseImponible = subtotalPartidas + ggMonto + supMonto;
-  const cotizado = baseImponible + baseImponible * (igvPct / 100);
-
-  const obraSummary = computeObraPlanSummary(projectId);
-  return {
-    cotizado,
-    cronTotalDias: obraSummary.totalDias,
-    cronConflictos: obraSummary.conflictCount,
-    cronPct: obraSummary.avgPct,
-  };
-};
-
-export const computeObraPlanSummary = (projectId: string) => {
-  const today = new Date().toISOString().split("T")[0];
-  const inicio = readScopedValue<string>(projectId, "obra.inicio", today, isString);
-  const startProject = normalizeWorkDate(inicio || today);
-  const partidas = readScopedValue<ObraPartida[]>(projectId, "obra.partidas", [], Array.isArray).filter((item) => isPlainObject(item));
-  const byId = new Map<number, ObraPartida>();
-  partidas.forEach((item) => byId.set(Number(item.id) || 0, item as ObraPartida));
-  const memo = new Map<number, {inicioPlan: string; finPlan: string; ciclo: boolean}>();
-  const visiting = new Set<number>();
-  const range = (id: number): {inicioPlan: string; finPlan: string; ciclo: boolean} => {
-    const cached = memo.get(id);
-    if (cached) return cached;
-    const row = byId.get(id);
-    if (!row) return {inicioPlan: startProject, finPlan: startProject, ciclo: false};
-    if (visiting.has(id)) return {inicioPlan: startProject, finPlan: startProject, ciclo: true};
-    visiting.add(id);
-    const dur = Math.max(1, Math.round(Number(row.duracionDias) || 1));
-    let inicioPlan = startProject;
-    let ciclo = false;
-    const predId = row.predecesoraId;
-    if (predId && predId !== id && byId.has(predId)) {
-      const pred = range(predId);
-      if (pred.ciclo) ciclo = true;
-      else {
-        const lag = Math.round(Number(row.desfaseDias) || 0);
-        if (row.tipoDep === "FS") inicioPlan = addWorkDaysMonSat(pred.finPlan, 1 + lag);
-        else if (row.tipoDep === "SS") inicioPlan = addWorkDaysMonSat(pred.inicioPlan, lag);
-        else inicioPlan = addWorkDaysMonSat(addWorkDaysMonSat(pred.finPlan, lag), -(dur - 1));
-      }
-    } else if (predId === id) {
-      ciclo = true;
-    }
-    if (cmpDateISO(inicioPlan, startProject) < 0) inicioPlan = startProject;
-    const finPlan = addWorkDaysMonSat(inicioPlan, dur - 1);
-    const result = {inicioPlan, finPlan, ciclo};
-    memo.set(id, result);
-    visiting.delete(id);
-    return result;
-  };
-
-  const rows = partidas.map((item) => {
-    const plan = range(item.id);
-    const avanceNorm = Math.max(0, Math.min(100, Number(item.avancePct) || 0));
-    return {
-      id: item.id,
-      categoria: item.categoria,
-      codPartida: item.codPartida,
-      descripcion: item.descripcion,
-      inicioPlan: plan.inicioPlan,
-      finPlan: plan.finPlan,
-      ciclo: plan.ciclo,
-      avanceNorm,
-    };
-  });
-  if (!rows.length) {
-    return {rows: [], totalDias: 0, conflictCount: 0, avgPct: 0, startProject, maxDate: startProject};
-  }
-  const minDate = rows.reduce((min, row) => cmpDateISO(row.inicioPlan, min) < 0 ? row.inicioPlan : min, rows[0].inicioPlan);
-  const maxDate = rows.reduce((max, row) => cmpDateISO(row.finPlan, max) > 0 ? row.finPlan : max, rows[0].finPlan);
-  const avgPct = rows.reduce((sum, row) => sum + row.avanceNorm, 0) / rows.length;
-  return {
-    rows: [...rows].sort((a, b) => cmpDateISO(a.inicioPlan, b.inicioPlan) || a.id - b.id),
-    totalDias: diffDateDays(minDate, maxDate) + 1,
-    conflictCount: rows.filter((row) => row.ciclo).length,
-    avgPct,
-    startProject: minDate,
-    maxDate,
-  };
-};
-
-export const calcObraMiniGantt = (projectId: string) => {
-  const summary = computeObraPlanSummary(projectId);
-  const total = Math.max(1, summary.totalDias);
-  return summary.rows.slice(0, 6).map((row) => ({
-    id: row.id,
-    label: row.codPartida || row.descripcion || `#${row.id}`,
-    color: row.ciclo ? "#A63B2A" : "#4C7EA8",
-    pct: ((diffDateDays(summary.startProject, row.inicioPlan) + 1) / total) * 100,
-    span: ((diffDateDays(row.inicioPlan, row.finPlan) + 1) / total) * 100,
-  }));
-};
-
-export const calcSeguimientoMetrics = (projectId: string) => {
-  const valParts = readScopedValue<ValPartida[]>(projectId, "val.parts", [], Array.isArray);
-  const mc = Number(readScopedValue<number | string>(projectId, "val.mc", 0)) || 0;
-  const ad = Number(readScopedValue<number | string>(projectId, "val.ad", 0)) || 0;
-  const de = Number(readScopedValue<number | string>(projectId, "val.de", 0)) || 0;
-  let tAc = 0;
-  valParts.forEach((item) => {
-    const pre = Number(item?.pre) || 0;
-    const pct = Number(item?.pct) || 0;
-    tAc += pre * pct / 100;
-  });
-  const ca = mc + ad - de;
-  const pctAvance = ca > 0 ? Math.max(0, Math.min(100, (tAc / ca) * 100)) : 0;
-  const ocHasContent = [
-    readScopedValue<string>(projectId, "oc.desc", "", isString),
-    readScopedValue<string>(projectId, "oc.docsAfect", "", isString),
-    readScopedValue<string>(projectId, "oc.honorAd", "", isString),
-  ].some((value) => value.trim().length > 0);
-  const estado = readScopedValue<OcResolutionStatus>(projectId, "oc.estadoResolucion", "Pendiente", isValidOcResolutionStatus);
-  return {
-    pctAvance,
-    valorizadoAc: tAc,
-    ocPendiente: ocHasContent && estado === "Pendiente",
-  };
-};
-
-export const getTrackState = (track: TrackId, projectId: string, metrics: DashboardMetrics): TrackState => {
-  if (track === "diseno") {
-    const baseMeta = readProjectBaseMetadata(projectId);
-    const baseHasData = [
-      baseMeta.client,
-      baseMeta.projectName,
-      readScopedValue<string>(projectId, "calc.ar", "", isString),
-    ].some((value) => value.trim().length > 0);
-    if (!baseHasData) return "No iniciado";
-    return metrics.diseno.pctCobrado >= 100 ? "Completado" : "En curso";
-  }
-  if (track === "construccion") {
-    const hasCotData = hasSavedProjectData(projectId) && readScopedValue<CotPartida[]>(projectId, "cot.partidas", [], Array.isArray).length > 0;
-    if (!hasCotData) return "No iniciado";
-    const done = metrics.construccion.cotizado > 0 && metrics.construccion.cronConflictos === 0 && metrics.construccion.cronPct >= 100;
-    return done ? "Completado" : "En curso";
-  }
-  const hasValData = readScopedValue<ValPartida[]>(projectId, "val.parts", [], Array.isArray).some((item) => {
-    if (!isPlainObject(item)) return false;
-    return String(item.desc || "").trim().length > 0 || Number(item.pre || 0) > 0;
-  });
-  if (!hasValData) return "No iniciado";
-  return metrics.seguimiento.pctAvance >= 100 && !metrics.seguimiento.ocPendiente ? "Completado" : "En curso";
-};
-
-export const computeDashboardMetrics = (project: ProjectRecord): DashboardMetrics => {
-  const honorario = calcDesignHonorario(project.id);
-  const diseno = calcDesignCobrado(project.id, honorario);
-  const construccion = calcConstruccionMetrics(project.id);
-  const seguimiento = calcSeguimientoMetrics(project.id);
-  const metrics: DashboardMetrics = {
-    states: {diseno: "No iniciado", construccion: "No iniciado", seguimiento: "No iniciado"},
-    diseno: {honorario, cobrado: diseno.cobrado, pctCobrado: diseno.pctCobrado},
-    construccion,
-    seguimiento,
-  };
-  metrics.states = {
-    diseno: getTrackState("diseno", project.id, metrics),
-    construccion: getTrackState("construccion", project.id, metrics),
-    seguimiento: getTrackState("seguimiento", project.id, metrics),
-  };
-  return metrics;
-};
-
-export const migrateLegacyStorageToProject = (projectId: string) => {
-  if (typeof window === "undefined") return;
-  const toDelete: string[] = [];
-  for (let i = 0; i < window.localStorage.length; i += 1) {
-    const fullKey = window.localStorage.key(i);
-    if (!fullKey?.startsWith(`${PROJECT_STORAGE_PREFIX}.`)) continue;
-    const rawKey = extractRawStorageKey(fullKey);
-    if (isGlobalStorageKey(rawKey) || isScopedStorageRawKey(rawKey)) continue;
-    const value = window.localStorage.getItem(fullKey);
-    if (value === null) continue;
-    const scopedKey = storageKey(rawKey, projectId);
-    if (window.localStorage.getItem(scopedKey) === null) {
-      window.localStorage.setItem(scopedKey, value);
-    }
-    toDelete.push(fullKey);
-  }
-  toDelete.forEach((key) => window.localStorage.removeItem(key));
-};
-
-// ══ MAIN APP ══════════════════════════════════════════════════════════

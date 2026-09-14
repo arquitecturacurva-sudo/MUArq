@@ -1,3 +1,4 @@
+import { G, UI } from "../ui/tokens";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Download, RotateCcw } from "lucide-react";
 import {
@@ -18,7 +19,6 @@ import {
 } from "../ui/kit";
 import { DARK_THEME_VARS } from "../ui/theme";
 import {
-  G,
   IconCalc,
   PROJECT_CURRENCY_OPTIONS,
   PROJECT_STORAGE_EVENT,
@@ -28,7 +28,6 @@ import {
   type TrackId,
   TOOL_ICONS,
   TRACK_LABELS,
-  UI,
   clearLocalProductEvents,
   readLocalProductEvents,
   readProjectBaseMetadata,

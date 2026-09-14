@@ -7,13 +7,13 @@ import { PROJECT_TOOL_IDS } from "../../features/runtime/storage/projectToolPart
 const firestoreRules = rawFirestoreRules.replace(/\r\n/g, "\n");
 
 describe("project tool document rules", () => {
-  it("grants member reads and editor writes on the toolData subcollection", () => {
+  it("scopes project reads and preserves editor writes on the toolData subcollection", () => {
     // rules_version 2 does not cascade into subcollections: without this block every tool
     // document write is denied.
     expect(firestoreRules).toContain(
       "match /clients/{clientId}/projects/{projectId}/toolData/{toolId}"
     );
-    expect(firestoreRules).toContain("allow read: if isMember(clientId);");
+    expect(firestoreRules).toContain("allow read: if canReadProject(clientId, projectId);");
     expect(firestoreRules).toContain("allow create, update: if isEditor(clientId)");
   });
 

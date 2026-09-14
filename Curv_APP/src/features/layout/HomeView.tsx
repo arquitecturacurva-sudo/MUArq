@@ -1,3 +1,4 @@
+import { DK, G, UI } from "../ui/tokens";
 import React, { useMemo } from "react";
 
 import type { ClientAccess } from "../../lib/billing";
@@ -18,11 +19,8 @@ import type {
 } from "../runtime/runtime";
 import {
   COMMERCIAL_STATUS_OPTIONS,
-  DK,
-  G,
   TRACK_DEFAULT_ORDER,
   TRACK_LABELS,
-  UI,
   fDateShort,
   formatMoneyByCurrency,
 } from "../runtime/runtime";
@@ -86,6 +84,7 @@ type HomeViewProps = {
   demoDefinitions: readonly DemoProjectDefinition[];
   openDemoHub: () => void;
   openDemo: (definition: DemoProjectDefinition) => void;
+  openTeamAccess: () => void;
   openBrandSettings: () => void;
   openProject: (projectId: string) => void;
   handleEditProject: (project: ProjectRecord) => void;
@@ -157,6 +156,7 @@ export default function HomeView({
   demoDefinitions,
   openDemoHub,
   openDemo,
+  openTeamAccess,
   openBrandSettings,
   openProject,
   handleEditProject,
@@ -198,6 +198,7 @@ export default function HomeView({
         active="dashboard"
         onOpenDashboard={() => undefined}
         onOpenDemos={openDemoHub}
+        onOpenTeamAccess={openTeamAccess}
         onOpenBranding={openBrandSettings}
         onLogout={onLogout}
       >

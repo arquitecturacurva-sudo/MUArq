@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { DK, UI } from "./features/ui/tokens";
+import { Btn } from "./features/ui/form-primitives";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import type { User } from "firebase/auth";
@@ -36,7 +38,6 @@ import {
   DEFAULT_TOOLS,
   DEFAULT_TOOL_STATES,
   DEFAULT_TRACKS,
-  DK,
   LEGACY_MIGRATION_FLAG_KEY,
   PROJECT_STORAGE_EVENT,
   PROJECT_SNAPSHOT_UPDATED_AT_KEY,
@@ -45,8 +46,6 @@ import {
   TRACK_DEFAULT_ORDER,
   TRACK_REQUIRED_TOOL,
   TRACK_TOOLS,
-  Btn,
-  UI,
   calcDesignMiniGantt,
   calcObraMiniGantt,
   clearProjectStorage,
@@ -96,7 +95,7 @@ import {
   upsertProjectByClient,
   type ProjectHydrationSnapshot,
   type ProjectSyncEntry,
-} from "./lib/persistence/clientProjects";
+} from "./features/runtime/projectSyncServices";
 import {
   decideRemoteSnapshotHydrationByFingerprint,
   getProjectSnapshotFingerprint,
@@ -126,7 +125,9 @@ import {
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
 const DELETED_PROJECT_IDS_KEY = "app.deletedProjectIds.v1";
-type AppRoute = "landing" | "auth" | "home" | "workspace" | "branding" | "demos" | "demo";
+const ConnectedTeamAccess = lazy(() => import("./composition/ConnectedTeamAccess"));
+
+type AppRoute = "landing" | "auth" | "home" | "workspace" | "team-access" | "branding" | "demos" | "demo";
 const LANDING_DEMO_IDS: Record<string, DemoProjectId> = {
   residencial: "casa-ladera",
   "interiorismo-comercial": "cafe-nerea",
@@ -160,7 +161,7 @@ export default function App() {
   const [route,setRoute]=usePersistentState<AppRoute>(
     "app.route",
     "landing",
-    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "branding" || value === "demos" || value === "demo"
+    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "team-access" || value === "branding" || value === "demos" || value === "demo"
   );
   const [,setLandingSeen]=usePersistentState("app.landingSeen", false, (value): value is boolean => typeof value === "boolean");
   const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
@@ -2089,6 +2090,16 @@ export default function App() {
     );
   }
 
+  if (route === "team-access") {
+    return <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", background: UI.bg, color: DK}}>
+      <AppHeader darkMode={darkMode} setDarkMode={setDarkMode} title="Equipo y acceso" active="team-access"
+        onBack={() => setRoute("home")} backLabel="Dashboard" onOpenDashboard={() => setRoute("home")}
+        onOpenDemos={() => setRoute("demos")} onOpenTeamAccess={() => setRoute("team-access")}
+        onOpenBranding={() => setRoute("branding")} onLogout={handleLogout} />
+      <Suspense fallback={<p role="status">Cargando equipo...</p>}>{activeClientId ? <ConnectedTeamAccess key={authUser.uid + ":" + activeClientId} uid={authUser.uid} tenantId={activeClientId} projects={projects.map(project => ({ id: project.id, name: project.name, tenantId: activeClientId }))} /> : <TenantUnavailable error={tenantError} onRetry={() => setTenantRetryTick(tick => tick + 1)} />}</Suspense>
+    </div>;
+  }
+
   if (route === "branding") {
     if (!activeClientId) {
       return (
@@ -2101,6 +2112,7 @@ export default function App() {
             onBack={closeBranding}
             backLabel="Dashboard"
             onOpenDashboard={closeBranding}
+            onOpenTeamAccess={() => setRoute("team-access")}
             onOpenDemos={() => setRoute("demos")}
             onLogout={handleLogout}
           />
@@ -2121,6 +2133,7 @@ export default function App() {
           onBack={closeBranding}
           backLabel="Dashboard"
           onOpenDashboard={closeBranding}
+          onOpenTeamAccess={() => setRoute("team-access")}
           onOpenDemos={() => setRoute("demos")}
           onLogout={handleLogout}
         />
@@ -2142,6 +2155,7 @@ export default function App() {
         definitions={DEMO_DEFINITIONS}
         onOpenDemo={openDemo}
         onBackHome={() => setRoute("home")}
+        onOpenTeamAccess={() => setRoute("team-access")}
         onOpenBranding={() => {
           trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "demos"}});
           setRoute("branding");
@@ -2192,6 +2206,7 @@ export default function App() {
           setRoute("demos");
         }}
         openDemo={openDemo}
+        openTeamAccess={() => setRoute("team-access")}
         openBrandSettings={() => {
           trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "dashboard"}});
           setRoute("branding");
@@ -2358,6 +2373,7 @@ export default function App() {
         backLabel={isDemoWorkspace ? "Demos" : "Dashboard"}
         onOpenDashboard={() => (isDemoWorkspace ? returnToDemoGallery() : setRoute("home"))}
         onOpenDemos={returnToDemoGallery}
+        onOpenTeamAccess={() => setRoute("team-access")}
         onOpenBranding={isDemoWorkspace ? undefined : () => {
           trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "workspace"}});
           setRoute("branding");

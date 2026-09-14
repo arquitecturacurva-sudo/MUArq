@@ -34,7 +34,7 @@ const hasAdminAccess = (
   uid: string,
   clientData: admin.firestore.DocumentData | undefined,
   memberData: admin.firestore.DocumentData | undefined
-) => canManageBrand(uid, clientData?.ownerUid, memberData?.uid, memberData?.role);
+) => canManageBrand(uid, clientData?.ownerUid, memberData?.uid, memberData?.role, memberData?.status);
 
 const assertAdminAccess = (
   uid: string,
@@ -219,8 +219,9 @@ export const getBrandLogo = functions
     const clientData = clientSnapshot.data();
     const memberData = memberSnapshot.data();
     const isMember =
-      clientData?.ownerUid === uid ||
-      (memberSnapshot.exists && memberData?.uid === uid);
+      Boolean(clientData) && memberSnapshot.exists && memberData?.uid === uid
+      && ["owner", "admin", "editor", "viewer", "observer"].includes(memberData?.role)
+      && (memberData?.status === undefined || memberData?.status === "active");
     if (!isMember) {
       throw new functions.https.HttpsError(
         "permission-denied",

@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 /**
  * The `--ui-*` palette. This is the single source of truth for colour in the app:
- * inline styles read it through the `UI` object in runtime.tsx, and the shadcn kit
+ * inline styles read it through the `UI` object in tokens.ts, and the shadcn kit
  * maps its tokens onto the same variables in styles/kit.css.
  *
  * Applied as an inline style on each themed wrapper (see App.tsx), which also lets a

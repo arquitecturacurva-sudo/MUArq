@@ -7,10 +7,10 @@
  *   for icon-only and toolbar affordances; `brand` is the single gold CTA per surface;
  *   `destructive` is for destructive actions only.
  * - One `Pill` for every status/metadata chip, coloured by `tone` rather than by a
- *   bespoke border/background per usage. Status reads as colour first, text second.
+ *   bespoke border/background per usage. Status always has visible text; colour is supplementary.
  * - Exactly two font sizes; the Tailwind scale is collapsed in styles/kit.css so
  *   `text-xs`/`text-sm` and `text-base`/`text-lg` cannot introduce a third.
- * - No breadcrumbs.
+ * - Context hierarchy follows the approved feature UX contract.
  *
  * Compose these primitives (Card + Field + Button) instead of writing custom UI.
  */
@@ -65,3 +65,9 @@ export {
 
 export { Pill, StatusDot, type PillProps, type PillTone, type StatusDotProps } from "./pill";
 export { StepNav, type StepNavProps } from "./stepNav";
+
+export { StatusPill } from "./statusPill";
+export { SaveState, type SaveStateProps, type SaveStatus } from "./saveState";
+export { DataTable, type DataTableProps, type DataTableColumn } from "./dataTable";
+export { EmptyState, type EmptyStateProps } from "./emptyState";
+export { Drawer, DrawerContent, DrawerTrigger, DrawerClose, DrawerTitle, DrawerDescription, DrawerHeader, DrawerFooter } from "../../../components/ui/drawer";

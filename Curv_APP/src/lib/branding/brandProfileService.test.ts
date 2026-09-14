@@ -4,6 +4,7 @@ const firestoreMocks = vi.hoisted(() => ({
   getDoc: vi.fn(),
   transactionGet: vi.fn(),
   transactionSet: vi.fn(),
+  transactionUpdate: vi.fn(),
   serverTimestamp: vi.fn(() => ({ __serverTimestamp: true })),
 }));
 
@@ -13,8 +14,8 @@ vi.mock("firebase/firestore", () => ({
   getDoc: firestoreMocks.getDoc,
   runTransaction: async (
     _db: unknown,
-    callback: (transaction: { get: typeof firestoreMocks.transactionGet; set: typeof firestoreMocks.transactionSet }) => unknown
-  ) => callback({ get: firestoreMocks.transactionGet, set: firestoreMocks.transactionSet }),
+    callback: (transaction: { get: typeof firestoreMocks.transactionGet; set: typeof firestoreMocks.transactionSet; update: typeof firestoreMocks.transactionUpdate }) => unknown
+  ) => callback({ get: firestoreMocks.transactionGet, set: firestoreMocks.transactionSet, update: firestoreMocks.transactionUpdate }),
   serverTimestamp: firestoreMocks.serverTimestamp,
 }));
 
@@ -31,6 +32,7 @@ describe("brandProfileService", () => {
     firestoreMocks.getDoc.mockReset();
     firestoreMocks.transactionGet.mockReset();
     firestoreMocks.transactionSet.mockReset();
+    firestoreMocks.transactionUpdate.mockReset();
     firestoreMocks.serverTimestamp.mockClear();
   });
 
@@ -55,10 +57,9 @@ describe("brandProfileService", () => {
     expect(firestoreMocks.transactionSet).not.toHaveBeenCalled();
   });
 
-  it("allows an administrator to edit another owner's workspace brand", async () => {
+  it("prevents an administrator from editing another owner's workspace brand", async () => {
     firestoreMocks.getDoc
       .mockResolvedValueOnce(snapshot(true, { ownerUid: "owner-1", name: "Estudio Norte" }))
-      .mockResolvedValueOnce(snapshot(true, { uid: "admin-1", role: "admin" }))
       .mockResolvedValueOnce(snapshot(false));
 
     const result = await loadBrandProfile("workspace-1", {
@@ -66,13 +67,12 @@ describe("brandProfileService", () => {
       email: "admin@example.com",
     });
 
-    expect(result.canEdit).toBe(true);
+    expect(result.canEdit).toBe(false);
   });
 
   it("keeps viewers in read-only mode", async () => {
     firestoreMocks.getDoc
       .mockResolvedValueOnce(snapshot(true, { ownerUid: "owner-1", name: "Estudio Norte" }))
-      .mockResolvedValueOnce(snapshot(true, { uid: "viewer-1", role: "viewer" }))
       .mockResolvedValueOnce(snapshot(false));
 
     const result = await loadBrandProfile("workspace-1", {
@@ -106,6 +106,7 @@ describe("brandProfileService", () => {
       createdAt: { __serverTimestamp: true },
       updatedAt: { __serverTimestamp: true },
     });
+    expect(firestoreMocks.transactionUpdate).toHaveBeenCalledWith({ path: "clients/workspace-1" }, { name: "Estudio Norte" });
     expect(savedPayload).not.toHaveProperty("logoUrl");
     expect(savedPayload).not.toHaveProperty("logoStoragePath");
   });

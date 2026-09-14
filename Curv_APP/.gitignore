@@ -26,3 +26,5 @@ build/icon.ico
 *.sw?
 .vercel
 .env*
+
+dist-team-access
