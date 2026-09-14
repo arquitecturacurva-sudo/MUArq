@@ -14,10 +14,10 @@ const logoHandlers = normalize(rawLogoHandlers);
 const normalizedFirestoreRules = firestoreRules.replace(/\r\n/g, "\n");
 
 describe("branding security rule contracts", () => {
-  it("scopes BrandProfile reads to workspace members and writes to admins", () => {
+  it("scopes BrandProfile reads to workspace members and writes to the owner", () => {
     expect(normalizedFirestoreRules).toContain("match /clients/{clientId}/settings/{settingId}");
     expect(normalizedFirestoreRules).toContain('allow read: if settingId == "brand" && isMember(clientId)');
-    expect(normalizedFirestoreRules).toContain('settingId == "brand"\n        && isAdmin(clientId)');
+    expect(normalizedFirestoreRules).toContain('settingId == "brand"\n        && isOwner(clientId)');
   });
 
   it("prevents browser writes to backend-owned logo fields", () => {

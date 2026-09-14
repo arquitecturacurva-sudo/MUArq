@@ -33,8 +33,9 @@ test("uses a safe server-owned filename", () => {
 });
 
 test("does not let another workspace member manage the logo", () => {
+  assert.equal(canManageBrand("owner", "owner", "owner", "admin", "revoked"), false);
   assert.equal(canManageBrand("attacker", "owner", "attacker", "viewer"), false);
   assert.equal(canManageBrand("attacker", "owner", "owner", "admin"), false);
-  assert.equal(canManageBrand("owner", "owner", undefined, undefined), true);
-  assert.equal(canManageBrand("admin", "owner", "admin", "admin"), true);
+  assert.equal(canManageBrand("owner", "owner", "owner", "admin"), true);
+  assert.equal(canManageBrand("admin", "owner", "admin", "admin"), false);
 });

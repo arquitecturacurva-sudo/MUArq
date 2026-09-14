@@ -36,17 +36,7 @@ const readWorkspaceIdentity = async (clientId: string, fallback: BrandProfileFal
   const workspaceName = typeof data.name === "string" ? data.name.trim() : "";
   const defaultWorkspaceName = workspaceName.replace(/\s*-\s*Workspace$/i, "").trim();
   const hasCustomWorkspaceName = workspaceName && defaultWorkspaceName === workspaceName;
-  let canEdit = ownerUid === fallback.ownerUid;
-  if (!canEdit) {
-    const memberSnapshot = await getDoc(
-      doc(ensureDb(), "clients", clientId, "members", fallback.ownerUid)
-    );
-    const memberData = memberSnapshot.data() as Record<string, unknown> | undefined;
-    canEdit =
-      memberSnapshot.exists() &&
-      memberData?.uid === fallback.ownerUid &&
-      (memberData.role === "admin" || memberData.role === "owner");
-  }
+  const canEdit = ownerUid === fallback.ownerUid;
   return {
     ownerUid,
     canEdit,
@@ -132,6 +122,7 @@ export const saveBrandProfile = async ({
       throw new Error("La identidad cambió. Recarga la pantalla antes de volver a guardar.");
     }
     const nextRevision = currentRevision + 1;
+    transaction.update(clientRef(clientId), { name: profile.companyName.trim() });
     transaction.set(
       reference,
       {

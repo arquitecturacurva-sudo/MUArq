@@ -1,7 +1,7 @@
 import { after, before, test } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, getDoc, getDocs, collection, query, where, documentId, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, query, where, documentId, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getMetadata } from "firebase/storage";
 
 const projectId = "demo-curv-team-access";
@@ -104,4 +104,18 @@ test("logo reads respect active membership; all direct uploads remain denied", a
   for (const uid of ["revoked", "invited", "unknown", "outsider"]) {
     await assertFails(getMetadata(ref(env.authenticatedContext(uid).storage(), "clients/a/branding/logo/test.png")));
   }
+});
+
+test("only owner can save identity and tenant name together", async () => {
+  const db = dbFor("owner");
+  const batch = writeBatch(db);
+  batch.update(doc(db, "clients/a"), { name: "Nuevo estudio" });
+  batch.set(doc(db, "clients/a/settings/brand"), { id: "brand", ownerUid: "owner", companyName: "Nuevo estudio", backgroundColor: "#FFFFFF", accentColor: "#123456", primaryTextColor: "#111111", fontPresetId: "technical", headingFont: "Inter", bodyFont: "Inter", logoPosition: "left", showGeneratedWithCurv: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), profileRevision: 1, schemaVersion: 1 });
+  await assertSucceeds(batch.commit());
+  for (const uid of ["admin", "editor", "viewer", "revoked"]) {
+    await assertFails(updateDoc(doc(dbFor(uid), "clients/a"), { name: "Impostor" }));
+    await assertFails(updateDoc(doc(dbFor(uid), "clients/a/settings/brand"), { companyName: "Impostor", updatedAt: serverTimestamp(), profileRevision: 2 }));
+  }
+  await assertFails(updateDoc(doc(db, "clients/a"), { ownerUid: "admin" }));
+  await assertFails(updateDoc(doc(db, "clients/a"), { limits: { editorsLimit: 999 } }));
 });

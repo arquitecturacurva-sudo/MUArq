@@ -25,6 +25,10 @@ service cloud.firestore {
         );
     }
 
+    function isOwner(clientId) {
+      return isAdmin(clientId) && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
+    }
+
     function isEditor(clientId) {
       return isAdmin(clientId)
         || (
@@ -155,7 +159,7 @@ service cloud.firestore {
       // rather than one -- so tenant-id squatting is impossible by construction and the
       // self-serve cap lives in the callable, where a future invite flow can relax it.
       allow create: if false;
-      allow update: if isAdmin(clientId)
+      allow update: if isOwner(clientId)
         && request.resource.data.id == clientId
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.name is string
@@ -206,14 +210,14 @@ service cloud.firestore {
     match /clients/{clientId}/settings/{settingId} {
       allow read: if settingId == "brand" && isMember(clientId);
       allow create: if settingId == "brand"
-        && isAdmin(clientId)
+        && isOwner(clientId)
         && validBrandProfile(clientId)
         && request.resource.data.createdAt == request.time
         && request.resource.data.profileRevision == 1
         && !("logoUrl" in request.resource.data)
         && !("logoStoragePath" in request.resource.data);
       allow update: if settingId == "brand"
-        && isAdmin(clientId)
+        && isOwner(clientId)
         && validBrandProfile(clientId)
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.profileRevision == (
