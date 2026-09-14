@@ -125,7 +125,7 @@ import {
 import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenant/clientService";
 
 const DELETED_PROJECT_IDS_KEY = "app.deletedProjectIds.v1";
-const TeamAccessPrototype = lazy(() => import("./prototypes/team-access/Prototype").then(module => ({ default: module.Prototype })));
+const ConnectedTeamAccess = lazy(() => import("./composition/ConnectedTeamAccess"));
 
 type AppRoute = "landing" | "auth" | "home" | "workspace" | "team-access" | "branding" | "demos" | "demo";
 const LANDING_DEMO_IDS: Record<string, DemoProjectId> = {
@@ -2096,7 +2096,7 @@ export default function App() {
         onBack={() => setRoute("home")} backLabel="Dashboard" onOpenDashboard={() => setRoute("home")}
         onOpenDemos={() => setRoute("demos")} onOpenTeamAccess={() => setRoute("team-access")}
         onOpenBranding={() => setRoute("branding")} onLogout={handleLogout} />
-      <Suspense fallback={<p role="status">Cargando equipo...</p>}><TeamAccessPrototype embedded /></Suspense>
+      <Suspense fallback={<p role="status">Cargando equipo...</p>}>{activeClientId ? <ConnectedTeamAccess key={authUser.uid + ":" + activeClientId} uid={authUser.uid} tenantId={activeClientId} projects={projects.map(project => ({ id: project.id, name: project.name, tenantId: activeClientId }))} /> : <TenantUnavailable error={tenantError} onRetry={() => setTenantRetryTick(tick => tick + 1)} />}</Suspense>
     </div>;
   }
 

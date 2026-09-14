@@ -19,9 +19,10 @@ import "./teamAccess.css";
 interface TeamAccessViewProps {
   service: TenantAccessService; tenants: readonly TenantSummary[]; currentUserUid: string;
   projects: readonly ProjectOption[];
+  readOnly?: boolean;
   undoLastChange?: (tenantId: string) => Promise<TenantAccessResult<void>>;
 }
-function TenantTeam({ service, tenant, currentUserUid, projects, undoLastChange }: Omit<TeamAccessViewProps, "tenants"> & { tenant: TenantSummary }) {
+function TenantTeam({ service, tenant, currentUserUid, projects, undoLastChange, readOnly }: Omit<TeamAccessViewProps, "tenants"> & { tenant: TenantSummary }) {
   const { state, refresh } = useTeamMembers(service, tenant.id);
   const [tab, setTab] = useState<"active" | "invited" | "roles">("active");
   const [search, setSearch] = useState("");
@@ -35,7 +36,7 @@ function TenantTeam({ service, tenant, currentUserUid, projects, undoLastChange 
   const id = useId();
   const members = state.status === "success" ? state.members : [];
   const actor = members.find(member => member.uid === currentUserUid);
-  const canManage = actor?.role === "admin" && actor.status === "active";
+  const canManage = !readOnly && actor?.role === "admin" && actor.status === "active";
   const viewer = actor?.role === "viewer";
   const visible = members.filter(member => member.status === tab && (role === "all" || member.role === role)
     && (member.displayName + " " + member.email).toLowerCase().includes(search.toLowerCase().trim()));
@@ -77,7 +78,7 @@ function TenantTeam({ service, tenant, currentUserUid, projects, undoLastChange 
           <progress value={usage.used} max={usage.limit} aria-label={"Plazas de " + label} />
           <small>{description}. Incluye invitaciones pendientes.</small>
         </article>)}</div>
-        {!canManage ? <p className="ta-permission-note">Puedes consultar el equipo. Un administrador gestiona las invitaciones y los permisos.</p> : null}
+        {!canManage && !readOnly ? <p className="ta-permission-note">Puedes consultar el equipo. Un administrador gestiona las invitaciones y los permisos.</p> : null}
         <div className="ta-panel ta-directory">
           <div className="ta-tabs" aria-label="Vistas del equipo">{([
             ["active", "Miembros", members.filter(m => m.status === "active").length],
@@ -111,7 +112,7 @@ function TenantTeam({ service, tenant, currentUserUid, projects, undoLastChange 
   </section>;
 }
 
-// Explicitly injected services. The production application does not mount this view.
+// Explicitly injected services: real read-only data or an isolated prototype repository.
 export function TeamAccessView(props: TeamAccessViewProps) {
   const { tenant, selectTenant } = useTenantSwitcher(props.tenants);
   const id = useId();

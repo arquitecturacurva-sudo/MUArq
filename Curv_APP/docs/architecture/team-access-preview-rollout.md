@@ -2,12 +2,16 @@
 
 Equipo y acceso is now accessible from the shared app header (dashboard, workspace,
 identity and demos), inside the authenticated app navigation. It reuses the app theme
-and header, loads on demand, and labels its example data explicitly. Navigating away
-unmounts the demo and resets its in-memory changes on the next visit.
+and header and loads on demand. The integrated screen now reads the real active tenant,
+member directory and stored seat limits via a scoped Firebase read-only adapter.
+It accepts active admin/editor memberships (including legacy owner and missing status).
+Viewer directory access is denied before loading the tenant billing document.
+Mutations are hidden and the repository returns not-implemented for writes.
+This does not implement tenant switching or viewer project navigation.
 
 The Vercel preview build also includes `/prototype/index.html` as a standalone QA entry.
 Only `VERCEL_ENV=preview` enables this entry in the standard build. Production
-and desktop builds keep their existing entry, including the integrated Team Access screen. The demo stores changes in memory:
+and desktop builds keep their existing entry, including the integrated Team Access screen. Only the standalone QA demo stores changes in memory:
 invitations, role changes and revocations do not contact Firebase or send email.
 
 ## Rules matched to the UX contract
