@@ -1,3 +1,4 @@
+import { DK, G, UI } from "../ui/tokens";
 import React, { useMemo } from "react";
 
 import type { ClientAccess } from "../../lib/billing";
@@ -18,11 +19,8 @@ import type {
 } from "../runtime/runtime";
 import {
   COMMERCIAL_STATUS_OPTIONS,
-  DK,
-  G,
   TRACK_DEFAULT_ORDER,
   TRACK_LABELS,
-  UI,
   fDateShort,
   formatMoneyByCurrency,
 } from "../runtime/runtime";

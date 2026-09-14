@@ -22,7 +22,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "qa:provision": "node scripts/provision-qa-user.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:team-access": "tsc -b && vite build --config vite.prototype.config.mjs",
+    "preview:team-access": "vite preview --config vite.prototype.config.mjs",
+    "test:rules": "firebase emulators:exec --config firebase.rules-test.json --project demo-curv-team-access --only firestore,storage \"node --test tests/firestore-rules/run.mjs\""
   },
   "build": {
     "appId": "com.curv.app",
@@ -94,6 +97,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
@@ -104,6 +108,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-tools": "^15.30.0",
     "globals": "^17.4.0",
     "png-to-ico": "^2.1.8",
     "typescript": "~5.9.3",

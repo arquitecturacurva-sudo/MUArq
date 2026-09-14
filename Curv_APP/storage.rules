@@ -8,7 +8,9 @@ service firebase.storage {
 
     function isMember(clientId) {
       return signedIn()
-        && firestore.exists(/databases/(default)/documents/clients/$(clientId)/members/$(request.auth.uid));
+        && firestore.exists(/databases/(default)/documents/clients/$(clientId)/members/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.get("status", "active") == "active"
+        && firestore.get(/databases/(default)/documents/clients/$(clientId)/members/$(request.auth.uid)).data.role in ["admin", "owner", "editor", "viewer", "observer"];
     }
 
     match /clients/{clientId}/branding/logo/{filename} {

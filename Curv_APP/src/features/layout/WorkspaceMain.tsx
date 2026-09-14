@@ -1,14 +1,10 @@
+import { G } from "../ui/tokens";
 import React from "react";
 import { HelpCircle } from "lucide-react";
 import InfoBubble from "../ui/InfoBubble";
-import { Button, Pill, type PillTone } from "../ui/kit";
+import { Button, Pill, SaveState } from "../ui/kit";
 import type { ProjectSaveStatus } from "../runtime/storage/projectSyncState";
-import {
-  G,
-  IconCalc,
-  TOOL_ICONS,
-  trackLocalProductEvent,
-} from "../runtime/runtime";
+import { IconCalc, TOOL_ICONS, trackLocalProductEvent } from "../runtime/runtime";
 
 type WorkspaceTool = {
   id: string;
@@ -69,15 +65,7 @@ export default function WorkspaceMain({
   }, [active, activeProjectId, hasSavedData]);
 
   const included = tools.find((tool) => tool.id === active)?.checked;
-  const saveTone: Record<ProjectSaveStatus, PillTone> = {
-    saving: "warning",
-    saved_local: "info",
-    saved_cloud: "success",
-    offline: "warning",
-    retrying: "warning",
-    conflict: "danger",
-    error: "danger",
-  };
+
 
   return (
     <div data-workspace-main>
@@ -92,47 +80,8 @@ export default function WorkspaceMain({
             <Pill tone={included ? "brand" : "neutral"} dot>
               {included ? "Incluida en propuesta" : "No incluida"}
             </Pill>
-            <Pill
-              data-tour-id="saved-state"
-              aria-live="polite"
-              title={saveState.detail}
-              tone={saveTone[saveState.status]}
-              dot
-            >
-              {saveState.label}
-              {(saveState.status === "error" || saveState.status === "offline") && (
-                <button
-                  type="button"
-                  onClick={onRetrySave}
-                  className="kit-focus ml-1 cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-ui font-semibold underline"
-                  style={{color: "inherit"}}
-                >
-                  Reintentar
-                </button>
-              )}
-              {saveState.status === "conflict" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={onUseCloudCopy}
-                    disabled={conflictBusy}
-                    className="kit-focus ml-1 cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-ui font-semibold underline disabled:cursor-wait disabled:opacity-55"
-                    style={{color: "inherit"}}
-                  >
-                    Usar nube
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onKeepBothCopies}
-                    disabled={conflictBusy}
-                    className="kit-focus ml-1 cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-ui font-semibold underline disabled:cursor-wait disabled:opacity-55"
-                    style={{color: "inherit"}}
-                  >
-                    Conservar ambas
-                  </button>
-                </>
-              )}
-            </Pill>
+            <SaveState saveState={saveState} onRetrySave={onRetrySave}
+              onUseCloudCopy={onUseCloudCopy} onKeepBothCopies={onKeepBothCopies} conflictBusy={conflictBusy} />
             <Button
               variant="ghost"
               size="icon"

@@ -1,3 +1,5 @@
+import { DK, UI } from "./features/ui/tokens";
+import { Btn } from "./features/ui/form-primitives";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -36,7 +38,6 @@ import {
   DEFAULT_TOOLS,
   DEFAULT_TOOL_STATES,
   DEFAULT_TRACKS,
-  DK,
   LEGACY_MIGRATION_FLAG_KEY,
   PROJECT_STORAGE_EVENT,
   PROJECT_SNAPSHOT_UPDATED_AT_KEY,
@@ -45,8 +46,6 @@ import {
   TRACK_DEFAULT_ORDER,
   TRACK_REQUIRED_TOOL,
   TRACK_TOOLS,
-  Btn,
-  UI,
   calcDesignMiniGantt,
   calcObraMiniGantt,
   clearProjectStorage,
@@ -96,7 +95,7 @@ import {
   upsertProjectByClient,
   type ProjectHydrationSnapshot,
   type ProjectSyncEntry,
-} from "./lib/persistence/clientProjects";
+} from "./features/runtime/projectSyncServices";
 import {
   decideRemoteSnapshotHydrationByFingerprint,
   getProjectSnapshotFingerprint,

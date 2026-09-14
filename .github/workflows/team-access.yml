@@ -1,0 +1,34 @@
+name: Team access validation
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Curv_APP
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Curv_APP/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          VERCEL_ENV: preview
+      - run: npm run test:rules
+      - run: npm ci
+        working-directory: Curv_APP/functions
+      - run: npm test
+        working-directory: Curv_APP/functions

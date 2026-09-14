@@ -124,3 +124,45 @@
     outline-offset: 2px;
   }
 }
+
+/* Shared interaction metrics. Compact legacy controls keep their current size. */
+:root {
+  --ui-control-height: 36px;
+  --ui-control-touch: 44px;
+  --ui-focus-width: 2px;
+  --ui-focus-offset: 2px;
+}
+:is([data-slot="button"], [data-slot="input"], [data-slot="select-trigger"], [data-slot="dialog-close"], .kit-focus, .kit-surface select):focus-visible {
+  outline: var(--ui-focus-width) solid var(--ui-accent);
+  outline-offset: var(--ui-focus-offset);
+  box-shadow: none;
+}
+.kit-surface :is(button, input, select) {
+  min-height: var(--ui-control-touch);
+  min-width: var(--ui-control-touch);
+  max-width: 100%;
+  font-size: 14px;
+}
+.kit-data-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.kit-data-table :is(th, td) { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid var(--ui-border); overflow-wrap: anywhere; }
+.kit-collection__mobile { display: none; }
+.kit-modal { max-height: calc(100dvh - 2rem); overflow-y: auto; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.kit-drawer[data-slot="dialog-content"] {
+  top: 0; right: 0; bottom: 0; left: auto; transform: none;
+  width: min(100%, 30rem); max-width: 100%; height: 100dvh;
+  border-radius: 0; box-sizing: border-box; overflow-y: auto;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+.kit-drawer__body { display: grid; gap: 16px; min-width: 0; }
+@media (max-width: 767px) {
+  .kit-collection__desktop { display: none; }
+  .kit-collection__mobile { display: grid; gap: 12px; list-style: none; padding: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is([data-slot="button"], [data-slot="input"], [data-slot="select-trigger"], [data-slot="dialog-content"], [data-slot="dialog-overlay"], .kit-surface, .kit-surface *) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.kit-drawer[data-slot="dialog-content"] { max-height: 100dvh; }
+.kit-drawer [data-slot="dialog-title"] { padding-right: var(--ui-control-touch); }
