@@ -29,13 +29,22 @@ invitations, role changes and revocations do not contact Firebase or send email.
   direct SDK calls. It does not implement the server operations represented by the demo.
 - Logo reads now require an active membership with a recognized role.
 
-## Deployment gate
+## Production rollout: 2026-09-14
 
-This PR and the Vercel preview do not deploy Firestore or Storage rules. Do not roll
-these rules out to existing users until the viewer adapter issues scoped queries and
-uses a sanitized tenant summary: the existing general tenant/project loader cannot
-satisfy those restrictions. Existing observer documents also need explicit project
-assignments; no documents are migrated by this PR.
+Firestore and Storage rules and the three logo Functions were deployed explicitly
+with user authorization to curv-app-ce938. Active rules were read back and matched
+the tested source. All three Functions rejected unauthenticated requests with 401.
+The pre-deploy aggregate audit found 20 tenants and 20 memberships, with zero active
+viewers, inactive memberships or unknown roles. No user documents were modified.
+
+Identity and tenant name writes now require the active canonical owner. Saving
+Identity writes companyName and clients.name in one Firestore transaction.
+Logo writes require that same owner, including an active admin/owner membership.
+
+This release enables real read-only team data for existing admin/editor users.
+Do not activate Viewer invitations until scoped project queries and a sanitized
+summary are integrated: the existing general tenant loader cannot satisfy those
+restrictions. Vercel builds do not automatically deploy Firebase rules.
 
 Production invitations, seat accounting, role changes and revocations still require
 transactional server operations that enforce actor permissions, owner protection,
@@ -57,3 +66,8 @@ membership writes, owner/last-admin protection and logo reads/writes.
 References: [rules queries](https://firebase.google.com/docs/firestore/security/rules-query),
 [field access](https://firebase.google.com/docs/firestore/security/rules-fields),
 [official rule tests](https://firebase.google.com/docs/rules/unit-tests).
+
+Validation: 295 frontend tests, 14 Functions tests and 19 emulator tests passed.
+Authenticated production UI workflows still require verification with the owner session;
+no impersonation or test writes to real studies were performed.
+Node.js 20 Functions runtime must be upgraded before its 2026-10-30 decommission.
