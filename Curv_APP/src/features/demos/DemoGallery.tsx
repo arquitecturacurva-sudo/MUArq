@@ -10,6 +10,7 @@ export type DemoGalleryProps = {
   definitions?: readonly DemoProjectDefinition[];
   onOpenDemo: (definition: DemoProjectDefinition) => void;
   onBackHome: () => void;
+  onOpenTeamAccess?: () => void;
   onOpenBranding?: () => void;
   onLogout?: () => void;
   darkMode?: boolean;
@@ -21,6 +22,7 @@ export function DemoGallery({
   definitions = DEMO_DEFINITIONS,
   onOpenDemo,
   onBackHome,
+  onOpenTeamAccess,
   onOpenBranding,
   onLogout,
   darkMode = false,
@@ -41,6 +43,7 @@ export function DemoGallery({
         onBack={onBackHome}
         onOpenDashboard={onBackHome}
         onOpenDemos={() => undefined}
+        onOpenTeamAccess={onOpenTeamAccess}
         onOpenBranding={onOpenBranding}
         onLogout={onLogout}
       />

@@ -22,3 +22,6 @@
 @media(max-width:1200px) { .ta-sidebar { width:184px; padding:28px 12px; } .ta-workspace { margin-left:184px; } .ta-main { padding:24px; } .ta-demo-bar { padding:8px 24px; } }
 @media(max-width:900px) { .ta-sidebar { width:72px; padding:24px 8px; } .ta-wordmark { font-size:26px; padding:0 4px; } .ta-sidebar-label,.ta-nav-current,.ta-sidebar-bottom { display:none; } .ta-workspace { margin-left:72px; } }
 @media(max-width:767px) { .ta-sidebar { display:none; } .ta-workspace { margin-left:0; } .ta-main { padding:20px 16px; } .ta-demo-bar { padding:8px 16px; } .ta-demo-detail { display:block; font-size:11px; } .ta-app-footer { padding:20px 16px; flex-wrap:wrap; } }
+
+.ta-embedded { min-height:0; }
+.ta-embedded .ta-workspace { margin-left:0; min-height:calc(100vh - 64px); }

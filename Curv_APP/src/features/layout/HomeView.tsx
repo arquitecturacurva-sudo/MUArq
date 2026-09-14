@@ -84,6 +84,7 @@ type HomeViewProps = {
   demoDefinitions: readonly DemoProjectDefinition[];
   openDemoHub: () => void;
   openDemo: (definition: DemoProjectDefinition) => void;
+  openTeamAccess: () => void;
   openBrandSettings: () => void;
   openProject: (projectId: string) => void;
   handleEditProject: (project: ProjectRecord) => void;
@@ -155,6 +156,7 @@ export default function HomeView({
   demoDefinitions,
   openDemoHub,
   openDemo,
+  openTeamAccess,
   openBrandSettings,
   openProject,
   handleEditProject,
@@ -196,6 +198,7 @@ export default function HomeView({
         active="dashboard"
         onOpenDashboard={() => undefined}
         onOpenDemos={openDemoHub}
+        onOpenTeamAccess={openTeamAccess}
         onOpenBranding={openBrandSettings}
         onLogout={onLogout}
       >

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, LayoutDashboard, LogOut, Moon, Palette, PlayCircle, Sun } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, LogOut, Moon, Palette, PlayCircle, Sun, Users } from "lucide-react";
 import { Button } from "../ui/kit";
 import { Brand } from "../runtime/runtime";
 
-export type AppSection = "dashboard" | "workspace" | "demos" | "branding";
+export type AppSection = "dashboard" | "workspace" | "demos" | "branding" | "team-access";
 
 export type AppHeaderProps = {
   darkMode: boolean;
@@ -19,6 +19,7 @@ export type AppHeaderProps = {
   backLabel?: string;
   onOpenDashboard: () => void;
   onOpenDemos: () => void;
+  onOpenTeamAccess?: () => void;
   onOpenBranding?: () => void;
   onLogout?: () => void;
   /** Primary action for this surface, rendered last so it lands in the top-right corner. */
@@ -39,6 +40,7 @@ export default function AppHeader({
   backLabel = "Volver",
   onOpenDashboard,
   onOpenDemos,
+  onOpenTeamAccess,
   onOpenBranding,
   onLogout,
   children,
@@ -73,6 +75,12 @@ export default function AppHeader({
           <PlayCircle aria-hidden />
           Demos
         </Button>
+        {onOpenTeamAccess && (
+          <Button variant="ghost" className={navItemClass("team-access")} aria-current={active === "team-access" ? "page" : undefined} onClick={onOpenTeamAccess}>
+            <Users aria-hidden />
+            Equipo y acceso
+          </Button>
+        )}
         {onOpenBranding && (
           <Button variant="ghost" className={navItemClass("branding")} onClick={onOpenBranding}>
             <Palette aria-hidden />

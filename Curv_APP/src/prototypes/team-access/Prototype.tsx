@@ -8,14 +8,9 @@ import { createPrototypeTenantRepository } from "../../infrastructure/tenant/pro
 import type { TenantAccessResult, TenantSummary } from "../../domain/tenant/teamAccess";
 import { LIGHT_THEME_VARS, DARK_THEME_VARS } from "../../features/ui/theme";
 import { prototypeSeed } from "./seed";
-import "@fontsource/inter/latin-400.css";
-import "@fontsource/inter/latin-500.css";
-import "@fontsource/inter/latin-600.css";
-import "../../index.css";
-import "../../styles/kit.css";
 import "./prototype.css";
 
-export function Prototype() {
+export function Prototype({ embedded = false }: { embedded?: boolean }) {
   const [controller] = useState(() => createPrototypeTenantRepository(prototypeSeed, { actorUid: "mateo" }));
   const [service] = useState(() => createTenantAccessService(controller.repository));
   const [actor, setActor] = useState("mateo");
@@ -30,22 +25,23 @@ export function Prototype() {
     return () => { active = false; };
   }, [actor, revision, service]);
   useEffect(() => {
+    if (embedded) return;
     const root = document.documentElement;
     const vars = dark ? DARK_THEME_VARS : LIGHT_THEME_VARS;
     const previous = Object.keys(vars).map(key => [key, root.style.getPropertyValue(key)]);
     Object.entries(vars).forEach(([key, value]) => root.style.setProperty(key, String(value)));
     root.classList.toggle("dark", dark);
     return () => { root.classList.remove("dark"); previous.forEach(([key, value]) => value ? root.style.setProperty(key, value) : root.style.removeProperty(key)); };
-  }, [dark]);
+  }, [dark, embedded]);
   const ready = tenants?.actor === actor && tenants.revision === revision ? tenants.result : null;
-  return <div className="ta-prototype kit-surface">
-    <aside className="ta-sidebar"><a href="#team-main" className="ta-wordmark" aria-label="Curv, ir al equipo">curv<span>.</span></a>
+  return <div className={`ta-prototype kit-surface${embedded ? " ta-embedded" : ""}`}>
+    {!embedded && <aside className="ta-sidebar"><a href="#team-main" className="ta-wordmark" aria-label="Curv, ir al equipo">curv<span>.</span></a>
       <div className="ta-sidebar-label">TU ESTUDIO</div><div className="ta-nav-current"><span aria-hidden="true">&#9638;</span> Equipo y acceso</div>
       <div className="ta-sidebar-bottom"><span className="ta-sidebar-monogram">C</span><div>Espacio de trabajo<small>Disenado para crear.</small></div></div>
-    </aside>
+    </aside>}
     <div className="ta-workspace">
       <header className="ta-demo-bar"><span><strong>Prototipo interactivo</strong><span className="ta-demo-detail"> / Datos de ejemplo. No se envian correos.</span></span>
-        <Button variant="ghost" onClick={() => setDark(value => !value)}>{dark ? "Tema claro" : "Tema oscuro"}</Button></header>
+        {!embedded && <Button variant="ghost" onClick={() => setDark(value => !value)}>{dark ? "Tema claro" : "Tema oscuro"}</Button>}</header>
       <main id="team-main" className="ta-main">
         {ready?.ok ? <TeamAccessView key={actor + revision} service={service} tenants={ready.value} currentUserUid={actor} projects={controller.projects} undoLastChange={controller.undoLastChange} />
           : <p role={ready ? "alert" : "status"}>{ready && !ready.ok ? ready.error.message : "Cargando estudio..."}</p>}
