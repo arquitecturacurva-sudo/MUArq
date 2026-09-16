@@ -63,6 +63,15 @@ export {
   SelectValue,
 } from "@/components/ui/select";
 
+export { Checkbox } from "@/components/ui/checkbox";
+
+export {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 export { Pill, StatusDot, type PillProps, type PillTone, type StatusDotProps } from "./pill";
 export { StepNav, type StepNavProps } from "./stepNav";
 

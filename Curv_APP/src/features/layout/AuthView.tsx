@@ -1,14 +1,12 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { ArrowLeft, Moon, Sun } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button, Card, Field, FieldLabel, Input } from "../ui/kit";
 import { Brand } from "../runtime/runtime";
 import authBackground from "../../assets/auth/auth-background.webp";
 
 type AuthViewProps = {
-  darkMode: boolean;
   themeVars: CSSProperties;
-  setDarkMode: (value: boolean | ((prev: boolean) => boolean)) => void;
   busy: boolean;
   error: string;
   onBackLanding: () => void;
@@ -36,9 +34,7 @@ function GoogleMark() {
 }
 
 export default function AuthView({
-  darkMode,
   themeVars,
-  setDarkMode,
   busy,
   error,
   onBackLanding,
@@ -67,7 +63,6 @@ export default function AuthView({
 
   return (
     <div
-      data-theme={darkMode ? "dark" : "light"}
       /*
        * The photo and its scrim are painted by this element rather than by absolutely
        * positioned children: a negative z-index only works relative to the nearest
@@ -98,20 +93,10 @@ export default function AuthView({
             <ArrowLeft />
             Volver
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white hover:bg-white/15 hover:text-white"
-            onClick={() => setDarkMode((value) => !value)}
-            title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-            aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-          >
-            {darkMode ? <Sun /> : <Moon />}
-          </Button>
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-5 py-10">
+      <main className="flex flex-1 items-center justify-center px-6 py-10">
         <Card className="w-full max-w-[440px] gap-5 p-8 shadow-2xl">
           <div className="grid gap-1">
             <h1 className="m-0 text-title font-semibold">

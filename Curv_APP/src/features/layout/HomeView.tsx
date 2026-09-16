@@ -51,9 +51,7 @@ type ProjectWithMetrics = {
 };
 
 type HomeViewProps = {
-  darkMode: boolean;
   themeVars: React.CSSProperties;
-  setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   onLogout?: () => void;
   paywallAccess?: ClientAccess;
   paywallPlan?: ClientPlan;
@@ -123,9 +121,7 @@ function SectionTitle({title, hint}: {title: string; hint?: string}) {
 }
 
 export default function HomeView({
-  darkMode,
   themeVars,
-  setDarkMode,
   onLogout,
   paywallAccess,
   paywallPlan = "BASE",
@@ -187,13 +183,10 @@ export default function HomeView({
 
   return (
     <div
-      data-theme={darkMode ? "dark" : "light"}
       style={{...themeVars, background: UI.bg, color: DK}}
       className="min-h-screen overflow-x-hidden font-[Inter,'Helvetica_Neue',sans-serif]"
     >
       <AppHeader
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
         title="Dashboard"
         active="dashboard"
         onOpenDashboard={() => undefined}
@@ -223,8 +216,12 @@ export default function HomeView({
         />
       </AppHeader>
 
-      <div className="px-5 pb-8 pt-4">
-      <div className="mx-auto grid max-w-[1180px] gap-4">
+      {/* 24px gutter, not a centred container: a centred max-width makes the left
+          margin a function of the window width, so it can never line up with the header
+          above it or with the fixed-width workspace sidebar. Left edge is constant, the
+          max-width only caps the right. */}
+      <div className="px-6 pb-8 pt-4">
+      <div className="grid max-w-[1180px] gap-4">
 
         {showPaywall && (
           <Card className="flex flex-wrap items-center justify-between gap-3 p-4" style={{borderColor: "var(--ui-warning)"}}>

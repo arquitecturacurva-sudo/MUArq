@@ -34,7 +34,14 @@ textarea {
   font: inherit;
 }
 
-button {
+/*
+ * Tap-target floor for the raw <button>s in the inline-styled tools, which set no height
+ * of their own. Kit components are excluded by their `data-slot`: they carry an explicit
+ * height (`h-8`, `size-4`, ...) and this floor was silently overriding it — every `sm`,
+ * `xs` and `icon-sm` button rendered at 34px, and the Radix checkbox, which is a <button>
+ * 16px wide, rendered as a 16x34 bar.
+ */
+button:not([data-slot]) {
   min-height: 34px;
 }
 

@@ -28,7 +28,9 @@ export const UI = {
 export const si: React.CSSProperties = {width:"100%",minHeight:"var(--ui-control-height,36px)",padding:"7px 12px",border:`1px solid ${UI.border}`,borderRadius:6,background:"var(--ui-input-bg,#fff)",color:"var(--ui-input-text,var(--ui-text))",fontSize:14,boxSizing:"border-box",fontFamily:"inherit",lineHeight:1.45};
 // One label treatment app-wide: no uppercase micro-type, no third font size.
 export const lb: React.CSSProperties = {fontSize:14,fontWeight:500,color:UI.textMuted,marginBottom:6,display:"block",lineHeight:1.45};
-export const cardS: React.CSSProperties = {background:UI.card,borderRadius:8,padding:22,border:`1px solid ${UI.borderSoft}`,boxShadow:UI.shadow,marginBottom:16};
+// Same metrics as the kit <Card> used by the dashboard (16px padding, 16px stack gap),
+// so a tool card and a dashboard card are the same card.
+export const cardS: React.CSSProperties = {background:UI.card,borderRadius:8,padding:16,border:`1px solid ${UI.borderSoft}`,boxShadow:UI.shadow,marginBottom:16};
 export const panelS: React.CSSProperties = {background:UI.panel,borderRadius:8,border:`1px solid ${UI.border}`,boxShadow:UI.shadow};
 export const badgeS: React.CSSProperties = {display:"inline-flex",alignItems:"center",gap:5,border:`1px solid ${UI.border}`,borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:800,lineHeight:1.2,whiteSpace:"nowrap"};
-export const metricS: React.CSSProperties = {border:`1px solid ${UI.borderSoft}`,borderRadius:8,padding:"12px 13px",background:"var(--ui-metric-bg,var(--ui-card))"};
+export const metricS: React.CSSProperties = {border:`1px solid ${UI.borderSoft}`,borderRadius:8,padding:16,background:"var(--ui-metric-bg,var(--ui-card))"};

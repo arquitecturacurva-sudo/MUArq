@@ -6,7 +6,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, D
 import { ModalBody } from "../../../components/ui/modal-body";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerTitle, DrawerDescription, DrawerClose } from "../../../components/ui/drawer";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../../components/ui/select";
-import { LIGHT_THEME_VARS, DARK_THEME_VARS } from "../theme";
+import { THEME_VARS } from "../theme";
 import { Inp, Sel, Btn, Fld, InlineEmptyStateCard } from "../form-primitives";
 import { SaveState } from "./saveState";
 import { EmptyState } from "./emptyState";
@@ -15,20 +15,17 @@ import { StatusPill } from "./statusPill";
 
 // Development-only fixture. Never imported by App or the production entry point.
 export function UiKitPreview() {
-  const [dark, setDark] = useState(false);
   useEffect(() => {
-    const vars = dark ? DARK_THEME_VARS : LIGHT_THEME_VARS;
     const root = document.documentElement;
-    const previous = Object.keys(vars).map(key => [key, root.style.getPropertyValue(key)]);
-    Object.entries(vars).forEach(([key, value]) => root.style.setProperty(key, String(value)));
+    const previous = Object.keys(THEME_VARS).map(key => [key, root.style.getPropertyValue(key)]);
+    Object.entries(THEME_VARS).forEach(([key, value]) => root.style.setProperty(key, String(value)));
     return () => previous.forEach(([key, value]) => { if (value) root.style.setProperty(key, value); else root.style.removeProperty(key); });
-  }, [dark]);
+  }, []);
   const [value, setValue] = useState("12");
   const [action, setAction] = useState("Ninguna");
-  return <main className="kit-surface" style={{ ...(dark ? DARK_THEME_VARS : LIGHT_THEME_VARS), background: "var(--ui-bg)", color: "var(--ui-text)", padding: 24, minHeight: "100vh" }}>
+  return <main className="kit-surface" style={{ ...THEME_VARS, background: "var(--ui-bg)", color: "var(--ui-text)", padding: 24, minHeight: "100vh" }}>
     <h1>QA local / UI compartida</h1>
     <p>Datos de prueba. Sin backend ni almacenamiento.</p>
-    <Button onClick={() => setDark(current => !current)}>Cambiar tema</Button>
     <Field><FieldLabel htmlFor="qa-input">Nombre</FieldLabel><Input id="qa-input" name="name" aria-describedby="qa-help" /></Field>
     <p id="qa-help">Campo de prueba del kit.</p>
     <Fld label="Numero legacy"><Inp type="number" value={value} onChange={setValue} min="0" /></Fld>

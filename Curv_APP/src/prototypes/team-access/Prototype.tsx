@@ -6,7 +6,7 @@ import { TeamAccessView } from "../../features/team-access/TeamAccessView";
 import { createTenantAccessService } from "../../application/tenant/tenantAccessService";
 import { createPrototypeTenantRepository } from "../../infrastructure/tenant/prototypeTenantRepository";
 import type { TenantAccessResult, TenantSummary } from "../../domain/tenant/teamAccess";
-import { LIGHT_THEME_VARS, DARK_THEME_VARS } from "../../features/ui/theme";
+import { THEME_VARS } from "../../features/ui/theme";
 import { prototypeSeed } from "./seed";
 import "./prototype.css";
 
@@ -18,7 +18,6 @@ export function Prototype({ embedded = false }: { embedded?: boolean }) {
   const [tenants, setTenants] = useState<{ actor: string; revision: number; result: TenantAccessResult<readonly TenantSummary[]> } | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [scenario, setScenario] = useState("");
-  const [dark, setDark] = useState(false);
   useEffect(() => {
     let active = true;
     void service.listUserTenants(actor).then(result => { if (active) setTenants({ actor, revision, result }); });
@@ -27,12 +26,10 @@ export function Prototype({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     if (embedded) return;
     const root = document.documentElement;
-    const vars = dark ? DARK_THEME_VARS : LIGHT_THEME_VARS;
-    const previous = Object.keys(vars).map(key => [key, root.style.getPropertyValue(key)]);
-    Object.entries(vars).forEach(([key, value]) => root.style.setProperty(key, String(value)));
-    root.classList.toggle("dark", dark);
-    return () => { root.classList.remove("dark"); previous.forEach(([key, value]) => value ? root.style.setProperty(key, value) : root.style.removeProperty(key)); };
-  }, [dark, embedded]);
+    const previous = Object.keys(THEME_VARS).map(key => [key, root.style.getPropertyValue(key)]);
+    Object.entries(THEME_VARS).forEach(([key, value]) => root.style.setProperty(key, String(value)));
+    return () => { previous.forEach(([key, value]) => value ? root.style.setProperty(key, value) : root.style.removeProperty(key)); };
+  }, [embedded]);
   const ready = tenants?.actor === actor && tenants.revision === revision ? tenants.result : null;
   return <div className={`ta-prototype kit-surface${embedded ? " ta-embedded" : ""}`}>
     {!embedded && <aside className="ta-sidebar"><a href="#team-main" className="ta-wordmark" aria-label="Curv, ir al equipo">curv<span>.</span></a>
@@ -41,7 +38,7 @@ export function Prototype({ embedded = false }: { embedded?: boolean }) {
     </aside>}
     <div className="ta-workspace">
       <header className="ta-demo-bar"><span><strong>Prototipo interactivo</strong><span className="ta-demo-detail"> / Datos de ejemplo. No se envian correos.</span></span>
-        {!embedded && <Button variant="ghost" onClick={() => setDark(value => !value)}>{dark ? "Tema claro" : "Tema oscuro"}</Button>}</header>
+</header>
       <main id="team-main" className="ta-main">
         {ready?.ok ? <TeamAccessView key={actor + revision} service={service} tenants={ready.value} currentUserUid={actor} projects={controller.projects} undoLastChange={controller.undoLastChange} />
           : <p role={ready ? "alert" : "status"}>{ready && !ready.ok ? ready.error.message : "Cargando estudio..."}</p>}

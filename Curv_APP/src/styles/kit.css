@@ -31,7 +31,7 @@
   /*
    * The other piece of preflight we cannot skip. Variants that paint no background of
    * their own (ghost, link) would otherwise fall through to the UA's `buttonface`
-   * colour and render as a white box with black text — unreadable on a dark surface.
+   * colour and render as a white box with black text, which breaks ghost and link buttons.
    * Legacy buttons set their colours inline, which still outranks this.
    */
   button {
@@ -44,8 +44,8 @@
 /*
  * Tokens are mapped `inline`, so a utility such as `bg-card` compiles to
  * `background-color: var(--ui-card)` instead of baking in a literal. The `--ui-*`
- * variables are set per subtree by `themeVars` (src/features/ui/theme.ts), so
- * light/dark keeps working and that file stays the single source of truth for colour.
+ * variables are set by `THEME_VARS` (src/features/ui/theme.ts), which stays the single
+ * source of truth for colour. The app is light-only: there is no second palette.
  */
 @theme inline {
   --color-background: var(--ui-bg);

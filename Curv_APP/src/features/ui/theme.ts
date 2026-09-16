@@ -5,59 +5,14 @@ import type { CSSProperties } from "react";
  * inline styles read it through the `UI` object in tokens.ts, and the shadcn kit
  * maps its tokens onto the same variables in styles/kit.css.
  *
- * Applied as an inline style on each themed wrapper (see App.tsx), which also lets a
- * subtree opt into a different theme than the shell — the workspace sidebar renders
- * DARK_THEME_VARS so it stays a dark island in light mode.
+ * The app is light-only. There is no dark theme and no theme switch: a second palette
+ * could not be honoured by the ~700 hard-coded inline styles in runtime.tsx without the
+ * attribute-substring CSS hacks this replaced, so colour has exactly one definition.
+ *
+ * Applied once on <html> (see App.tsx) so Radix portals — dialogs, selects, tooltips,
+ * which render outside every React wrapper — resolve the same variables.
  */
-export const DARK_THEME_VARS = {
-  "--ui-accent": "#C9A96E",
-  "--ui-accent-ink": "#19140C",
-  "--ui-accent-soft": "#2A2318",
-  "--ui-text": "#E6EDF3",
-  "--ui-text-muted": "#9DA7B3",
-  "--ui-text-subtle": "#768292",
-  "--ui-bg": "#0B0F14",
-  "--ui-bg-band": "#10161F",
-  "--ui-card": "#151B24",
-  "--ui-panel": "#111821",
-  "--ui-border": "#2A3442",
-  "--ui-border-soft": "#202A36",
-  "--ui-dark": "#0B1017",
-  "--ui-dark-panel": "#111923",
-  "--ui-input-bg": "#0F141B",
-  "--ui-input-text": "#E6EDF3",
-  "--ui-btn-dk-bg": "#111923",
-  "--ui-btn-dk-text": "#F0F6FC",
-  "--ui-btn-dk-border": "#344155",
-  "--ui-btn-ol-bg": "#151B24",
-  "--ui-btn-ol-text": "#E6EDF3",
-  "--ui-btn-ol-border": "#2A3442",
-  "--ui-btn-gd-text": "#111827",
-  "--ui-button-shadow": "0 8px 18px rgba(0,0,0,0.24)",
-  "--ui-chip-bg": "#111924",
-  "--ui-chip-border": "#2B3645",
-  "--ui-chip-text": "#C3CDD8",
-  "--ui-metric-bg": "#111821",
-  "--ui-muted-dot": "#6B7683",
-  "--ui-saved-bg": "#1B2330",
-  "--ui-saved-border": "#3C4B61",
-  "--ui-saved-dot": "#7FB069",
-  "--ui-saved-text": "#D2DEC5",
-  "--ui-empty-bg": "#121A24",
-  "--ui-empty-border": "#35506D",
-  "--ui-empty-title": "#E3EAF2",
-  "--ui-empty-text": "#AAB5C1",
-  "--ui-empty-label": "#D3BE93",
-  "--ui-empty-shadow": "0 1px 0 rgba(255,255,255,0.03)",
-  "--ui-success": "#79B06B",
-  "--ui-warning": "#D8A74E",
-  "--ui-danger": "#D96D5F",
-  "--ui-info": "#6D9DCA",
-  "--ui-shadow": "0 12px 28px rgba(0,0,0,0.18)",
-  "--ui-shadow-lift": "0 20px 45px rgba(0,0,0,0.28)",
-} as CSSProperties;
-
-export const LIGHT_THEME_VARS = {
+export const THEME_VARS = {
   "--ui-accent": "#C9A96E",
   "--ui-accent-ink": "#211807",
   "--ui-accent-soft": "#F4EEE4",
@@ -104,3 +59,17 @@ export const LIGHT_THEME_VARS = {
   "--ui-shadow": "0 12px 30px rgba(27,31,36,0.06)",
   "--ui-shadow-lift": "0 22px 50px rgba(27,31,36,0.12)",
 } as CSSProperties;
+
+/**
+ * The spacing scale every surface measures itself against. Dashboard, demos, workspace
+ * and the tool cards all read these so a card is the same card and a page gutter is the
+ * same gutter on every screen.
+ */
+export const SPACE = {
+  /** Horizontal page gutter and header inset. */
+  gutter: 24,
+  /** Padding inside a card or panel. */
+  card: 16,
+  /** Gap between stacked sections. */
+  stack: 16,
+} as const;

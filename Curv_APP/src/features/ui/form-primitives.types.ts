@@ -16,7 +16,12 @@ export type SelProps = {
   options: string[];
 };
 export type BtnVariant = "dk" | "ol" | "gd";
-export type BtnProps = {
+/**
+ * `disabled` and the aria attributes pass straight through to the underlying kit
+ * <Button>, so a tool never has to drop to a raw <button> — and its bespoke metrics —
+ * just to express a toggled or unavailable action.
+ */
+export type BtnProps = Omit<React.ComponentProps<"button">, "onClick"> & {
   children?: React.ReactNode;
   onClick: React.MouseEventHandler<HTMLButtonElement>;
   v?: BtnVariant;

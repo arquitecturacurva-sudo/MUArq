@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, LayoutDashboard, LogOut, Moon, Palette, PlayCircle, Sun, Users } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, LogOut, Palette, PlayCircle, Users } from "lucide-react";
 import { Button } from "../ui/kit";
 import { Brand } from "../runtime/runtime";
 
 export type AppSection = "dashboard" | "workspace" | "demos" | "branding" | "team-access";
 
 export type AppHeaderProps = {
-  darkMode: boolean;
-  setDarkMode: (value: boolean | ((prev: boolean) => boolean)) => void;
   /** What the user is looking at right now — "Dashboard", or the project name. */
   title: string;
   active: AppSection;
@@ -32,8 +30,6 @@ export type AppHeaderProps = {
  * and a workspace sidebar.
  */
 export default function AppHeader({
-  darkMode,
-  setDarkMode,
   title,
   active,
   onBack,
@@ -49,7 +45,7 @@ export default function AppHeader({
     active === section ? "text-foreground" : "text-muted-foreground";
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-border-soft bg-card px-5 py-2.5">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-border-soft bg-card px-6 py-3">
       <div className="flex min-w-0 items-center gap-2">
         {onBack && (
           <Button
@@ -62,7 +58,7 @@ export default function AppHeader({
             {backLabel}
           </Button>
         )}
-        <Brand dark={!darkMode} />
+        <Brand dark />
         <span className="truncate font-medium" title={title}>{title}</span>
       </div>
 
@@ -87,16 +83,6 @@ export default function AppHeader({
             Identidad
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground"
-          onClick={() => setDarkMode((value) => !value)}
-          title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-          aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-        >
-          {darkMode ? <Sun /> : <Moon />}
-        </Button>
         {onLogout && (
           <Button
             variant="ghost"

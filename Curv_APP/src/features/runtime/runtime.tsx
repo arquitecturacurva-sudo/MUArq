@@ -2318,22 +2318,22 @@ export function ToolCotizacionObra({toolId, onPrint}: {toolId: string; onPrint: 
                 )}
               </div>
               <div className="workspace-actions" style={{display:"flex",gap:8,alignItems:"center"}}>
-                <button
-                  type="button"
-                  onClick={() => setShowPendingOcrOnly((value) => !value)}
+                {/* These were raw <button>s with their own 10px/700 type and hardcoded
+                    beiges, so they sat visibly shorter and smaller than the two kit
+                    buttons beside them. Same control, same metrics. */}
+                <Btn
+                  v="ol"
+                  sm
+                  aria-pressed={showPendingOcrOnly}
                   disabled={!pendingOcrCount && !showPendingOcrOnly}
-                  style={{border:"1px solid #E5DDD0",background:showPendingOcrOnly?"#FFF7ED":"#fff",color:showPendingOcrOnly?"#A15C10":DK,borderRadius:6,padding:"5px 9px",fontSize:10,fontWeight:700,cursor:(!pendingOcrCount && !showPendingOcrOnly)?"not-allowed":"pointer",opacity:(!pendingOcrCount && !showPendingOcrOnly)?0.55:1}}
+                  onClick={() => setShowPendingOcrOnly((value) => !value)}
                 >
                   {showPendingOcrOnly ? "Ver todas" : `Pendientes OCR (${pendingOcrCount})`}
-                </button>
+                </Btn>
                 {pendingOcrCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => markOcrRowsReviewed()}
-                    style={{border:"1px solid #C9A96E",background:"#FFF7ED",color:"#7A4B10",borderRadius:6,padding:"5px 9px",fontSize:10,fontWeight:800,cursor:"pointer"}}
-                  >
+                  <Btn sm onClick={() => markOcrRowsReviewed()}>
                     Marcar revisadas
-                  </button>
+                  </Btn>
                 )}
                 <Btn v="ol" sm onClick={importPartidasFromPdf}>Importar PDF (OCR)</Btn>
                 <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
