@@ -11,7 +11,7 @@ export const GLOBAL_STORAGE_KEYS = new Set([
   "app.projects",
   "app.activeProjectId",
   "app.route",
-  "app.darkMode",
+  "app.sidebarCollapsed",
   "app.onboardingSeen",
   "app.migrated.multiProject.v1",
   "app.localEvents.v1",

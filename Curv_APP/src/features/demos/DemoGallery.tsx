@@ -13,8 +13,6 @@ export type DemoGalleryProps = {
   onOpenTeamAccess?: () => void;
   onOpenBranding?: () => void;
   onLogout?: () => void;
-  darkMode?: boolean;
-  setDarkMode?: (value: boolean | ((prev: boolean) => boolean)) => void;
   themeVars?: CSSProperties;
 };
 
@@ -25,19 +23,14 @@ export function DemoGallery({
   onOpenTeamAccess,
   onOpenBranding,
   onLogout,
-  darkMode = false,
-  setDarkMode = () => undefined,
   themeVars,
 }: DemoGalleryProps) {
   return (
     <main
-      data-theme={darkMode ? "dark" : "light"}
       style={{...themeVars, background: UI.bg}}
       className="min-h-screen overflow-x-hidden"
     >
       <AppHeader
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
         title="Demos"
         active="demos"
         onBack={onBackHome}
@@ -48,7 +41,8 @@ export function DemoGallery({
         onLogout={onLogout}
       />
 
-      <div className="mx-auto grid max-w-[1180px] gap-4 px-5 pb-8 pt-4">
+      {/* Same 24px gutter as the dashboard and AppHeader — see HomeView. */}
+      <div className="grid max-w-[1180px] gap-4 px-6 pb-8 pt-4">
         <div className="grid gap-1">
           <h1 className="m-0 text-title font-semibold">Proyectos demo</h1>
           <p className="m-0 text-sm text-muted-foreground">

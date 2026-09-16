@@ -25,7 +25,9 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 18px 24px 24px;
+  /* Same 24px gutter as AppHeader and the dashboard, so the content edge never shifts
+     when moving between screens. */
+  padding: 16px 24px 24px;
   background: var(--ui-bg);
 }
 
@@ -45,7 +47,11 @@
     overflow: visible;
   }
 
-  [data-workspace-shell] [data-tour-id="sidebar"] {
+  /* The icon rail is a desktop affordance: stacked above the tool pane it would be a
+     56px-tall strip of icons with no room for the labels, so mobile always gets the
+     full-width sidebar regardless of the persisted collapsed state. */
+  [data-workspace-shell] [data-tour-id="sidebar"],
+  [data-workspace-shell] [data-tour-id="sidebar"][data-collapsed] {
     width: 100%;
     height: auto;
     max-height: 48vh;
@@ -60,7 +66,7 @@
     width: 100%;
     overflow: visible;
     /* Leave the final action above the floating help button and the home indicator. */
-    padding: 14px 14px calc(84px + env(safe-area-inset-bottom));
+    padding: 16px 16px calc(84px + env(safe-area-inset-bottom));
   }
 }
 

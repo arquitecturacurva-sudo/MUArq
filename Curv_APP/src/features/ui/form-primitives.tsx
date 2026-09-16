@@ -16,8 +16,8 @@ const BTN_VARIANT: Record<BtnVariant, "default" | "outline" | "brand"> = {
   ol: "outline",
   gd: "brand",
 };
-export const Btn = ({children,onClick,v="dk",sm}: BtnProps) => (
-  <KitButton variant={BTN_VARIANT[v]} size={sm ? "sm" : "default"} onClick={onClick}>
+export const Btn = ({children,onClick,v="dk",sm,...rest}: BtnProps) => (
+  <KitButton variant={BTN_VARIANT[v]} size={sm ? "sm" : "default"} onClick={onClick} {...rest}>
     {children}
   </KitButton>
 );
