@@ -133,7 +133,7 @@ service cloud.firestore {
       return !("activeClientId" in request.resource.data)
         || (
           request.resource.data.activeClientId is string
-          && exists(/databases/$(database)/documents/clients/$(request.resource.data.activeClientId)/members/$(userId))
+          && isMember(request.resource.data.activeClientId)
         );
     }
 
@@ -167,6 +167,14 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 160
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name"]);
       allow delete: if false;
+    }
+
+    // Invitations contain token hashes and are only available through authorized callables.
+    match /clients/{clientId}/invitations/{invitationId} {
+      allow read, write: if false;
+    }
+    match /invitationRateLimits/{limitId} {
+      allow read, write: if false;
     }
 
     match /clients/{clientId}/members/{memberId} {

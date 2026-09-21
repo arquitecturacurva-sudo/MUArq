@@ -1,5 +1,20 @@
 # Curv App — Project Status
 
+## Invitations implementation - 2026-09-21
+
+This section supersedes the dated September 14 baseline below.
+
+- Implemented server-owned create/list/renew/cancel/preview/accept invitation operations,
+  seat reservations, verified-email acceptance, sanitized sessions and tenant switching.
+- Equipo y acceso exposes invitation links to active administrators. Links expire in
+  seven days and are shared manually; automatic invitation email is out of scope.
+- Viewer entry reads only assigned projects and offers no mutation controls.
+- Browser writes to invitations, rate counters and memberships remain denied. Owner-only
+  Identity and study naming rules are preserved. The runtime facade is unchanged.
+- Role changes and membership revocation remain disabled; cancelling a pending invitation
+  is supported. Expired records are retained, but no longer reserve seats.
+- Validation and deployment evidence: [invitation runbook](architecture/team-invitations-release.md).
+
 ## Session close - 2026-09-14: Team Access production baseline
 
 This is the latest status; dated assessments below are historical and do not override it.

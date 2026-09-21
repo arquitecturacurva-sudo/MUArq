@@ -1,7 +1,7 @@
 # Plan de implementacion: invitaciones de Equipo y acceso
 
 Fecha de cierre: 2026-09-14.
-Estado: plan pendiente de implementacion. No confundir con una feature operativa.
+Estado: plan historico implementado en septiembre de 2026. Ver [estado y despliegue](team-invitations-release.md).
 Base publicada: PR #10, merge a536d44acb79f4cf58e1394942927ef113cd21b3.
 Contrato normativo: [tenant-access-ux.md](../contracts/tenant-access-ux.md).
 
@@ -11,7 +11,7 @@ Un administrador invita a una persona real, comparte el enlace, la persona acept
 con su cuenta y entra al estudio con el rol y los proyectos correctos en produccion.
 Un boton visible o una invitacion pendiente no bastan para considerar terminado el trabajo.
 
-## Estado real al cerrar
+## Estado historico al cerrar el 14 de septiembre
 
 - Equipo y acceso esta integrado en la navegacion principal y lee el estudio activo,
   sus miembros y limites reales desde Firebase para administradores y editores activos.
@@ -24,7 +24,7 @@ Un boton visible o una invitacion pendiente no bastan para considerar terminado 
   Guardar Identidad sincroniza companyName y clients.name en una transaccion.
 - Ser administrador no implica ser propietario ni permite transferir la propiedad.
 
-## Decisiones propuestas, aun por confirmar
+## Decisiones propuestas el 14 de septiembre
 
 - Primera version con enlace para copiar y compartir, sin correo automatico.
 - Vencimiento de siete dias.

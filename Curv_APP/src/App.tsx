@@ -474,7 +474,8 @@ export default function App() {
     if (!forceLandingOnBootRef.current) {
       forceLandingOnBootRef.current = true;
       setAuthIntent(false);
-      if (route !== "landing") setRoute("landing");
+      // Authenticated entry (including accepted invitations) opens the workspace dashboard.
+      setRoute(authUser ? "home" : "landing");
       return;
     }
 

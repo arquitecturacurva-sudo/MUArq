@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { FirebaseError } from "firebase/app";
 import type { Firestore } from "firebase/firestore";
+vi.mock("./firebaseInvitations", () => ({ firebaseInvitations: { seats: async () => ({ ok: true, value: { usage: { editors: 1, viewers: 1 }, limits: { editorsLimit: 3, viewersLimit: 25 } } }) } }));
 const mocks = vi.hoisted(() => ({ getDoc: vi.fn(), getDocs: vi.fn() }));
 vi.mock("firebase/firestore", () => ({ doc: (_db: unknown, ...path: string[]) => path.join("/"), collection: (_db: unknown, ...path: string[]) => path.join("/"), getDoc: mocks.getDoc, getDocs: mocks.getDocs }));
 import { createFirebaseTeamReader } from "./firebaseTeamReader";

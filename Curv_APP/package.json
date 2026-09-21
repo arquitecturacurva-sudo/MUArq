@@ -25,7 +25,8 @@
     "preview": "vite preview",
     "build:team-access": "tsc -b && vite build --config vite.prototype.config.mjs",
     "preview:team-access": "vite preview --config vite.prototype.config.mjs",
-    "test:rules": "firebase emulators:exec --config firebase.rules-test.json --project demo-curv-team-access --only firestore,storage \"node --test tests/firestore-rules/run.mjs\""
+    "test:rules": "firebase emulators:exec --config firebase.rules-test.json --project demo-curv-team-access --only firestore,storage \"node --test tests/firestore-rules/run.mjs\"",
+    "test:invitations": "npm run build --prefix functions && firebase emulators:exec --config firebase.rules-test.json --project demo-curv-team-access --only auth,firestore,storage,functions \"node --test tests/invitations/run.mjs\""
   },
   "build": {
     "appId": "com.curv.app",

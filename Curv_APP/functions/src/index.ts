@@ -7,3 +7,8 @@ if (!admin.apps.length) admin.initializeApp();
 // failurePolicy (which would mint a second tenant now that ids are generated), and fails invisibly.
 export { ensureTenant } from "./tenant/ensureTenant.js";
 export { deleteBrandLogo, getBrandLogo, upsertBrandLogo } from "./branding/logoHandlers.js";
+
+export { createTeamInvitation, listTeamInvitations, cancelTeamInvitation, renewTeamInvitation, acceptTeamInvitation, getTeamSession, selectTeamTenant } from "./tenant/invitationHandlers.js";
+
+export { getTeamSeatUsage } from "./tenant/invitationHandlers.js";
+export { previewTeamInvitation } from "./tenant/invitationHandlers.js";

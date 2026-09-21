@@ -1,3 +1,4 @@
+import { firebaseInvitations } from "./firebaseInvitations";
 import { FirebaseError } from "firebase/app";
 import { collection, doc, getDoc, getDocs, type Firestore } from "firebase/firestore";
 import type { TenantRepository } from "../../domain/tenant/tenantRepository";
@@ -60,10 +61,9 @@ export function createFirebaseTeamReader(db: Firestore, uid: string, activeTenan
       const tenant = await getDoc(doc(db, "clients", id));
       const limits = tenant.data()?.limits;
       if (!limits || !Number.isInteger(limits.editorsLimit) || limits.editorsLimit < 0 || !Number.isInteger(limits.viewersLimit) || limits.viewersLimit < 0) return invalid();
-      const active = members.value.filter(member => member.status !== "revoked");
-      return { ok: true, value: { tenantId: id,
-        editors: { used: active.filter(member => member.role !== "viewer").length, limit: limits.editorsLimit },
-        viewers: { used: active.filter(member => member.role === "viewer").length, limit: limits.viewersLimit } } };
+      const reservations = await firebaseInvitations.seats(id);
+      if (!reservations.ok) return reservations;
+      return { ok: true, value: { tenantId: id, editors: { used: reservations.value.usage.editors, limit: reservations.value.limits.editorsLimit }, viewers: { used: reservations.value.usage.viewers, limit: reservations.value.limits.viewersLimit } } };
     }),
   };
 }
