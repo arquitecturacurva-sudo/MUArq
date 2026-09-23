@@ -32,3 +32,4 @@ jobs:
         working-directory: Curv_APP/functions
       - run: npm test
         working-directory: Curv_APP/functions
+      - run: npm run test:invitations

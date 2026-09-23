@@ -17,6 +17,17 @@
     "ui": {
       "enabled": false
     },
-    "singleProjectMode": true
+    "singleProjectMode": true,
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9098
+    },
+    "functions": {
+      "host": "127.0.0.1",
+      "port": 5005
+    }
+  },
+  "functions": {
+    "source": "functions"
   }
 }

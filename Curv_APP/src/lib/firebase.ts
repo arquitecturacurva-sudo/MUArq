@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
-import { getFunctions, type Functions } from "firebase/functions";
+import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore, type Firestore } from "firebase/firestore";
+import { connectFunctionsEmulator, getFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -40,6 +40,12 @@ if (firebaseConfigured) {
     authInstance = getAuth(appInstance);
     dbInstance = getFirestore(appInstance);
     functionsInstance = getFunctions(appInstance);
+    // Explicit local QA only; production builds cannot enable this branch.
+    if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATORS === "true") {
+      connectAuthEmulator(authInstance, "http://127.0.0.1:9098", { disableWarnings: true });
+      connectFirestoreEmulator(dbInstance, "127.0.0.1", 8085);
+      connectFunctionsEmulator(functionsInstance, "127.0.0.1", 5005);
+    }
   } catch (error) {
     firebaseInitError = error instanceof Error ? error.message : String(error);
     console.error("[firebase] init failed", error);

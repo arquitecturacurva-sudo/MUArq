@@ -119,3 +119,15 @@ test("only owner can save identity and tenant name together", async () => {
   await assertFails(updateDoc(doc(db, "clients/a"), { ownerUid: "admin" }));
   await assertFails(updateDoc(doc(db, "clients/a"), { limits: { editorsLimit: 999 } }));
 });
+
+test("invitation secrets and rate counters are server-only for every client role", async () => {
+  for (const uid of ["owner", "admin", "editor", "viewer", "outsider"]) {
+    const db = dbFor(uid);
+    for (const path of ["clients/a/invitations/private", "invitationRateLimits/" + uid + "_accept"]) {
+      await assertFails(getDoc(doc(db, path)));
+      await assertFails(setDoc(doc(db, path), { tokenHash: "forged", status: "accepted" }));
+      await assertFails(deleteDoc(doc(db, path)));
+    }
+    await assertFails(getDocs(collection(db, "clients/a/invitations")));
+  }
+});

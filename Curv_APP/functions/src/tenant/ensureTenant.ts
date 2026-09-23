@@ -1,5 +1,7 @@
+import { Timestamp } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions/v1";
+import { activeMember } from "./invitationService.js";
 import { requireAuthUid } from "../shared/callableAuth.js";
 import {
   TenantQuotaError,
@@ -51,7 +53,7 @@ export const ensureTenant = functions.https.onCall(
         db.collection("clients").doc(clientId).get(),
         db.collection("clients").doc(clientId).collection("members").doc(uid).get(),
       ]);
-      return clientSnapshot.exists && memberSnapshot.exists;
+      return clientSnapshot.exists && activeMember(memberSnapshot.data());
     };
 
     const userSnapshot = await userRef.get();
@@ -74,7 +76,7 @@ export const ensureTenant = functions.https.onCall(
 
     const candidates: MembershipCandidate[] = memberships.docs.flatMap((memberDoc) => {
       const clientId = memberDoc.ref.parent.parent?.id;
-      if (!clientId) return [];
+      if (!clientId || !activeMember(memberDoc.data())) return [];
       const createdAt = memberDoc.data()?.createdAt;
       return [{ clientId, createdAt: typeof createdAt === "string" ? createdAt : undefined }];
     });
@@ -91,6 +93,14 @@ export const ensureTenant = functions.https.onCall(
         updatedAt: new Date().toISOString(),
       }, { merge: true });
       return { clientId: repairTarget, created: false, repaired: true };
+    }
+
+    // An invitation entry must not provision a second tenant during Auth bootstrap.
+    if (email) {
+      const pendingInvites = await db.collectionGroup("invitations").where("email", "==", email.trim().toLowerCase()).get();
+      if (pendingInvites.docs.some(doc => doc.data().status === "pending" && doc.data().expiresAt instanceof Timestamp && doc.data().expiresAt.toMillis() > Date.now())) {
+        throw new functions.https.HttpsError("failed-precondition", "Tienes una invitacion pendiente. Abre su enlace para entrar al estudio.");
+      }
     }
 
     const owned = await db

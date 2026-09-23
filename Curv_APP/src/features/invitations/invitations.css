@@ -1,0 +1,4 @@
+.invitations-panel { padding: 24px; margin: 16px 0; }
+.invitations-panel th, .invitations-panel td { padding: 12px 8px; vertical-align: top; overflow-wrap: anywhere; }
+.invitations-panel .ta-card-list > li { padding: 16px; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .invitations-panel { padding: 16px; } }

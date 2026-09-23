@@ -84,7 +84,7 @@ function TenantTeam({ service, tenant, currentUserUid, projects, undoLastChange,
             ["active", "Miembros", members.filter(m => m.status === "active").length],
             ["invited", "Invitaciones", members.filter(m => m.status === "invited").length],
             ["roles", "Roles y permisos", null],
-          ] as const).map(([value, label, count]) => <Button key={value} variant="ghost" aria-pressed={tab === value} onClick={() => setTab(value)}>
+          ] as const).filter(([value]) => !readOnly || value !== "invited").map(([value, label, count]) => <Button key={value} variant="ghost" aria-pressed={tab === value} onClick={() => setTab(value)}>
             {label}{count !== null ? <span className="ta-count">{count}</span> : null}</Button>)}</div>
           {tab === "roles" ? <div className="ta-role-guide">{(["admin", "editor", "viewer"] as const).map(value => <article key={value}>
             <span className={"ta-role-tag ta-role-" + value}>{roleLabels[value]}</span><p>{getRoleDescription(value)}</p>

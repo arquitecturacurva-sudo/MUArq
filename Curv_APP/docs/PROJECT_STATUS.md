@@ -1,5 +1,58 @@
 # Curv App — Project Status
 
+## Invitations implementation - verified 2026-09-23
+
+This section supersedes the dated September 14 baseline below.
+
+- Implemented server-owned create/list/renew/cancel/preview/accept invitation operations,
+  seat reservations, verified-email acceptance, sanitized sessions and tenant switching.
+- Equipo y acceso exposes invitation links to active administrators. Links expire in
+  seven days and are shared manually; automatic invitation email is out of scope.
+- Viewer entry reads only assigned projects and offers no mutation controls.
+- Browser writes to invitations, rate counters and memberships remain denied. Owner-only
+  Identity and study naming rules are preserved. The runtime facade is unchanged.
+- Role changes and membership revocation remain disabled; cancelling a pending invitation
+  is supported. Expired records are retained, but no longer reserve seats.
+- Firebase Functions/rules deployed and indexes READY; PR #12 CI and Vercel preview passed.
+- Validation and deployment evidence: [invitation runbook](architecture/team-invitations-release.md).
+
+## Session close - 2026-09-14: Team Access production baseline
+
+This is the latest status; dated assessments below are historical and do not override it.
+
+- PR #10 merged into master: a536d44acb79f4cf58e1394942927ef113cd21b3.
+- Vercel production deployment succeeded. Modularization phases 0-2 and the shared UI
+  boundary are published; runtime remains a compatibility facade with nine tools intact.
+- Equipo y acceso is in the main navigation and reads the real active tenant, members
+  and stored seat limits for active administrators/editors.
+- **Invitations are NOT implemented or available in production.** The invite button is
+  hidden, membership mutations are disabled and the standalone demo is in-memory only.
+- Firebase project curv-app-ce938: Firestore/Storage rules and upsertBrandLogo,
+  getBrandLogo, deleteBrandLogo were deployed. Active rules matched tested source;
+  all three Functions rejected unauthenticated requests with HTTP 401.
+- Identity and tenant name changes require the active canonical owner. Saving Identity
+  updates companyName and clients.name together. Admin does not mean owner.
+- Browser membership writes remain denied. Viewer project scope is enforced in rules;
+  production Viewer navigation, scoped queries and sanitized tenant summary are pending.
+- Before deployment: aggregate audit found 20 tenants / 20 memberships, zero active
+  Viewers, inactive memberships or unknown roles. This is a dated audit, not a live count.
+- Verified: 295 frontend tests, 14 Functions tests, 19 emulator tests, lint/typecheck/build
+  and CI. Authenticated production UI acceptance with the owner session remains pending.
+- No full invitation/acceptance flow has been validated because it does not yet exist.
+
+### Next session
+
+Read [the backend invitation plan](architecture/team-access-invitations-plan.md) first.
+Confirm link sharing versus automatic email and the proposed seven-day expiry. Implement
+atomic invitation creation/acceptance, seat reservations, Auth bootstrap integration,
+real tenant switching and the Viewer flow. Done means a real invited account can accept
+and enter with correct permissions in production, not merely a visible button.
+
+Today ends with documentation only; no invitation implementation or additional deployment.
+Upgrade Functions Node.js 20 before its 2026-10-30 decommission. Preserve legacy storage,
+snapshots, billing protections and the frozen runtime boundary.
+
+
 **Audit date:** 2026-07-09
 **Firestore sync update:** 2026-07-26
 **Auditor role:** Technical / SaaS readiness review  
