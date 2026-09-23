@@ -1,6 +1,6 @@
 # Curv App — Project Status
 
-## Invitations implementation - 2026-09-21
+## Invitations implementation - verified 2026-09-23
 
 This section supersedes the dated September 14 baseline below.
 
@@ -13,6 +13,7 @@ This section supersedes the dated September 14 baseline below.
   Identity and study naming rules are preserved. The runtime facade is unchanged.
 - Role changes and membership revocation remain disabled; cancelling a pending invitation
   is supported. Expired records are retained, but no longer reserve seats.
+- Firebase Functions/rules deployed and indexes READY; PR #12 CI and Vercel preview passed.
 - Validation and deployment evidence: [invitation runbook](architecture/team-invitations-release.md).
 
 ## Session close - 2026-09-14: Team Access production baseline

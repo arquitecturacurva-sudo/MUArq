@@ -68,4 +68,18 @@ No revertir reglas a una version que permita escrituras directas de membresias.
 
 ## Evidencia de cierre
 
-Validacion y publicacion en curso; completar con resultados reales antes de cerrar.
+- PR #12: https://github.com/arquitecturacurva-sudo/MUArq/pull/12.
+- 303 pruebas frontend, 14 Functions, 20 reglas y 12 integracion: correctas.
+- Lint, typecheck y build: correctos. Se conserva el aviso de bundle grande de Vite.
+- CI y preview Vercel del commit 601bc51: SUCCESS (2026-09-21).
+- Navegador local: administrador crea enlace Viewer, destinatario confirma estudio y rol,
+  acepta y entra a Casa Ladera QA; proyecto privado ausente y sin controles de escritura.
+  Sin errores del navegador; vista movil revisada.
+- Firebase curv-app-ce938: nueve Functions nuevas y ensureTenant presentes el 2026-09-23.
+  Las diez rechazan solicitudes anonimas con 401 UNAUTHENTICATED.
+- Reglas Firestore activas identicas al archivo probado; indices de grupo members.uid
+  e invitations.email en estado READY (verificados el 2026-09-23).
+- El merge y despliegue frontend final se registran en el PR. Aceptacion con cuentas
+  reales de clientes pendiente; no se crearon usuarios ficticios en produccion.
+- La revision automatica quedo temporalmente bloqueada por cuota el 21 de septiembre;
+  se retomo sin saltar controles el 23 de septiembre.
