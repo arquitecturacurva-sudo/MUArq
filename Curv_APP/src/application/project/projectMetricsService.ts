@@ -1,11 +1,6 @@
+import { createFeesService } from "../fees/feesService";
 // Phase 2 extraction. Legacy behavior retained; do not import the runtime facade.
 import { isString } from "../../domain/project/values";
-import { TAR } from "../../domain/project/toolDefaults";
-import { CF } from "../../domain/project/toolDefaults";
-import { UF } from "../../domain/project/toolDefaults";
-import { KF } from "../../domain/project/toolDefaults";
-import { MF } from "../../domain/project/toolDefaults";
-import { rnd } from "../../domain/project/currency";
 import { normalizeCronHitos } from "../../domain/project/project";
 import { CRON_HITOS_BASE } from "../../domain/project/project";
 import { ETAPAS_CRON } from "../../domain/project/toolDefaults";
@@ -34,29 +29,8 @@ const readScopedValue = <T,>(projectId: string, key: string, fallback: T | (() =
   readStorage<T>(key, fallback, validate, projectId)
 );
 
-const calcDesignHonorario = (projectId: string) => {
-  const ti = readScopedValue<string>(projectId, "calc.ti", "Vivienda", isString);
-  const et = readScopedValue<string>(projectId, "calc.et", "Anteproyecto", isString);
-  const ar = Number(readScopedValue<string>(projectId, "calc.ar", "", isString)) || 0;
-  const co = readScopedValue<string>(projectId, "calc.co", "Media", isString);
-  const ur = readScopedValue<string>(projectId, "calc.ur", "Normal", isString);
-  const tc = readScopedValue<string>(projectId, "calc.tc", "Particular", isString);
-  const mo = readScopedValue<string>(projectId, "calc.mo", "Suma alzada", isString);
-  const mg = Number(readScopedValue<number | string>(projectId, "calc.mg", 0)) || 0;
-  const dc = Number(readScopedValue<number | string>(projectId, "calc.dc", 0)) || 0;
-  const rd = Number(readScopedValue<number | string>(projectId, "calc.rd", 50)) || 0;
-  const ig = Boolean(readScopedValue<boolean>(projectId, "calc.ig", true, (value): value is boolean => typeof value === "boolean"));
-  const rx = Number(readScopedValue<number | string>(projectId, "calc.rx", 0)) || 0;
-  const vx = Number(readScopedValue<number | string>(projectId, "calc.vx", 0)) || 0;
-  const nx = Number(readScopedValue<number | string>(projectId, "calc.nx", 0)) || 0;
-  const t = (TAR[ti] || {})[et] || 0;
-  const b = t * ar;
-  const adj = b * (CF[co] || 1) * (UF[ur] || 1) * (KF[tc] || 1) * (MF[mo] || 1) * (1 + mg / 100) * (1 - dc / 100);
-  const ext = rx * 240 + vx * 180 + nx * 250;
-  const sub = adj + ext;
-  const igv = ig ? sub * 0.18 : 0;
-  return rnd(sub + igv, rd);
-};
+const fees = createFeesService(repository);
+const calcDesignHonorario = (projectId: string) => fees.calculateForProject(projectId).tot;
 
 const calcDesignCobrado = (projectId: string, honorario: number) => {
   const hitos = normalizeCronHitos(readScopedValue(projectId, "cron.hitosCobro", CRON_HITOS_BASE, Array.isArray));
