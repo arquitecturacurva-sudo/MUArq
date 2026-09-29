@@ -1,1 +1,1 @@
-export { ToolMatrix as default } from "../runtime/runtime";
+export { ToolMatrix as default } from "../../composition/MatrixTool";
