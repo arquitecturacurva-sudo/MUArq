@@ -1,5 +1,14 @@
 # Curv App — Project Status
 
+## Phase 3.2 - Matriz de entregables extraction (2026-09-29)
+
+- Based on origin/master 5a810bf after the Honorarios PR #13 merged and deployed to Vercel.
+- Matrix domain rules, browser state adapter and view are separate; runtime remains a compatibility facade.
+- Legacy `matrix.*` keys, shared fields, project scopes, snapshot partition and document export are preserved.
+- Runtime reduced from 3105 to 2920 lines. App and the other tools remain unchanged.
+- 356 frontend tests pass; local browser QA covers custom items, reload, project isolation and print portal.
+- Full audit and limits: [Phase 3.2](architecture/phase-3-matrix.md). Next: Exclusiones y supuestos after reviewing this PR.
+
 ## Phase 3.1 - Honorarios extraction (2026-09-26)
 
 - Work based on latest origin/master a804766; branch codex/phase-3-fees.
