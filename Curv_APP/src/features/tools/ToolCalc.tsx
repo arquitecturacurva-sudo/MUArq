@@ -1,1 +1,1 @@
-export { ToolCalc as default } from "../runtime/runtime";
+export { ToolCalc as default } from "../../composition/FeesTool";

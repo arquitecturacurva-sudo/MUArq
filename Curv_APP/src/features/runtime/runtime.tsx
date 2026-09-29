@@ -1,3 +1,8 @@
+// Phase 3 compatibility facade: keep existing imports while Honorarios lives in its module.
+import { ToolCalc } from "../../composition/FeesTool";
+export { ToolCalc };
+import { DocHeader } from "../ui/documentHeader";
+export { CIcon, Wordmark, Brand, DocHeader } from "../ui/documentHeader";
 import { BG, panelS, badgeS, metricS } from "../ui/tokens";
 import { PROJECT_SNAPSHOT_UPDATED_AT_KEY, PROJECT_SNAPSHOT_TOOL_PREFIXES, isProjectSnapshotToolKey, shouldHydrateRemoteSnapshot } from "../../domain/project/snapshot";
 import type { ProjectSnapshotTools } from "../../domain/project/snapshot";
@@ -7,7 +12,6 @@ import { useState } from "react";
 import { UI } from "../ui/tokens";
 import { DK } from "../ui/tokens";
 import { G } from "../ui/tokens";
-import { useDocumentBrandTheme } from "../../lib/branding/documentBranding";
 import { fDate } from "../../domain/project/calendar";
 import { readProjectBaseMetadata } from "./projectServices";
 import { currencySymbol } from "../../domain/project/currency";
@@ -18,12 +22,6 @@ import { PROJECT_CLIENT_LEGACY_KEYS } from "../../domain/project/project";
 import { SHARED_PROJECT_NAME_KEY } from "../../domain/project/project";
 import { PROJECT_NAME_LEGACY_KEYS } from "../../domain/project/project";
 import { useMemo } from "react";
-import { TAR } from "../../domain/project/toolDefaults";
-import { CF } from "../../domain/project/toolDefaults";
-import { UF } from "../../domain/project/toolDefaults";
-import { KF } from "../../domain/project/toolDefaults";
-import { MF } from "../../domain/project/toolDefaults";
-import { rnd } from "../../domain/project/currency";
 import { StepNav } from "../ui/kit/stepNav";
 import { cardS } from "../ui/tokens";
 import { InlineEmptyStateCard } from "../ui/form-primitives";
@@ -282,61 +280,6 @@ export function InfoBubble({toolId}: {toolId: string}) {
 }
 
 // ── LOGO ──────────────────────────────────────────────────────────────
-export const CIcon = ({size=26,c="#fff"}: {size?: number; c?: string}) => (
-  <svg width={size} height={size} viewBox="0 0 810 810" style={{flexShrink:0}} xmlns="http://www.w3.org/2000/svg">
-    <path fill={c} fillRule="evenodd" clipRule="evenodd" d="M423.539,132.601c-0.102,2.083 -0.257,2.065 -2.643,4.444c-4.497,4.427 -12.817,12.818 -13.927,13.937c-0.31,0.31 -3.812,3.821 -3.872,3.88c-4.328,4.315 -4.278,4.267 -4.65,4.637c-1.12,1.109 -7.63,7.559 -13.932,13.931c-0.371,0.372 -0.359,0.358 -4.638,4.649c-0.31,0.31 -3.177,3.184 -3.878,3.875c-1.119,1.11 -10.287,10.213 -13.939,13.923c-2.351,2.355 -2.318,2.321 -4.636,4.652c-0.54,0.549 -3.564,3.568 -3.875,3.878c-3.433,3.42 -3.416,3.403 -4.652,4.635c-4.769,4.701 -12.816,12.818 -13.926,13.937c-3.592,3.596 -3.562,3.571 -3.874,3.879c-0.372,0.371 -2.893,2.89 -4.649,4.638c-1.122,1.108 -6.905,6.819 -13.933,13.93c-1.043,1.047 -4.266,4.279 -4.637,4.65c-0.31,0.31 -3.167,3.172 -3.878,3.875c-1.119,1.11 -10.389,10.313 -13.94,13.923c-2.323,2.326 -2.286,2.291 -4.635,4.652c-0.562,0.57 -3.565,3.568 -3.876,3.878c-2.337,2.326 -2.304,2.292 -4.651,4.636c-4.869,4.801 -12.816,12.817 -13.926,13.936c-3.594,3.598 -3.562,3.571 -3.874,3.879c-0.372,0.371 -3.147,3.144 -4.649,4.637c-1.121,1.108 -7.254,7.175 -13.933,13.931c-0.371,0.372 -0.365,0.364 -4.639,4.65c-0.309,0.311 -2.579,2.595 -3.876,3.874c-0.312,0.31 -0.679,0.675 -3.687,4.07c-2.337,1.705 -18.167,18.154 -30.402,35.5c-13.362,18.944 -15.902,26.641 -18.216,30.389c-0.67,1.085 -8.835,20.802 -9.665,27.75c-0.488,1.533 -0.57,1.456 -0.826,3.081c-1.095,5.973 -1.223,5.883 -1.827,10.98c-0.492,3.903 -0.583,3.856 -0.437,7.816c-0.971,2.913 -0.677,5.7 -0.483,11.494c0.086,0.78 0.171,1.559 0.257,2.339c0.034,0.554 0.217,3.571 0.662,6.907c0.266,2.527 0.031,4.078 3.377,17.171c0.191,0.61 5.681,24.712 29.327,53.823c0.238,0.293 0.237,0.257 2.004,1.8c0.948,1.698 0.997,1.63 4.573,5.49c1.235,1.84 15.029,16.491 18.702,18.454c3.341,3.192 3.179,3.278 3.511,3.495c25.336,22.574 51.031,30.857 55.956,32.445c8.635,2.224 8.58,2.18 9.319,2.396l0.85,0.282l2.23,0.404c2.91,0.596 2.889,0.455 6.169,0.769c1.517,0.434 1.505,0.437 1.638,0.469c0.802,0.196 0.753,0.078 1.512,0.263l1.505,0.076c9.893,1.008 12.616,0.669 20.184,0.325c0.508,-0.163 1.015,-0.326 1.523,-0.489c1.057,0.032 2.113,0.064 3.17,0.096l0.752,-0.094c14.814,-1.435 32.206,-8.152 34.9,-9.193c1.503,-0.644 10.374,-4.447 18.438,-8.832c1.948,-1.059 8.587,-5.093 8.678,-5.163c0.365,-0.257 2.553,-1.793 4.627,-3.119c14.895,-9.522 29.325,-22.393 31.191,-24.543c2.217,-1.295 5.861,-5.556 8.48,-7.806l0.458,-0.334c0.375,-0.368 4.27,-4.186 4.724,-4.566c4.308,-4.233 4.309,-4.164 8.506,-8.526c0.258,-0.258 0.516,-0.516 0.774,-0.774c2.387,-2.313 2.283,-2.309 4.635,-4.655c1.995,-1.917 1.941,-1.864 3.872,-3.87c0.258,-0.258 0.516,-0.516 0.774,-0.774c2.383,-2.292 2.304,-2.279 4.657,-4.633c3.939,-3.81 3.9,-3.783 7.746,-7.739c2.365,-2.363 2.352,-2.287 4.631,-4.659c0.258,-0.258 0.515,-0.517 0.773,-0.775c1.999,-1.927 1.944,-1.874 3.868,-3.874c2.33,-2.33 2.338,-2.24 4.654,-4.636c0.258,-0.258 0.516,-0.516 0.774,-0.774c4.446,-4.273 8.025,-7.847 12.384,-12.39c0.258,-0.258 0.516,-0.516 0.774,-0.774c2.363,-2.281 2.276,-2.289 4.639,-4.652c2.011,-1.935 1.958,-1.878 3.874,-3.868c0.258,-0.258 0.516,-0.516 0.775,-0.773c1.988,-1.908 1.944,-1.866 3.889,-3.853c4.318,-4.25 4.314,-4.172 8.504,-8.528c0.258,-0.258 0.516,-0.516 0.774,-0.773c2.383,-2.309 2.281,-2.306 4.634,-4.656c2.005,-1.925 1.952,-1.873 3.872,-3.87c0.433,-0.434 0.425,-0.41 5.431,-5.407c3.949,-3.813 3.907,-3.786 7.746,-7.738c0.808,-0.807 0.782,-0.722 1.559,-1.537c1.026,-1.076 3.537,-3.586 3.847,-3.895c2.416,-2.328 2.305,-2.315 4.64,-4.65c2.032,-1.953 1.973,-1.888 3.88,-3.862c0.258,-0.258 0.516,-0.516 0.774,-0.774c4.918,-4.724 8.351,-8.192 12.385,-12.388c0.258,-0.258 0.516,-0.516 0.774,-0.774c1.994,-1.925 1.934,-1.869 3.864,-3.878c0.434,-0.433 0.406,-0.4 5.423,-5.415c1.992,-1.908 1.953,-1.873 3.888,-3.854c4.304,-4.235 4.306,-4.147 8.506,-8.526c0.258,-0.258 0.516,-0.516 0.774,-0.773c2.404,-2.323 2.311,-2.331 4.634,-4.656c2.024,-1.943 1.973,-1.888 3.873,-3.869c0.434,-0.433 0.416,-0.4 5.43,-5.408c3.946,-3.796 3.879,-3.749 7.747,-7.737c4.996,-5.01 4.97,-5.001 5.403,-5.435c2.371,-2.282 2.286,-2.294 4.642,-4.648c2.013,-1.926 1.96,-1.871 3.878,-3.864c0.258,-0.258 0.516,-0.516 0.774,-0.774c0.808,-0.773 0.784,-0.72 1.57,-1.527c2.543,-2.613 0.56,-3.173 -6.883,-10.983c-0.252,-0.262 -0.504,-0.524 -0.756,-0.786c-1.516,-1.603 -1.529,-1.517 -3.069,-3.133c-7.378,-7.448 -18.565,-19.814 -21.732,-21.573c-1.573,-0.873 -0.394,-2.029 -15.316,-16.464c-3.597,-3.48 -3.127,-3.935 -7.274,-6.676c-0.875,-0.705 -0.671,-0.823 -1.575,-1.508c-2.474,-3.551 -1.842,-3.909 -1.51,-3.985c0.183,-0.042 0.174,0.002 2.343,0.023c70.146,0.065 134.613,-0.065 146.318,-0.089c71.278,-0.003 71.2,-0.161 74.329,0.087c1.193,0.987 1.02,1.29 1.018,34.862c-0.007,188.966 0.022,188.966 0.054,189.716c0.03,0.704 -0.245,0.576 -0.508,1.193c-0.337,-0.009 -0.673,-0.017 -1.01,-0.026c-0.09,-0.121 -57.54,-57.872 -58.474,-58.345c-0.497,-0.252 -1.036,-0.524 -5.281,4.546c-1.846,1.26 -1.715,1.31 -3.149,3.054c-2.286,1.671 -2.304,1.606 -3.825,3.92c-0.698,0.843 -0.814,0.642 -1.533,1.552c-1.844,1.308 -1.809,1.302 -3.073,3.136c-0.729,0.844 -0.818,0.662 -1.535,1.543c-1.846,1.318 -1.806,1.299 -3.099,3.115c-0.818,0.82 -0.767,0.768 -1.539,1.536c-1.854,1.317 -1.828,1.283 -3.122,3.092c-0.718,0.827 -0.828,0.652 -1.544,1.535c-1.849,1.251 -1.85,1.219 -3.145,3.062c-0.71,0.851 -0.842,0.633 -1.559,1.531c-1.877,1.193 -1.858,1.177 -3.12,3.076c-0.249,0.266 -0.498,0.531 -0.747,0.797c-1.852,1.292 -1.826,1.295 -3.059,3.146c-0.712,0.834 -0.831,0.661 -1.538,1.543c-1.822,1.3 -1.788,1.276 -3.091,3.121c-0.74,0.839 -0.841,0.669 -1.563,1.511c-1.98,1.097 -1.929,1.104 -3.136,3.073c-1.765,1.098 -1.675,1.202 -1.836,1.281c-1.85,2.073 -1.939,1.917 -3.753,3.981c-2.068,1.416 -1.871,1.546 -3.716,3.236c-0.123,0.124 -0.771,0.777 -1.551,1.546c-1.763,1.921 -19.239,19.222 -20.92,20.886c-1.829,1.849 -4.99,4.982 -5.425,5.413c-0.258,0.258 -0.516,0.517 -0.773,0.775c-0.818,0.826 -8.243,8.098 -13.94,13.93c-0.428,0.439 -0.438,0.407 -5.414,5.424c-0.258,0.258 -0.516,0.516 -0.775,0.774c-0.125,0.123 -0.781,0.767 -1.563,1.533c-10.511,10.416 -10.452,10.354 -20.927,20.878c-0.259,0.257 -0.517,0.514 -0.776,0.772c-0.26,0.256 -0.52,0.513 -0.781,0.769c-17.518,17.446 -17.525,17.401 -24.794,24.753c-13.623,13.778 -63.857,63.361 -65.725,65.884c-0.547,0.523 -1.184,0.958 -1.293,1.033c-3.54,2.419 -8.293,7.485 -12.702,11.281c-2.486,2.106 -20.877,17.687 -31.978,25.224c-50.194,34.078 -75.803,38.088 -92.639,42.872c-2.907,0.64 -2.872,0.651 -3.124,0.696c-0.37,0.065 -3.324,0.587 -4.613,0.855c-0.786,0.187 -1.572,0.375 -2.358,0.562c-8.914,1.403 -8.887,1.245 -17.829,2.27c-2.304,0.219 -2.258,0.16 -4.566,0.373c-1.031,0.007 -2.063,0.013 -3.094,0.02c-3.753,0.76 -13.508,0.772 -17.793,0.143c-2.76,-0.145 -2.702,-0.262 -5.439,-0.141c-1.544,-0.103 -3.088,-0.206 -4.631,-0.308c-1.815,-0.071 -1.808,-0.395 -4.686,0.179c-2.923,-1.266 -2.975,-0.671 -7.72,-0.715c-0.519,-0.191 -1.038,-0.382 -1.557,-0.573c-9.291,-0.825 -9.254,-0.852 -11.601,-0.991l-0.743,-0.223c-0.532,-0.107 -1.064,-0.213 -1.597,-0.32c-4.333,-0.542 -4.305,-0.543 -4.68,-0.585c-0.432,-0.048 -0.36,0.027 -0.808,-0.023c-3.747,-0.424 -7.724,-1.177 -8.391,-1.303l-0.723,-0.114c-1.847,-0.353 -3.693,-0.705 -5.54,-1.058c-3.948,-0.661 -3.895,-0.652 -7.774,-1.418l-2.977,-0.552c-11.31,-2.53 -11.24,-2.601 -22.477,-5.336c-44.549,-13.523 -63.646,-23.026 -96.651,-45.736c-2.586,-1.472 -3.726,-3.155 -6.921,-4.798c-1.525,-1.654 -3.577,-3.312 -7.614,-6.212c-4.289,-3.838 -4.396,-3.62 -8.63,-7.609c-10.761,-10.136 -10.519,-10.27 -21.198,-20.573c-0.071,-0.116 -0.889,-1.451 -0.889,-1.451c-7.302,-9.394 -9.591,-7.633 -32.755,-43.71c-0.318,-0.318 -0.269,-0.3 -1.075,-1.4c-1.878,-4.139 -2.157,-3.937 -4.4,-7.872c-31.923,-55.935 -38.986,-121.21 -39.03,-121.389c-0.04,-2.386 -0.041,-2.331 -0.45,-4.689c-0.323,-3.102 -0.249,-3.06 -0.854,-6.125l-0.07,-1.614c-0.101,-1.922 -0.025,-1.863 -0.321,-3.83c-0.173,-3.582 -0.166,-3.559 -0.187,-3.869c-0.161,-2.373 -0.28,-2.311 -0.438,-4.651l-0.937,-0.878c1.603,-5.743 0.078,-9.559 -0.051,-10.743c0.31,-2.33 0.242,-2.295 0.195,-4.635c-0.049,-6.999 -0.039,-6.944 0.003,-13.944c-0.064,-1.029 -0.128,-2.058 -0.191,-3.086c0.194,-1.283 0.389,-2.565 0.583,-3.848c-0.008,-4.347 0.078,-4.283 0.068,-4.655c0.166,-0.605 0.453,-1.656 1.217,-7.751c1.345,-11.388 1.773,-11.277 1.855,-12.267c0.592,-2.232 0.599,-2.216 0.64,-2.411c5.152,-24.46 8.729,-30.656 16.998,-51.077c1.263,-2.078 2.624,-5.161 4.737,-9.219c1.295,-2.494 5.41,-11.093 17.816,-30.109c2.173,-2.738 5.331,-7.493 5.471,-7.699c9.306,-13.681 22.103,-27.611 23.705,-30.37c5.229,-5.219 5.579,-5.855 5.918,-6.469c1.569,-2.843 6.4,-5.144 9.486,-10.655c6.084,-4.865 215.356,-215.496 216.741,-216.062c0.462,-0.189 1.223,-0.5 5.172,3.486c3.02,3.048 28.649,28.919 37.782,38.07c4.796,4.805 58.259,58.372 60.119,59.895Z"/>
-  </svg>
-);
-
-export const Wordmark = ({color="#fff", height=36}: {color?: string; height?: number}) => (
-  <svg height={height} viewBox="0 0 2383.94 1683.78" xmlns="http://www.w3.org/2000/svg" style={{display:"block"}}>
-    <g fill={color}>
-      <path d="M978.95,539.28v270.7c0,59.04-15.55,103.11-46.65,132.23c-31.1,29.12-77.95,43.68-140.55,43.68c-63.59,0-110.94-14.56-142.03-43.68c-31.11-29.12-46.65-73.2-46.65-132.23v-270.7h92.41v256.14c0,35.85,7.92,62.85,23.77,80.97c15.85,18.13,39.52,27.19,71.02,27.19c31.69,0,55.66-9.11,71.91-27.34c16.24-18.22,24.36-45.17,24.36-80.82V539.28H978.95z"/>
-      <path d="M520.89,985.89H320.91c-59.04,0-97.3-26.25-126.42-58.28S145,821.15,145,756.69c0-65.48,24.39-128.41,53.51-160.43c29.12-32.03,63.36-56.98,122.4-56.98h199.98v95.16H335.47c-35.85,0-61.21,14.28-75.29,31.54c-15.49,18.98-26.53,55.32-28.82,87.67c-2.23,31.52,14.08,86.98,28.82,107c14.75,20.02,41.39,25.21,75.29,30.07h185.42V985.89z"/>
-      <path d="M1389.9,974.3h-107.27l-114.4-203.25V974.3h-93V539.28h133.13c52.89,0,92.51,10.26,118.85,30.76s39.52,51.36,39.52,92.56c0,29.92-9.01,55.47-27.03,76.67c-18.03,21.2-41.3,33.58-69.83,37.14L1389.9,974.3z M1168.23,724.7h13.97c37.64,0,62.5-4.11,74.58-12.33s18.13-22.53,18.13-42.94c0-21.39-6.49-36.59-19.47-45.61c-12.97-9.01-37.39-13.52-73.25-13.52h-13.97V724.7z"/>
-      <path d="M1554.23,974.3l-160.76-435.03h102.81l84.69,271.3c1.58,5.55,4.06,15.85,7.43,30.91c3.36,15.06,6.93,32.19,10.7,51.4c2.57-18.61,5.39-35.16,8.47-49.62c3.07-14.46,6.09-26.34,9.07-35.65l85.87-268.33h101.62L1642.19,974.3H1554.23z"/>
-      <path d="M1788.68,974.3l165.51-435.03h106.38l167.89,435.03h-105.78l-35.36-92.41h-168.48l-30.31,92.41H1788.68z M2065.62,808.79l-48.73-140.55c-1.39-4.16-3.17-11.29-5.35-21.39c-2.18-10.1-4.46-22.48-6.84-37.14c-2.57,14.07-5.05,26.7-7.43,37.88c-2.37,11.19-4.16,18.68-5.35,22.43l-46.95,138.77H2065.62z"/>
-      <polygon points="574.73,938.31 489.38,858.02 489.38,1018.59"/>
-      <polygon points="932.27,486.16 851.98,571.51 1012.56,571.51"/>
-      <text x="144.998" y="1167.84" fontFamily="'Futura BT','Futura','Century Gothic',sans-serif" fontSize="118" letterSpacing="2">REALIDAD Y VISIÓN ARQUITECTONICA</text>
-    </g>
-  </svg>
-);
-export const Brand = ({dark=false,sm=false}: {dark?: boolean; sm?: boolean}) => (
-  <div style={{display:"flex",alignItems:"center",gap:sm?6:10}}>
-    <CIcon size={sm?22:30} c={dark?DK:"#fff"}/>
-    <Wordmark color={dark?DK:"#fff"} height={sm?28:38}/>
-  </div>
-);
-
-export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: string; fe: string}) => {
-  const brandTheme = useDocumentBrandTheme();
-  const alignment = brandTheme?.logoPosition === "center"
-    ? "center"
-    : brandTheme?.logoPosition === "right"
-      ? "flex-end"
-      : "flex-start";
-  return (
-    <div data-brand-document-header style={{borderBottom:`2px solid ${brandTheme?.accent || G}`,paddingBottom:13,marginBottom:18}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:20}}>
-        <div style={{minWidth:0,flex:1}}>
-          <div data-brand-document-identity style={{display:"flex",justifyContent:alignment}}>
-            {brandTheme?.logoUrl ? (
-              <img src={brandTheme.logoUrl} alt={`Logo de ${brandTheme.companyName}`} style={{display:"block",maxWidth:170,maxHeight:52,objectFit:"contain"}} />
-            ) : brandTheme ? (
-              <strong style={{color:brandTheme.text,fontFamily:`'${brandTheme.headingFont}', Inter, sans-serif`,fontSize:20,letterSpacing:"-0.02em"}}>{brandTheme.companyName}</strong>
-            ) : (
-              <Brand dark/>
-            )}
-          </div>
-          <div data-brand-document-title style={{fontSize:9,color:brandTheme?.mutedText || "#888",textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{title}</div>
-        </div>
-        <div style={{textAlign:"right",fontSize:11,color:brandTheme?.mutedText || "#555",lineHeight:1.6}}><b style={{color:brandTheme?.text}}>{cl||"—"}</b><br/>{pr||"—"}<br/><span style={{fontSize:10}}>{fDate(fe)}</span></div>
-      </div>
-    </div>
-  );
-};
-
 export const PRIORIDAD_COLOR: Record<string,{bg:string,c:string}> = {
   "Alta":  {bg:"#FCEBEB",c:"#A32D2D"},
   "Media": {bg:"#FAEEDA",c:"#854F0B"},
@@ -346,157 +289,6 @@ export const ZONA_COLOR: Record<string,string> = {
   "Pública":"#2471A3","Privada":"#1E8449","Servicio":"#B7950B",
   "Exterior":"#BA4A00","Técnica":"#6C3483","Comercial":"#17A589","Común":"#717D7E",
 };
-
-export function ToolCalc({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
-  const today=new Date().toISOString().split("T")[0];
-  const curr = readProjectBaseMetadata().currency;
-  const moneySym = currencySymbol(curr);
-  const [step,ss]=usePersistentState("calc.step",1);
-  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [fe,sfe]=usePersistentState("calc.fe",today);
-  const [ti,sti]=usePersistentState("calc.ti","Vivienda"); const [et,set_]=usePersistentState("calc.et","Anteproyecto");
-  const [ar,sar]=usePersistentState("calc.ar",""); const [mo,smo]=usePersistentState("calc.mo","Suma alzada"); const [ig,sig]=usePersistentState("calc.ig",true);
-  const [co,sco]=usePersistentState("calc.co","Media"); const [ur,sur]=usePersistentState("calc.ur","Normal"); const [tc,stc]=usePersistentState("calc.tc","Particular");
-  const [mg,smg]=usePersistentState("calc.mg",0); const [dc,sdc]=usePersistentState("calc.dc",0); const [rd,srd]=usePersistentState("calc.rd",50);
-  const [rx,srx]=usePersistentState("calc.rx",0); const [vx,svx]=usePersistentState("calc.vx",0); const [nx,snx]=usePersistentState("calc.nx",0);
-
-  const c=useMemo(()=>{
-    const a=+ar||0,t=(TAR[ti]||{})[et]||0,b=t*a;
-    const adj=b*(CF[co]||1)*(UF[ur]||1)*(KF[tc]||1)*(MF[mo]||1)*(1+(+mg||0)/100)*(1-(+dc||0)/100);
-    const ext=(+rx||0)*240+(+vx||0)*180+(+nx||0)*250;
-    const sub=adj+ext,igv=ig?sub*.18:0,tot=rnd(sub+igv,+rd||0);
-    return {t,b,adj,ext,sub,igv,tot,rMin:Math.round(tot*.92),rMax:Math.round(tot*1.08),
-      hitos:[{n:"Adelanto",p:.5},{n:"Mitad",p:.25},{n:"Entrega",p:.25}].map(h=>({...h,m:rnd(tot*h.p,10)}))};
-  },[ti,et,ar,co,ur,tc,mo,mg,dc,rd,ig,rx,vx,nx]);
-
-  const ST=["Datos del proyecto","Factores y extras","Resultado"];
-  const showCalcEmpty = step===1 && !String(cl).trim() && !String(pr).trim() && !String(ar).trim();
-  return (
-    <div>
-      <StepNav steps={ST} current={step} onSelect={ss} />
-
-      {step===1&&(
-        <div style={cardS}>
-          {showCalcEmpty&&(
-            <InlineEmptyStateCard
-              title="Empieza por los datos base"
-              context="Con tres campos bien definidos tendrás una estimación inicial inmediata y luego podrás afinar factores."
-              build="Una propuesta de honorarios con rango, hitos de cobro y total referencial."
-              first="Cliente, proyecto y área aproximada en m2."
-              unlock="Tarifa base y monto estimado para seguir con ajustes."
-            />
-          )}
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
-            <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
-            <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
-            <Fld label="Fecha"><input type="date" value={fe} onChange={e=>sfe(e.target.value)} style={si}/></Fld>
-            <Fld label="Área (m²)"><Inp type="number" value={ar} onChange={sar} placeholder="Ej. 1600" min="0"/></Fld>
-            <Fld label="Tipo de proyecto"><Sel value={ti} onChange={v=>{sti(v);const ks=Object.keys(TAR[v]||{});if(!ks.includes(et))set_(ks[0]||"");}} options={Object.keys(TAR)}/></Fld>
-            <Fld label="Etapa / servicio"><Sel value={et} onChange={set_} options={Object.keys(TAR[ti]||{})}/></Fld>
-            <Fld label="Modelo de contratación"><Sel value={mo} onChange={smo} options={Object.keys(MF)}/></Fld>
-            <Fld label="IGV (18%)">
-              <div style={{display:"flex",gap:6}}>
-                {["Sí","No"].map(o=><button key={o} onClick={()=>sig(o==="Sí")} style={{...si,width:"auto",padding:"7px 16px",background:(o==="Sí")===ig?DK:"#FDFCF9",color:(o==="Sí")===ig?"#fff":DK,cursor:"pointer",fontWeight:600}}>{o}</button>)}
-              </div>
-            </Fld>
-          </div>
-          {+ar>0&&<div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"9px 12px",display:"flex",gap:24,marginTop:4}}>
-            <div><div style={lb}>Tarifa base</div><div style={{fontWeight:800,fontSize:17,color:G}}>S/ {c.t}/m²</div></div>
-            <div><div style={lb}>Honorario base</div><div style={{fontWeight:700,fontSize:17}}>{fmt(c.b)}</div></div>
-          </div>}
-          <div style={{textAlign:"right",marginTop:14}}><Btn onClick={()=>ss(2)}>Siguiente →</Btn></div>
-        </div>
-      )}
-
-      {step===2&&(
-        <div style={cardS}>
-          <p style={{...lb,color:G,margin:"0 0 10px"}}>Factores de ajuste</p>
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
-            <Fld label="Complejidad"><Sel value={co} onChange={sco} options={Object.keys(CF)}/></Fld>
-            <Fld label="Urgencia"><Sel value={ur} onChange={sur} options={Object.keys(UF)}/></Fld>
-            <Fld label="Tipo de cliente"><Sel value={tc} onChange={stc} options={Object.keys(KF)}/></Fld>
-            <Fld label="Margen adicional (%)"><Inp type="number" value={mg} onChange={smg} min="0"/></Fld>
-            <Fld label="Descuento (%)"><Inp type="number" value={dc} onChange={sdc} min="0"/></Fld>
-            <Fld label="Redondeo (S/)"><Inp type="number" value={rd} onChange={srd} min="0"/></Fld>
-          </div>
-          <p style={{...lb,color:G,margin:"10px 0"}}>Adicionales</p>
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
-            <Fld label={`Reuniones extra (${moneySym} 240 c/u)`}><Inp type="number" value={rx} onChange={srx} min="0"/></Fld>
-            <Fld label={`Visitas extra (${moneySym} 180 c/u)`}><Inp type="number" value={vx} onChange={svx} min="0"/></Fld>
-            <Fld label={`Renders extra (${moneySym} 250 c/u)`}><Inp type="number" value={nx} onChange={snx} min="0"/></Fld>
-          </div>
-          <div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"9px 12px",display:"flex",flexWrap:"wrap",gap:"8px 20px",alignItems:"center"}}>
-            <div><div style={lb}>Ajustado</div><div style={{fontWeight:600,fontSize:12}}>{fmt(c.adj)}</div></div>
-            {c.ext>0&&<div><div style={lb}>Extras</div><div style={{fontWeight:600,fontSize:12}}>{fmt(c.ext)}</div></div>}
-            {ig&&<div><div style={lb}>IGV</div><div style={{fontWeight:600,fontSize:12}}>{fmt(c.igv)}</div></div>}
-            <div style={{marginLeft:"auto"}}><div style={lb}>Total estimado</div><div style={{fontWeight:800,fontSize:20,color:G}}>{fmt(c.tot)}</div></div>
-          </div>
-          <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:14}}>
-            <Btn v="ol" onClick={()=>ss(1)}>← Anterior</Btn>
-            <Btn onClick={()=>ss(3)}>Ver resultado →</Btn>
-          </div>
-        </div>
-      )}
-
-      {/* Doc section — always in DOM for PDF export, visible only on step 3 */}
-      {step===3 && (
-        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <Btn v="ol" onClick={()=>ss(2)}>← Editar</Btn>
-          <Btn v="gd" onClick={onPrint}>🖨 Imprimir / PDF</Btn>
-        </div>
-      )}
-      <div style={{display: step===3 ? 'block' : 'none'}}>
-        <div data-doc-id={toolId} style={{...cardS,padding:28}}>
-          <DocHeader title="Resumen de Honorarios Profesionales" cl={cl} pr={pr} fe={fe}/>
-          <div style={{textAlign:"right",marginBottom:14}}>
-            <div style={{fontSize:26,fontWeight:800,color:G}}>{fmt(c.tot)}</div>
-            <div style={{color:"#888",fontSize:9}}>Total {ig?"con IGV":"sin IGV"}</div>
-          </div>
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px",marginBottom:14}}>
-            {[["Cliente",cl||"—"],["Total",fmt(c.tot)],["Proyecto",pr||"—"],["Tarifa",`${moneySym} ${c.t}/m²`],["Fecha",fDate(fe)],["Complejidad",co],["Tipo",ti],["Urgencia",ur],["Etapa",et],["Cliente tipo",tc],["Modelo",mo],["Área",`${ar||0} m²`]].map(([k,v])=>(
-              <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
-                <span style={{color:"#888",fontSize:10}}>{k}</span><span style={{fontWeight:600,fontSize:10}}>{v}</span>
-              </div>
-            ))}
-          </div>
-          <p style={{...lb,color:G,marginBottom:8}}>Desglose</p>
-          <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
-            <tbody>
-              {[["Honorario base",c.b,`${ar||0} m² × S/ ${c.t}/m²`],["Ajustes",c.adj-c.b,"Complejidad, urgencia, cliente, modelo"],
-                ...(c.ext>0?[["Adicionales",c.ext,"Reuniones, visitas, renders"]]:[]),
-                ["Subtotal",c.sub,""],
-                ...(ig?[["IGV (18%)",c.igv,""]]:[])
-              ].map(([k,v,n],i)=>(
-                <tr key={i} style={{background:i%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
-                  <td style={{padding:"7px 8px",fontSize:10,fontWeight:k==="Subtotal"?700:400}}>{k}</td>
-                  <td style={{padding:"7px 8px",fontSize:10,fontWeight:700,textAlign:"right"}}>{fmt(v)}</td>
-                  <td style={{padding:"7px 8px",fontSize:9,color:"#AAA"}}>{n}</td>
-                </tr>
-              ))}
-              <tr style={{background:DK,color:"#fff"}}>
-                <td style={{padding:"9px 8px",fontWeight:700,fontSize:11}}>TOTAL</td>
-                <td style={{padding:"9px 8px",fontWeight:800,fontSize:15,textAlign:"right",color:G}}>{fmt(c.tot)}</td>
-                <td style={{padding:"9px 8px",fontSize:9,color:"#666"}}>Redond. a S/ {rd}</td>
-              </tr>
-            </tbody>
-          </table></div>
-          <p style={{...lb,color:G,marginBottom:8}}>Hitos de cobro</p>
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
-            {c.hitos.map(h=>(
-              <div key={h.n} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:10,textAlign:"center"}}>
-                <div style={{...lb,margin:"0 0 4px"}}>{h.n}</div>
-                <div style={{fontWeight:800,fontSize:14}}>{fmt(h.m)}</div>
-                <div style={{color:G,fontSize:9,marginTop:3,fontWeight:600}}>{(h.p*100).toFixed(0)}%</div>
-              </div>
-            ))}
-          </div>
-          <div style={{borderTop:"1px solid #E5DDD0",paddingTop:9,color:"#AAA",fontSize:9,lineHeight:1.7}}>
-            Resumen referencial. Validar alcance, entregables, exclusiones, cronograma y condiciones antes de enviarlo al cliente.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export const etapaColor: Record<string,string>={"Levantamiento":"#E8F0FB","Anteproyecto":"#EBF6EE","Desarrollo":"#FEF9E7","Expediente":"#FDF0E8","Obra":"#F5EEF8"};
 export const etapaTextColor: Record<string,string>={"Levantamiento":"#2471A3","Anteproyecto":"#1E8449","Desarrollo":"#B7950B","Expediente":"#BA4A00","Obra":"#6C3483"};

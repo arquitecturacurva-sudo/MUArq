@@ -1,5 +1,17 @@
 # Curv App — Project Status
 
+## Phase 3.1 - Honorarios extraction (2026-09-26)
+
+- Work based on latest origin/master a804766; branch codex/phase-3-fees.
+- Honorarios now separates pure calculation, injected project reads, browser state and view.
+- Dashboard uses the same calculation. Runtime reduced from 3313 to 3105 lines, preserving
+  all exports; App, legacy storage, snapshots, cloud permissions and other tools unchanged.
+- 348 frontend tests pass. Browser QA covers calculation, reload, project isolation and print portal.
+- User confirmed real admin/Viewer invitations work; Viewer presentation is intentionally deferred.
+- Full audit, file list, limitations and verification: [Phase 3.1](architecture/phase-3-fees.md).
+- Next: review Honorarios PR, then Matriz de entregables. This section does not claim deployment.
+
+
 ## Invitations implementation - verified 2026-09-23
 
 This section supersedes the dated September 14 baseline below.
