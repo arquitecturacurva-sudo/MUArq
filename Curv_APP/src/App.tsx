@@ -90,6 +90,7 @@ import {
   getRemoteSnapshotDescriptor,
   importLocalProjectsOnce,
   listProjectSyncEntriesByClient,
+  subscribeToProjectChanges,
   ProjectRevisionConflictError,
   tombstoneProjectByClient,
   upsertProjectByClient,
@@ -98,6 +99,7 @@ import {
 } from "./features/runtime/projectSyncServices";
 import {
   decideRemoteSnapshotHydrationByFingerprint,
+  decideMissingRemoteProject,
   getProjectSnapshotFingerprint,
   retargetProjectSnapshotForCopy,
 } from "./features/runtime/storage/projectSnapshot";
@@ -241,6 +243,7 @@ export default function App() {
   const reconcilePromiseRef = React.useRef<{
     sessionKey: string;
     promise: Promise<void>;
+    rerun: boolean;
   } | null>(null);
   const reconcileRetryAttemptRef = React.useRef(0);
   const reconcileRetryTimerRef = React.useRef<number | null>(null);
@@ -582,6 +585,7 @@ export default function App() {
     const clientId = activeClientId;
     const sessionKey = `${uid}:${clientId}`;
     if (reconcilePromiseRef.current?.sessionKey === sessionKey) {
+      reconcilePromiseRef.current.rerun = true;
       return reconcilePromiseRef.current.promise;
     }
     const isCurrentSession = () => (
@@ -597,7 +601,9 @@ export default function App() {
         await importLocalProjectsOnce({
           uid,
           clientId,
-          projects: projectsAtImportStart,
+          projects: projectsAtImportStart.filter((project) => (
+            decideMissingRemoteProject(readProjectSyncState(project.id)) === "upload"
+          )),
           readBaseMetaByProjectId: (projectId) => readProjectBaseMetadata(projectId),
           readSnapshotByProjectId: (projectId, snapshotClientId) => (
             collectProjectSnapshot(projectId, snapshotClientId)
@@ -605,6 +611,7 @@ export default function App() {
         });
         if (!isCurrentSession()) return;
 
+        const serverListStartedAt = nowIso();
         const cloudEntries = await listProjectSyncEntriesByClient(clientId);
         if (!isCurrentSession()) return;
 
@@ -619,13 +626,14 @@ export default function App() {
             .filter((project) => !deletedProjectIds.has(project.id))
             .map((project) => [project.id, project])
         );
-        const remoteProjectIds = new Set<string>();
+        const remoteProjectIds = new Set(cloudEntries.map((entry) => entry.projectId));
         // Pass 1 decides from parent-document metadata only and queues the projects that actually
         // need tool data. Pass 2 fetches. Home therefore paints before any subcollection read.
         const hydrateQueue: {
           projectId: string;
           hydration: ProjectHydrationSnapshot;
           revision: number;
+          localRevision: number;
         }[] = [];
 
         cloudEntries.forEach((entry) => {
@@ -662,7 +670,7 @@ export default function App() {
 
           const remote = getRemoteSnapshotDescriptor(entry.hydration);
           if (!remote) {
-            if (!localSync.dirty && !hasSavedProjectData(project.id)) {
+            if (!localSync.dirty && !localSync.conflict && revision >= localSync.cloudRevision) {
               writeProjectBaseMetadata(baseMeta, project.id);
               markProjectHydrated(project.id, revision, project.updatedAt);
               rememberProjectFingerprint(project.id);
@@ -691,7 +699,7 @@ export default function App() {
 
           if (decision === "hydrate") {
             // Show the card now; its tool data and metrics arrive in pass 2.
-            hydrateQueue.push({ projectId: project.id, hydration: entry.hydration, revision });
+            hydrateQueue.push({ projectId: project.id, hydration: entry.hydration, revision, localRevision: localSync.localRevision });
             mergedProjects.set(project.id, project);
           } else if (decision === "same") {
             markProjectHydrated(project.id, revision, remote.updatedAt);
@@ -707,9 +715,27 @@ export default function App() {
         });
 
         mergedProjects.forEach((project) => {
-          if (remoteProjectIds.has(project.id) || readProjectSyncState(project.id).dirty) return;
-          markProjectDirty(project.id, project.updatedAt || nowIso());
-          rememberProjectFingerprint(project.id);
+          if (remoteProjectIds.has(project.id)) return;
+          const localSync = readProjectSyncState(project.id);
+          // A save confirmed after this list started may be absent from its result.
+          if (savingProjectIdsRef.current.has(project.id)
+            || (localSync.cloudUpdatedAt && localSync.cloudUpdatedAt >= serverListStartedAt)) return;
+          const decision = decideMissingRemoteProject(localSync);
+          if (decision === "remove") {
+            clearProjectStorage(project.id);
+            clearProjectSyncState(project.id);
+            projectFingerprintsRef.current.delete(project.id);
+            mergedProjects.delete(project.id);
+          } else if (decision === "conflict") {
+            markProjectSyncConflict(project.id, {
+              kind: "remote-deleted",
+              remoteRevision: 0,
+              detectedAt: nowIso(),
+            });
+          } else if (!localSync.dirty) {
+            markProjectDirty(project.id, project.updatedAt || nowIso());
+            rememberProjectFingerprint(project.id);
+          }
         });
 
         const nextProjects = normalizeProjectRecords(Array.from(mergedProjects.values()));
@@ -744,6 +770,13 @@ export default function App() {
                 item.hydration
               );
               if (!isCurrentSession()) return;
+              const currentSync = readProjectSyncState(item.projectId);
+              if (
+                currentSync.dirty || currentSync.conflict
+                || currentSync.localRevision !== item.localRevision
+                || currentSync.cloudRevision > item.revision
+                || readDeletedProjectIds().has(item.projectId)
+              ) continue;
               if (!snapshot) {
                 markProjectSyncError(
                   item.projectId,
@@ -803,9 +836,15 @@ export default function App() {
       }
     })();
 
-    reconcilePromiseRef.current = { sessionKey, promise: task };
+    reconcilePromiseRef.current = { sessionKey, promise: task, rerun: false };
     void task.finally(() => {
-      if (reconcilePromiseRef.current?.promise === task) reconcilePromiseRef.current = null;
+      if (reconcilePromiseRef.current?.promise !== task) return;
+      const rerun = reconcilePromiseRef.current.rerun;
+      reconcilePromiseRef.current = null;
+      if (rerun && isCurrentSession()) {
+        cloudHydratedRef.current = false;
+        setReconcileTick((value) => value + 1);
+      }
     });
     return task;
   }, [
@@ -821,6 +860,17 @@ export default function App() {
   useEffect(() => {
     void reconcileCloudProjects();
   }, [reconcileCloudProjects, reconcileTick]);
+
+  useEffect(() => {
+    if (!authUser || !activeClientId) return;
+    return subscribeToProjectChanges(activeClientId, () => {
+      cloudHydratedRef.current = false;
+      setReconcileTick((value) => value + 1);
+    }, (error) => {
+      console.warn("[client-projects] subscription failed", error);
+      setReconcileError(error.message);
+    });
+  }, [activeClientId, authUser]);
 
   useEffect(() => {
     if (!authUser || !activeClientId) return;

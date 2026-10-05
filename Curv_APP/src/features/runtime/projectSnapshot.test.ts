@@ -13,12 +13,34 @@ import {
 import type { ProjectSnapshot as RuntimeProjectSnapshot } from "./runtime";
 import {
   decideRemoteSnapshotHydration,
+  decideMissingRemoteProject,
   getProjectSnapshotFingerprint,
   isProjectSnapshotToolKey,
   retargetProjectSnapshotForCopy,
   sanitizeProjectSnapshotTools,
   type ProjectSnapshot,
 } from "./storage/projectSnapshot";
+
+describe("projects missing from an authoritative cloud list", () => {
+  it("uploads a new local project that has never been saved remotely", () => {
+    expect(decideMissingRemoteProject({ cloudRevision: 0, dirty: true })).toBe("upload");
+    expect(decideMissingRemoteProject({ cloudRevision: 0, dirty: false })).toBe("upload");
+  });
+
+  it("removes a clean copy of a previously synced project instead of resurrecting it", () => {
+    expect(decideMissingRemoteProject({ cloudRevision: 8, dirty: false })).toBe("remove");
+    expect(decideMissingRemoteProject({
+      cloudRevision: 0, cloudUpdatedAt: "2026-07-01T00:00:00.000Z", dirty: false,
+    })).toBe("remove");
+  });
+
+  it("preserves pending work and existing conflicts for explicit recovery", () => {
+    expect(decideMissingRemoteProject({ cloudRevision: 8, dirty: true })).toBe("conflict");
+    expect(decideMissingRemoteProject({
+      cloudRevision: 8, dirty: false, conflict: { kind: "revision" },
+    })).toBe("conflict");
+  });
+});
 
 class MemoryStorage {
   private values = new Map<string, string>();
@@ -411,6 +433,13 @@ describe("project snapshot storage", () => {
       updatedAt: "2030-01-01T00:00:00.000Z",
     };
     expect(getProjectSnapshotFingerprint(snapshot)).toBe(getProjectSnapshotFingerprint(retimedSnapshot));
+    expect(decideRemoteSnapshotHydration({
+      localSnapshot: retimedSnapshot,
+      remoteSnapshot: snapshot,
+      localDirty: false,
+      localCloudRevision: 99,
+      hasLocalData: true,
+    })).toBe("keep-local");
   });
 
   it("surfaces equal-timestamp legacy divergence as a conflict", () => {
