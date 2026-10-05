@@ -1,5 +1,14 @@
 # Curv App — Project Status
 
+## Phase 3.4 - Cronograma por etapas extraction (2026-10-05)
+
+- Based on latest origin/master 5a2f8f5, after Exclusions PR #16 merged.
+- Schedule date/week rules, application state port, browser adapter and view are separate; runtime remains the compatibility facade.
+- Existing `cron.*` keys, shared fields, project scopes, snapshot partition, billing milestones and document export are preserved.
+- Runtime reduced from 2763 to 2539 lines with all 239 exports intact. App and other tools are unchanged.
+- 381 frontend tests pass; local browser QA covers stage duration, milestone state, reload, project isolation and print portal.
+- Full audit and limits: [Phase 3.4](architecture/phase-3-stage-schedule.md). Next: Cotizacion de obra after reviewing this PR.
+
 ## Phase 3.3 - Exclusiones y supuestos extraction (2026-10-05)
 
 - Based on latest origin/master f95f8ab, after Matrix PR #14 merged.
