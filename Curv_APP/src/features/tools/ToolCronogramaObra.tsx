@@ -1,1 +1,1 @@
-export { ToolCronogramaObra as default } from "../runtime/runtime";
+export { ToolCronogramaObra as default } from "../../composition/ConstructionScheduleTool";

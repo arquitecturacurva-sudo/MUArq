@@ -1,5 +1,14 @@
 # Curv App — Project Status
 
+## Phase 3.6 - Cronograma de obra extraction (2026-10-05)
+
+- Based on latest origin/master ba3e9c0, after Construction Quotation PR #18 merged.
+- Schedule and quotation-sync rules, application state contract, browser adapter and view are separate; runtime remains the compatibility facade.
+- Existing `obra.*` keys, shared fields, project scopes, `cronobra` snapshot partition and document export are preserved.
+- Runtime reduced from 1708 to 1465 lines with all 239 exports intact. App and other tools are unchanged.
+- 401 frontend tests pass; local browser QA covers quotation sync, dependencies, progress reload, project isolation and print portal.
+- Full audit and limits: [Phase 3.6](architecture/phase-3-construction-schedule.md). Next: Programa arquitectonico after reviewing this PR.
+
 ## Phase 3.5 - Cotizacion de obra extraction (2026-10-05)
 
 - Based on latest origin/master bd69922, after Stage Schedule PR #17 merged.
