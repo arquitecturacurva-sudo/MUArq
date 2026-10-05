@@ -1,5 +1,14 @@
 # Curv App — Project Status
 
+## Phase 3.5 - Cotizacion de obra extraction (2026-10-05)
+
+- Based on latest origin/master bd69922, after Stage Schedule PR #17 merged.
+- Quotation formulas and OCR row rules, application state port, browser adapter, PDF text reader and view are separate; runtime remains the compatibility facade.
+- Existing `cot.*` keys, shared fields, project scopes, snapshot partition, OCR review metadata and document export are preserved.
+- Runtime reduced from 2539 to 1708 lines with all 239 exports intact. App and other tools are unchanged.
+- 391 frontend tests pass; local browser QA covers quantities, recargos, reload, project isolation, embedded-text PDF import, review and print portal.
+- Full audit and limits: [Phase 3.5](architecture/phase-3-quotation.md). Next: Cronograma de obra after reviewing this PR.
+
 ## Phase 3.4 - Cronograma por etapas extraction (2026-10-05)
 
 - Based on latest origin/master 5a2f8f5, after Exclusions PR #16 merged.
