@@ -69,8 +69,8 @@ export default function WorkspaceMain({
 
   return (
     <div data-workspace-main>
-      <div data-tour-id="workspace" style={{maxWidth: 940, margin: "0 auto"}}>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-solid border-border-soft bg-card px-4 py-3">
+      <div data-tour-id="workspace" style={{maxWidth: 940}}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-solid border-border-soft bg-card p-4">
           <div className="flex items-center gap-2.5">
             {(() => { const Icon = TOOL_ICONS[current?.id ?? "calc"] || IconCalc; return <Icon c={G} s={18} />; })()}
             <h1 className="m-0 text-title font-semibold">{current?.label}</h1>

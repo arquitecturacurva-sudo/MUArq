@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 export type PillTone = "neutral" | "brand" | "success" | "warning" | "danger" | "info";
 
 /**
- * Tone colours are mixed against `transparent`, so one definition reads correctly on
- * both the light and the dark surface without maintaining a second palette.
+ * Tone colours are mixed against `transparent`, so a pill reads correctly on any of the
+ * app's surfaces — card, panel or band — from a single definition.
  */
 const TONE_VAR: Record<PillTone, string> = {
   neutral: "var(--ui-text-muted)",

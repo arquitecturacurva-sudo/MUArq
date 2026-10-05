@@ -179,9 +179,33 @@ piece that *is* reproduced is the border reset (`border-width: 0; border-style: 
 Tailwind's `border` utility sets width only, leaving every shadcn border invisible.
 
 Tokens are mapped with `@theme inline`, so `bg-card` compiles to `background-color: var(--ui-card)` rather
-than a literal. The palette therefore lives in `src/features/ui/theme.ts` and light/dark keeps working
-through the existing `--ui-*` variables. A subtree can opt into a different theme than the shell by
-applying the vars itself — `WorkspaceSidebar` spreads `DARK_THEME_VARS` to stay a dark island in light mode.
+than a literal. The palette therefore lives in `src/features/ui/theme.ts` as the single exported
+`THEME_VARS`, applied once on `<html>` in `App.tsx` so Radix portals resolve it too.
+
+**The app is light-only.** There is no dark theme, no theme switch and no `data-theme` attribute: a second
+palette cannot be honoured by the ~700 hard-coded inline styles in `runtime.tsx`, and the attempt cost a
+130-line block of `[data-theme="dark"] [style*="background:#fff"]` attribute-substring overrides in
+`App.tsx`. Do not reintroduce one before those inline styles are tokenised. Depth comes from the surface
+ramp (`--ui-bg` → `--ui-panel` → `--ui-card`) plus borders, not from a dark surface.
+
+Spacing is congruent by construction: **24px page gutter** (`AppHeader`, dashboard, demos,
+`[data-workspace-main]`), 16px card padding (kit `Card` `p-4` and the legacy `cardS`), 16px stack gap.
+`SPACE` in `theme.ts` records the scale.
+
+**Content is left-aligned against that gutter, never centred.** No `mx-auto` / `margin: 0 auto` on a page
+container: a centred `max-width` makes the left margin a function of the window width, so it can never match
+the full-bleed header above it or the fixed-width workspace sidebar beside it — the three surfaces drifted
+apart at every viewport size. `max-width` caps the right edge only (1180px dashboard and demos, 940px for
+the workspace tool pane, which holds a page-shaped document). Adding `mx-auto` to a page container
+reintroduces the bug.
+
+`WorkspaceSidebar` collapses to a 56px icon rail (`app.sidebarCollapsed`, a global storage key) with tool
+tooltips; below 860px the preference is ignored because the shell stacks the sidebar above the tool pane.
+
+`src/index.css` sets `button:not([data-slot]) { min-height: 34px }` — a tap-target floor for the raw
+`<button>`s in the inline-styled tools. **The `:not([data-slot])` is load-bearing.** Unscoped, it overrode
+every kit height: `sm`, `xs` and `icon-sm` all rendered at 34px, and the Radix checkbox — a `<button>` 16px
+wide — rendered as a 16x34 bar. Any new global element rule must exclude `[data-slot]` the same way.
 
 `react-refresh/only-export-components` is disabled for `src/components/ui/**` in `eslint.config.js`:
 shadcn ships component + variants in one file, and editing that would fight `shadcn diff`.
