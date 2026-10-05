@@ -1,1 +1,1 @@
-export { ToolCotizacionObra as default } from "../runtime/runtime";
+export { ToolCotizacionObra as default } from "../../composition/QuotationTool";
