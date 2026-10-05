@@ -1,5 +1,14 @@
 # Curv App — Project Status
 
+## Phase 3.3 - Exclusiones y supuestos extraction (2026-10-05)
+
+- Based on latest origin/master f95f8ab, after Matrix PR #14 merged.
+- Exclusions rules, state port, browser adapter and view are separate; runtime remains the compatibility facade.
+- Legacy `excl.*` keys, shared fields, project scopes, snapshot partition and export visibility are preserved.
+- Runtime reduced from 2920 to 2763 lines with all 239 exports intact. App and other tools are unchanged.
+- 372 frontend tests pass; local browser QA covers selection, custom rows, reload, isolation and print portal.
+- Full audit and limits: [Phase 3.3](architecture/phase-3-exclusions.md). Next: Cronograma por etapas after reviewing this PR.
+
 ## Phase 3.2 - Matriz de entregables extraction (2026-09-29)
 
 - Based on origin/master 5a810bf after the Honorarios PR #13 merged and deployed to Vercel.
