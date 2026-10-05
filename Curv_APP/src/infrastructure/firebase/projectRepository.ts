@@ -6,8 +6,10 @@ import {
   collection,
   deleteField,
   doc,
-  getDoc,
+  getDocFromServer,
   getDocs,
+  getDocsFromServer,
+  onSnapshot,
   runTransaction,
 } from "firebase/firestore";
 import type {
@@ -480,13 +482,13 @@ export const getProjectSyncEntryByClient = async (
   clientId: string,
   projectId: string
 ): Promise<ProjectSyncEntry | null> => {
-  const snapshot = await getDoc(projectDocRef(clientId, projectId));
+  const snapshot = await getDocFromServer(projectDocRef(clientId, projectId));
   if (!snapshot.exists()) return null;
   return toProjectSyncEntry(clientId, snapshot.id, snapshot.data() as ProjectStorageDoc);
 };
 
 export const listProjectSyncEntriesByClient = async (clientId: string): Promise<ProjectSyncEntry[]> => {
-  const snapshot = await getDocs(collection(ensureDb(), "clients", clientId, "projects"));
+  const snapshot = await getDocsFromServer(collection(ensureDb(), "clients", clientId, "projects"));
   const entries: ProjectSyncEntry[] = [];
   snapshot.forEach((docSnapshot) => {
     const entry = toProjectSyncEntry(
@@ -498,6 +500,20 @@ export const listProjectSyncEntriesByClient = async (clientId: string): Promise<
   });
   return entries;
 };
+
+export const subscribeToProjectChanges = (
+  clientId: string,
+  onChange: () => void,
+  onError: (error: Error) => void
+) => onSnapshot(
+  collection(ensureDb(), "clients", clientId, "projects"),
+  { includeMetadataChanges: true },
+  (snapshot) => {
+    // Cache and optimistic writes are not evidence of a remote deletion.
+    if (!snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) onChange();
+  },
+  onError
+);
 
 export const upsertProjectByClient = async (
   clientId: string,
@@ -689,11 +705,13 @@ export const tombstoneProjectByClient = async (
           : nowIso(),
       };
     }
-    if (typeof expectedRevision === "number" && currentRevision !== expectedRevision) {
+    if (currentSnapshot.exists() && typeof expectedRevision === "number" && currentRevision !== expectedRevision) {
       throw new ProjectRevisionConflictError(currentRevision);
     }
     const deletedAt = nowIso();
-    const revision = currentRevision + 1;
+    // A missing parent is already absent remotely. Still record the deletion to prevent an old
+    // client from uploading it again, retaining the last revision observed by this client.
+    const revision = Math.max(currentRevision, expectedRevision ?? 0) + 1;
 
     // Blank the tool documents rather than deleting them: `allow delete` requires admin, but
     // tombstoning must work for editors. Enumerated from the index because a transaction cannot

@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   transactionSet: vi.fn(),
   transactionDelete: vi.fn(),
   getDocs: vi.fn(),
+  getDocFromServer: vi.fn(),
+  getDocsFromServer: vi.fn(),
+  onSnapshot: vi.fn(),
 }));
 
 vi.mock("../firebase", () => ({ ensureDb: () => ({ name: "test-db" }) }));
@@ -24,7 +27,10 @@ vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
   doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
   getDoc: vi.fn(),
+  getDocFromServer: mocks.getDocFromServer,
   getDocs: mocks.getDocs,
+  getDocsFromServer: mocks.getDocsFromServer,
+  onSnapshot: mocks.onSnapshot,
   setDoc: vi.fn(),
   updateDoc: vi.fn(),
   deleteField: () => ({ __deleteField: true }),
@@ -41,6 +47,8 @@ const {
   fetchProjectSnapshotByClient,
   getRemoteSnapshotDescriptor,
   listProjectSyncEntriesByClient,
+  getProjectSyncEntryByClient,
+  subscribeToProjectChanges,
   tombstoneProjectByClient,
   upsertProjectByClient,
 } = await import("./clientProjects");
@@ -222,6 +230,23 @@ describe("upsertProjectByClient", () => {
 });
 
 describe("tombstoneProjectByClient", () => {
+  it("deletes an absent parent even when the local client remembers a cloud revision", async () => {
+    mocks.transactionGet.mockResolvedValue({ exists: () => false });
+    const commit = await tombstoneProjectByClient("c1", "p1", "uid-1", 8);
+    expect(commit.revision).toBe(9);
+    expect(setPaths()).toEqual(["clients/c1/projects/p1"]);
+    expect(setForPath("clients/c1/projects/p1")?.[1]).toMatchObject({
+      id: "p1", clientId: "c1", syncRevision: 9, deletedByUid: "uid-1",
+    });
+  });
+
+  it("still refuses to delete an existing project edited remotely", async () => {
+    mocks.transactionGet.mockResolvedValue(existingDoc({ syncRevision: 9 }));
+    await expect(tombstoneProjectByClient("c1", "p1", "uid-1", 8))
+      .rejects.toBeInstanceOf(ProjectRevisionConflictError);
+    expect(mocks.transactionSet).not.toHaveBeenCalled();
+  });
+
   it("purges the blob and blanks the tool documents", async () => {
     mocks.transactionGet.mockResolvedValue(existingDoc({
       syncRevision: 5,
@@ -263,11 +288,45 @@ describe("tombstoneProjectByClient", () => {
 });
 
 describe("read path", () => {
+  it("confirms missing projects from the server rather than the local cache", async () => {
+    mocks.getDocFromServer.mockResolvedValue({ exists: () => false });
+    await expect(getProjectSyncEntryByClient("c1", "p1")).resolves.toBeNull();
+    expect(mocks.getDocFromServer.mock.calls[0][0].path).toBe("clients/c1/projects/p1");
+  });
+
+  it("does not treat an offline server read as an empty list", async () => {
+    mocks.getDocsFromServer.mockRejectedValueOnce(new Error("offline"));
+    await expect(listProjectSyncEntriesByClient("c1")).rejects.toThrow("offline");
+  });
+
+  it("only reconciles confirmed server changes and returns the listener cleanup", () => {
+    const unsubscribe = vi.fn();
+    mocks.onSnapshot.mockReturnValue(unsubscribe);
+    const onChange = vi.fn();
+    const onError = vi.fn();
+    const cleanup = subscribeToProjectChanges("c1", onChange, onError);
+    const [ref, options, notify, fail] = mocks.onSnapshot.mock.calls[0];
+    expect(ref.path).toBe("clients/c1/projects");
+    expect(options.includeMetadataChanges).toBe(true);
+    notify({ metadata: { fromCache: true, hasPendingWrites: false } });
+    notify({ metadata: { fromCache: false, hasPendingWrites: true } });
+    expect(onChange).not.toHaveBeenCalled();
+    notify({ metadata: { fromCache: false, hasPendingWrites: false } });
+    expect(onChange).toHaveBeenCalledOnce();
+    const error = new Error("permission-denied");
+    fail(error);
+    expect(onError).toHaveBeenCalledWith(error);
+    cleanup();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
   const listDocs = (docs: { id: string; data: unknown }[]) => {
-    mocks.getDocs.mockResolvedValue({
+    const snapshot = {
       forEach: (fn: (d: { id: string; data: () => unknown }) => void) =>
         docs.forEach((d) => fn({ id: d.id, data: () => d.data })),
-    });
+    };
+    mocks.getDocs.mockResolvedValue(snapshot);
+    mocks.getDocsFromServer.mockResolvedValue(snapshot);
   };
 
   it("never reads tool data while listing projects", async () => {
@@ -282,8 +341,9 @@ describe("read path", () => {
 
     const entries = await listProjectSyncEntriesByClient("c1");
 
-    expect(mocks.getDocs).toHaveBeenCalledTimes(1);
-    expect(mocks.getDocs.mock.calls[0][0].path).toBe("clients/c1/projects");
+    expect(mocks.getDocs).not.toHaveBeenCalled();
+    expect(mocks.getDocsFromServer).toHaveBeenCalledTimes(1);
+    expect(mocks.getDocsFromServer.mock.calls[0][0].path).toBe("clients/c1/projects");
     expect(entries[0].kind).toBe("active");
     if (entries[0].kind !== "active") throw new Error("expected an active entry");
     // The blob is not materialized for an index-shaped document.

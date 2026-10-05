@@ -164,12 +164,11 @@ export const decideRemoteSnapshotHydrationByFingerprint = ({
   // Dirty also covers ProjectRecord-only edits, which intentionally do not affect the snapshot
   // fingerprint. Never acknowledge those edits as synced merely because tool data is equal.
   if (localDirty) return "keep-local";
-  if (localFingerprint === remoteFingerprint) return "same";
-
   const normalizedRemoteRevision = normalizeRevision(remoteRevision);
   const normalizedLocalRevision = normalizeRevision(localCloudRevision);
-  if (normalizedRemoteRevision > normalizedLocalRevision) return "hydrate";
   if (normalizedRemoteRevision < normalizedLocalRevision) return "keep-local";
+  if (localFingerprint === remoteFingerprint) return "same";
+  if (normalizedRemoteRevision > normalizedLocalRevision) return "hydrate";
   if (normalizedRemoteRevision > 0) return "conflict";
 
   // Legacy snapshots have no revision. Preserve unknown local data unless the old timestamp gate
@@ -182,6 +181,17 @@ export const decideRemoteSnapshotHydrationByFingerprint = ({
   if (remoteTime > localTime) return "hydrate";
   if (remoteTime < localTime) return "keep-local";
   return "conflict";
+};
+
+/** Only call after a complete server list confirms that the parent document is absent. */
+export const decideMissingRemoteProject = (state: {
+  cloudRevision: number;
+  cloudUpdatedAt?: string;
+  dirty: boolean;
+  conflict?: unknown;
+}): "upload" | "remove" | "conflict" => {
+  if (state.cloudRevision === 0 && !state.cloudUpdatedAt) return "upload";
+  return state.dirty || state.conflict ? "conflict" : "remove";
 };
 
 export const decideRemoteSnapshotHydration = <BaseMeta>({
