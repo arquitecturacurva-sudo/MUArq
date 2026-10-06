@@ -12,9 +12,6 @@ import { useState } from "react";
 import { UI } from "../ui/tokens";
 import { DK } from "../ui/tokens";
 import { G } from "../ui/tokens";
-import { fDate } from "../../domain/project/calendar";
-import { readProjectBaseMetadata } from "./projectServices";
-import { currencySymbol } from "../../domain/project/currency";
 import { usePersistentState } from "./storage/usePersistentState";
 import { useSharedProjectTextField } from "./storage/usePersistentState";
 import { SHARED_PROJECT_CLIENT_KEY } from "../../domain/project/project";
@@ -32,12 +29,7 @@ import { lb } from "../ui/tokens";
 import { Btn } from "../ui/form-primitives";
 import { SHARED_PROJECT_CODE_KEY } from "../../domain/project/project";
 import { PROJECT_CODE_LEGACY_KEYS } from "../../domain/project/project";
-import type { OcResolutionStatus } from "../../domain/project/project";
-import { isValidOcResolutionStatus } from "../../domain/project/project";
 import React from "react";
-import { SOLICITANTES } from "../../domain/project/toolDefaults";
-import { MOTIVOS } from "../../domain/project/toolDefaults";
-import { IMPACTOS } from "../../domain/project/toolDefaults";
 import { useEffect } from "react";
 import { fmtMoney2 } from "./projectServices";
 import type { ValPartida } from "../../domain/project/construction";
@@ -242,185 +234,9 @@ export { SECCION_LABEL, ESTADO_BADGE } from "../exclusions/exclusionColors";
 import { ToolCronograma } from "../../composition/StageScheduleTool";
 export { ToolCronograma };
 
-export function ToolOC({toolId, onPrint}: {toolId: string; onPrint: () => void}) {
-  const today=new Date().toISOString().split("T")[0];
-  const curr = readProjectBaseMetadata().currency;
-  const moneySym = currencySymbol(curr);
-  const [cl,scl]=useSharedProjectTextField(SHARED_PROJECT_CLIENT_KEY,PROJECT_CLIENT_LEGACY_KEYS); const [pr,spr]=useSharedProjectTextField(SHARED_PROJECT_NAME_KEY,PROJECT_NAME_LEGACY_KEYS); const [cot,scot]=useSharedProjectTextField(SHARED_PROJECT_CODE_KEY,PROJECT_CODE_LEGACY_KEYS);
-  const [cod,scod]=usePersistentState("oc.cod","OC-01"); const [fe,sfe]=usePersistentState("oc.fe",today); const [sol,ssol]=usePersistentState("oc.sol","Cliente");
-  const [desc,sdesc]=usePersistentState("oc.desc",""); const [motivo,smotivo]=usePersistentState("oc.motivo","Pedido del cliente"); const [impacto,simpacto]=usePersistentState("oc.impacto","Alcance + Honorarios");
-  const [estadoResolucion,sEstadoResolucion]=usePersistentState<OcResolutionStatus>("oc.estadoResolucion","Pendiente",isValidOcResolutionStatus);
-  const [docsAfect,sdocsAfect]=usePersistentState("oc.docsAfect","");
-  const [antesAlc,santesAlc]=usePersistentState("oc.antesAlc",""); const [despAlc,sdespAlc]=usePersistentState("oc.despAlc","");
-  const [antesEnt,santesEnt]=usePersistentState("oc.antesEnt",""); const [despEnt,sdespEnt]=usePersistentState("oc.despEnt","");
-  const [antesPlazo,santesPlazo]=usePersistentState("oc.antesPlazo",""); const [despPlazo,sdespPlazo]=usePersistentState("oc.despPlazo","");
-  const [honorAd,shonorad]=usePersistentState("oc.honorAd",""); const [extPlazo,sextPlazo]=usePersistentState("oc.extPlazo",""); const [nuevoTotal,snuevoTotal]=usePersistentState("oc.nuevoTotal","");
-  const [hitoPago,shitoPago]=usePersistentState("oc.hitoPago",""); const [obsKey,sobsKey]=usePersistentState("oc.obsKey",""); const [ajusteCron,sajusteCron]=usePersistentState("oc.ajusteCron","No"); const [notaCron,snotaCron]=usePersistentState("oc.notaCron","");
-  const [emiteNom,semiteNom]=usePersistentState("oc.emiteNom",""); const [emiteCargo,semiteCargo]=usePersistentState("oc.emiteCargo","Arquitecto a cargo"); const [emiteFe,semiteFe]=usePersistentState("oc.emiteFe",today);
-  const [apruebaNom,sapruebaNom]=usePersistentState("oc.apruebaNom",""); const [apruebaCargo,sapruebaCargo]=usePersistentState("oc.apruebaCargo",""); const [apruebeFe,sapruebeFe]=usePersistentState("oc.apruebaFe","");
-
-  const row = (label: string, val: string) => (
-    <div style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #F0EBE0"}}>
-      <span style={{color:"#888",fontSize:10,minWidth:140}}>{label}</span>
-      <span style={{fontWeight:600,fontSize:10,textAlign:"right",flex:1}}>{val||"—"}</span>
-    </div>
-  );
-  const Sec = ({n,title,children}: {n: string; title: string; children?: React.ReactNode}) => (
-    <div style={{marginBottom:18}}>
-      <div style={{background:DK,borderRadius:"4px 4px 0 0",padding:"6px 14px",display:"flex",alignItems:"center",gap:10}}>
-        <span style={{color:G,fontWeight:800,fontSize:10}}>{n}.</span>
-        <span style={{color:"#fff",fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:"1px"}}>{title}</span>
-      </div>
-      <div style={{border:"1px solid #E5DDD0",borderTop:"none",borderRadius:"0 0 4px 4px",padding:"12px 14px"}}>{children}</div>
-    </div>
-  );
-  const conditions=["Esta orden de cambio modifica exclusivamente los puntos aquí indicados y mantiene vigentes las demás condiciones de la cotización o contrato base.","Cualquier trabajo adicional no descrito en este formato deberá evaluarse y formalizarse mediante una nueva orden de cambio.","Los plazos actualizados se contabilizan desde la aprobación de esta orden y desde la disponibilidad de la información o pagos requeridos.","La ejecución del cambio queda sujeta a la aprobación expresa del cliente."];
-  const showOCEmpty = !String(cl).trim() && !String(pr).trim() && !String(desc).trim() && !String(docsAfect).trim();
-
-  return (
-    <div>
-      <div style={cardS}>
-        {showOCEmpty&&(
-          <InlineEmptyStateCard
-            title="Documenta el cambio con trazabilidad"
-            context="Registra el antes/después y su impacto para evitar ambigüedades contractuales."
-            build="Una orden de cambio formal con impacto en alcance, plazo y honorarios."
-            first="Cliente, proyecto, descripción del cambio y documentos afectados."
-            unlock="Comparativo, costos adicionales y bloque de aprobación."
-          />
-        )}
-        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <p style={{...lb,color:G,margin:0}}>Datos del formulario</p>
-          <Btn v="gd" sm onClick={onPrint}>🖨 Imprimir / PDF</Btn>
-        </div>
-        <p style={{...lb,color:G,margin:"0 0 8px"}}>1. Datos generales</p>
-        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
-          <Fld label="Cliente"><Inp value={cl} onChange={scl} placeholder="Nombre del cliente"/></Fld>
-          <Fld label="Proyecto"><Inp value={pr} onChange={spr} placeholder="Descripción"/></Fld>
-          <Fld label="Código OC"><Inp value={cod} onChange={scod} placeholder="OC-01"/></Fld>
-          <Fld label="Fecha"><input type="date" value={fe} onChange={e=>sfe(e.target.value)} style={si}/></Fld>
-          <Fld label="Cotización de referencia"><Inp value={cot} onChange={scot} placeholder="COT-2026-001"/></Fld>
-          <Fld label="Solicitado por"><Sel value={sol} onChange={ssol} options={SOLICITANTES}/></Fld>
-        </div>
-        <p style={{...lb,color:G,margin:"8px 0"}}>2. Resumen del cambio</p>
-        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 14px"}}>
-          <Fld label="Descripción del cambio"><textarea value={desc} onChange={e=>sdesc(e.target.value)} placeholder="Describe de forma concreta qué cambia." style={{...si,height:64,resize:"vertical"}}/></Fld>
-          <Fld label="Documentos afectados"><textarea value={docsAfect} onChange={e=>sdocsAfect(e.target.value)} placeholder="Planos, cronograma, propuesta, matriz de entregables..." style={{...si,height:64,resize:"vertical"}}/></Fld>
-          <Fld label="Motivo"><Sel value={motivo} onChange={smotivo} options={MOTIVOS}/></Fld>
-          <Fld label="Impacto principal"><Sel value={impacto} onChange={simpacto} options={IMPACTOS}/></Fld>
-          <Fld label="Estado de resolución"><Sel value={estadoResolucion} onChange={(value)=>sEstadoResolucion(value as OcResolutionStatus)} options={["Pendiente","Resuelto"]}/></Fld>
-        </div>
-        <p style={{...lb,color:G,margin:"8px 0"}}>3. Detalle comparativo</p>
-        <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
-          <thead><tr style={{background:"#F8F6F1"}}>
-            {["Ítem","Antes","Después"].map(h=><th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left",borderBottom:"1px solid #E5DDD0"}}>{h}</th>)}
-          </tr></thead>
-          <tbody>
-            {([
-              ["Alcance",antesAlc,santesAlc,despAlc,sdespAlc],
-              ["Entregables",antesEnt,santesEnt,despEnt,sdespEnt],
-              ["Plazo",antesPlazo,santesPlazo,despPlazo,sdespPlazo],
-            ] as [string,string,React.Dispatch<React.SetStateAction<string>>,string,React.Dispatch<React.SetStateAction<string>>][]).map(([lbl,vA,sA,vD,sD])=>(
-              <tr key={lbl} style={{borderBottom:"1px solid #F0EBE0"}}>
-                <td style={{padding:"6px 10px",fontSize:10,fontWeight:700,width:90,verticalAlign:"middle"}}>{lbl}</td>
-                <td style={{padding:"4px 6px",width:"42%"}}><input value={vA} onChange={e=>sA(e.target.value)} placeholder="Estado anterior..." style={{...si,fontSize:10,padding:"5px 8px"}}/></td>
-                <td style={{padding:"4px 6px",width:"42%"}}><input value={vD} onChange={e=>sD(e.target.value)} placeholder="Estado nuevo..." style={{...si,fontSize:10,padding:"5px 8px"}}/></td>
-              </tr>
-            ))}
-          </tbody>
-        </table></div>
-        <p style={{...lb,color:G,margin:"8px 0"}}>4. Impacto del cambio</p>
-        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
-          <Fld label="Honorario adicional (S/)"><Inp value={honorAd} onChange={shonorad} placeholder="0.00"/></Fld>
-          <Fld label="Extensión de plazo"><Inp value={extPlazo} onChange={sextPlazo} placeholder="0 días / semanas"/></Fld>
-          <Fld label="Nuevo total (S/)"><Inp value={nuevoTotal} onChange={snuevoTotal} placeholder="0.00"/></Fld>
-          <Fld label="Hito de pago"><Inp value={hitoPago} onChange={shitoPago} placeholder="Cómo y cuándo se cobra"/></Fld>
-          <Fld label="Ajuste de cronograma">
-            <div style={{display:"flex",gap:6,marginBottom:6}}>
-              {["Sí","No"].map(o=><button key={o} onClick={()=>sajusteCron(o)} style={{...si,width:"auto",padding:"6px 16px",background:ajusteCron===o?DK:"#FDFCF9",color:ajusteCron===o?"#fff":DK,cursor:"pointer",fontWeight:600}}>{o}</button>)}
-            </div>
-            {ajusteCron==="Sí"&&<input value={notaCron} onChange={e=>snotaCron(e.target.value)} placeholder="Nota breve sobre el ajuste..." style={{...si,fontSize:10}}/>}
-          </Fld>
-          <Fld label="Observación clave"><Inp value={obsKey} onChange={sobsKey} placeholder="Nota importante sobre este cambio"/></Fld>
-        </div>
-        <p style={{...lb,color:G,margin:"8px 0"}}>5. Aprobación</p>
-        <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px"}}>
-          <div style={{border:"1px solid #E5DDD0",borderRadius:6,padding:12}}>
-            <p style={{...lb,margin:"0 0 8px"}}>Emite — CURVA Arquitectos</p>
-            <Fld label="Nombre"><Inp value={emiteNom} onChange={semiteNom} placeholder="Arquitecto responsable"/></Fld>
-            <Fld label="Cargo"><Inp value={emiteCargo} onChange={semiteCargo} placeholder="Cargo"/></Fld>
-            <Fld label="Fecha"><input type="date" value={emiteFe} onChange={e=>semiteFe(e.target.value)} style={si}/></Fld>
-          </div>
-          <div style={{border:"1px solid #E5DDD0",borderRadius:6,padding:12}}>
-            <p style={{...lb,margin:"0 0 8px"}}>Aprueba — Cliente</p>
-            <Fld label="Nombre"><Inp value={apruebaNom} onChange={sapruebaNom} placeholder="Nombre del cliente"/></Fld>
-            <Fld label="Cargo"><Inp value={apruebaCargo} onChange={sapruebaCargo} placeholder="Cargo"/></Fld>
-            <Fld label="Fecha"><input type="date" value={apruebeFe} onChange={e=>sapruebeFe(e.target.value)} style={si}/></Fld>
-          </div>
-        </div>
-      </div>
-
-      <div data-doc-id={toolId} style={{...cardS,padding:28}}>
-        <DocHeader title="Orden de Cambio" cl={cl} pr={pr} fe={fe}/>
-        <Sec n="1" title="Datos generales">
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
-            {row("Cliente",cl)}{row("Proyecto",pr)}{row("Código OC",cod)}{row("Fecha",fDate(fe))}{row("Cotización ref.",cot)}{row("Solicitado por",sol)}
-          </div>
-        </Sec>
-        <Sec n="2" title="Resumen del cambio">
-          <div style={{marginBottom:8}}>
-            <div style={lb}>Descripción del cambio</div>
-            <div style={{fontSize:10,lineHeight:1.6,color:DK,padding:"6px 0"}}>{desc||"—"}</div>
-          </div>
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
-            {row("Motivo",motivo)}{row("Impacto principal",impacto)}{row("Documentos afectados",docsAfect)}{row("Estado resolución",estadoResolucion)}
-          </div>
-        </Sec>
-        <Sec n="3" title="Detalle comparativo">
-          <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead><tr style={{background:"#F8F6F1"}}>
-              {["Ítem","Antes","Después"].map(h=><th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:"#888",textAlign:"left",borderBottom:"1px solid #E5DDD0"}}>{h}</th>)}
-            </tr></thead>
-            <tbody>
-              {[["Alcance",antesAlc,despAlc],["Entregables",antesEnt,despEnt],["Plazo",antesPlazo,despPlazo]].map(([l,a,d],i)=>(
-                <tr key={l} style={{background:i%2?"#fff":"#FAFAF7",borderBottom:"1px solid #F0EBE0"}}>
-                  <td style={{padding:"7px 10px",fontWeight:700,fontSize:10,width:90}}>{l}</td>
-                  <td style={{padding:"7px 10px",fontSize:10,color:"#888"}}>{a||"—"}</td>
-                  <td style={{padding:"7px 10px",fontSize:10}}>{d||"—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        </Sec>
-        <Sec n="4" title="Impacto del cambio">
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
-            {row("Honorario adicional",honorAd?`${moneySym} ${honorAd}`:`${moneySym} 0.00`)}{row("Extensión de plazo",extPlazo||"—")}
-            {row("Nuevo total",nuevoTotal?`${moneySym} ${nuevoTotal}`:"—")}{row("Hito de pago",hitoPago)}
-            {row("Ajuste de cronograma",ajusteCron+(notaCron?" — "+notaCron:""))}{row("Observación clave",obsKey)}
-          </div>
-        </Sec>
-        <Sec n="5" title="Condiciones">
-          {conditions.map((c,i)=>(
-            <div key={i} style={{display:"flex",gap:8,marginBottom:6,fontSize:10,lineHeight:1.6,color:"#444"}}>
-              <span style={{color:G,fontWeight:700,flexShrink:0}}>•</span><span>{c}</span>
-            </div>
-          ))}
-        </Sec>
-        <Sec n="6" title="Aprobación">
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-            {[{titulo:"Emite — CURVA Arquitectos",nom:emiteNom,cargo:emiteCargo,fecha:fDate(emiteFe)},{titulo:"Aprueba — Cliente",nom:apruebaNom,cargo:apruebaCargo,fecha:fDate(apruebeFe)}].map(a=>(
-              <div key={a.titulo} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"14px 16px"}}>
-                <div style={{...lb,color:G,marginBottom:10}}>{a.titulo}</div>
-                <div style={{borderTop:"1px solid #DDD",paddingTop:8,marginBottom:8,height:28}}/>
-                {row("Nombre",a.nom)}{row("Cargo",a.cargo)}{row("Fecha",a.fecha)}
-              </div>
-            ))}
-          </div>
-        </Sec>
-      </div>
-    </div>
-  );
-}
+// Temporary compatibility reexport for the extracted change-order tool.
+import { ToolOC } from "../../composition/ChangeOrderTool";
+export { ToolOC };
 
 // Temporary compatibility reexport for the extracted architectural program.
 import { ToolBrief } from "../../composition/ArchitecturalProgramTool";
