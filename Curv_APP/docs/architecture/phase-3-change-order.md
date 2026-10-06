@@ -1,8 +1,8 @@
 # Phase 3.9: Change-order extraction
 
-Base: origin/master 772e1020b97b6cf824d9fd7a72dfed30fc781bf5. Branch: `codex/phase-3-change-order-extraction`. Date: 2026-10-05.
+Initial base: origin/master 772e1020b97b6cf824d9fd7a72dfed30fc781bf5. Integrated origin/master 985409b2bed19e7d43dbae887a0b09223fb76a6a after Valuation PR #21 merged. Branch: `codex/phase-3-change-order-extraction`. Updated: 2026-10-06.
 
-Valuation PR #21 was open when this independent branch was created. Review and merge it before this change-order PR, then update this branch from master to resolve any overlap in the runtime facade and project status.
+The merge retained both extracted tools and resolved overlap only in the runtime facade and project status.
 
 ## Audit before editing
 
@@ -12,7 +12,7 @@ Extraction risks: changing an `oc.*` key or default, overwriting canonical proje
 
 ## Result and dependency map
 
-`runtime.tsx`: 853 -> 669 lines. All 239 public facade exports remain, including `ToolOC`. The compatibility reexport is explicitly marked.
+`runtime.tsx`: 507 -> 314 lines after integrating valuation, down from 853 before both extractions. All 239 public facade exports remain, including `ToolOC` and `ToolValorizacionAvance`. Both compatibility reexports are explicitly marked.
 
 Tool registry -> runtime compatibility `ToolOC` / direct tool entry -> `composition/ChangeOrderTool`
   -> `infrastructure/change-order/useChangeOrderState` -> existing scoped persistence hooks
@@ -45,7 +45,7 @@ Modified:
 
 ## Validation and limits
 
-- 419 frontend tests in 62 files, lint, typecheck and production build pass; the existing large-bundle warning remains.
+- The integrated branch passes 432 frontend tests in 65 files, lint, typecheck and production build. The existing large-bundle warning remains.
 - Local browser QA at `/tests/change-order/index.html` used fictional projects: OC code and project reference, before/after document, edits, schedule note, reload, project isolation, print portal and visible section headings. No Firebase call was made.
 - Native PDF driver output, authenticated branding and legal sign-off have not been tested. The existing `Pendiente`/`Resuelto` field remains a user-declared resolution status, not an approval workflow.
-- After valuation PR #21 and this PR merge, all nine Phase 3 tools will be extracted. The next work should be a cross-tool regression pass and planning the next architecture phase, not another tool migration.
+- Valuation PR #21 is merged. After this PR merges, all nine Phase 3 tools will be extracted. The next work should be a cross-tool regression pass and planning the next architecture phase, not another tool migration.
