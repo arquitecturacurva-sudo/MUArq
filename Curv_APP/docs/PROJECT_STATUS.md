@@ -1,5 +1,15 @@
 # Curv App — Project Status
 
+## Phase 3.9 - Orden de cambio extraction (2026-10-06)
+
+- Started from origin/master 772e102 and integrated master 985409b after Valuation PR #21 merged.
+- The OC document, application state contract, browser persistence adapter, composition root and pure rules are separate; runtime remains a compatibility facade.
+- Existing `oc.*` keys, shared project code, project scopes, `oc` snapshot partition, four conditions and branded document export are preserved.
+- Runtime now has 314 lines, down from 507 after valuation; all 239 exports remain intact. App, Firebase and other tools are unchanged.
+- Fixed invisible section titles in the print portal with theme-color fallbacks; local browser QA covers editing, reload, isolation and printing.
+- The integrated branch passes 432 frontend tests, lint, typecheck and production build.
+- Full audit and limits: [Phase 3.9](architecture/phase-3-change-order.md). This completes the extraction work for the ninth tool, pending PR review.
+
 ## Phase 3.8 - Valorizacion de avance extraction and improvement (2026-10-05)
 
 - Based on latest origin/master 772e102, after Architectural Program PR #20 merged.
