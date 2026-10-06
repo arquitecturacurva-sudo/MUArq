@@ -1,5 +1,15 @@
 # Curv App — Project Status
 
+## Phase 3.7 - Programa arquitectonico extraction (2026-10-05)
+
+- Based on latest origin/master f17abf1, after Construction Schedule PR #19 merged.
+- Space and relationship rules, application state contract, browser adapter and view are separate; runtime remains the compatibility facade.
+- Existing `brief.*` keys, shared fields, project scopes and `brief` snapshot partition are preserved.
+- Client-facing exports now show zone area, percentage and key observations; full space detail remains available through an explicit internal print mode.
+- Runtime reduced from 1465 to 853 lines with all 239 exports intact. App's print selector accepts the internal mode; other tools remain unchanged.
+- 410 frontend tests pass; local browser QA covers the summary, full document, both print portals, reload and project isolation. A date-sensitive stage-schedule test was stabilized without changing its production code.
+- Full audit and limits: [Phase 3.7](architecture/phase-3-architectural-program.md). Next: Valorizacion de avance after reviewing this PR.
+
 ## Phase 3.6 - Cronograma de obra extraction (2026-10-05)
 
 - Based on latest origin/master ba3e9c0, after Construction Quotation PR #18 merged.

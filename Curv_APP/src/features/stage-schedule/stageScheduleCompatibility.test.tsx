@@ -54,13 +54,14 @@ describe("Cronograma storage and export compatibility", () => {
 
   it("round-trips dates, stages and billing milestones in the existing snapshot", () => {
     const state = fields();
-    state.inicio[1]("2026-10-06");
+    const changedStartDate = state.inicio[0] === "2026-10-06" ? "2026-10-07" : "2026-10-06";
+    state.inicio[1](changedStartDate);
     state.honorario[1]("10000");
     state.etapas[1](rows => rows.map(row => row.id === rows[0].id ? { ...row, semanas: 7 } : row));
     state.hitosCobro[1](rows => rows.map(row => row.id === rows[0].id ? { ...row, checked: true } : row));
     const snapshot = data.collectProjectSnapshot("cron-a", "tenant");
     const partition = partitionProjectSnapshotTools(snapshot.tools).tools.cron;
-    expect(partition).toMatchObject({ "cron.inicio": "2026-10-06", "cron.honorario": "10000" });
+    expect(partition).toMatchObject({ "cron.inicio": changedStartDate, "cron.honorario": "10000" });
     device();
     data.hydrateProjectSnapshot("cron-a", snapshot);
     expect(fields().etapas[0][0].semanas).toBe(7);
