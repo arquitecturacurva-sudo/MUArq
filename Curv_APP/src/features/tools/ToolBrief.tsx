@@ -1,1 +1,1 @@
-export { ToolBrief as default } from "../runtime/runtime";
+export { ToolBrief as default } from "../../composition/ArchitecturalProgramTool";

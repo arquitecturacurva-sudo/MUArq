@@ -10,7 +10,7 @@ type WorkspaceTool = {
   id: string;
   label: string;
   checked: boolean;
-  component: React.ComponentType<{ toolId: string; onPrint: () => void }>;
+  component: React.ComponentType<{ toolId: string; onPrint: (mode?: "client" | "internal") => void }>;
 };
 
 type WorkspaceMainProps = {
@@ -27,7 +27,7 @@ type WorkspaceMainProps = {
   renderedTools?: WorkspaceTool[];
   activeProjectId: string;
   projectResetToken: number;
-  printTool: (id: string) => void;
+  printTool: (id: string, mode?: "client" | "internal") => void;
   current?: WorkspaceTool;
 };
 
@@ -98,7 +98,7 @@ export default function WorkspaceMain({
           const Component = tool.component;
           return (
             <div key={`${activeProjectId}-${projectResetToken}-${tool.id}`} style={{display: active === tool.id ? "block" : "none"}}>
-              <Component toolId={tool.id} onPrint={() => printTool(tool.id)} />
+              <Component toolId={tool.id} onPrint={(mode) => printTool(tool.id, mode)} />
             </div>
           );
         })}

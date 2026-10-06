@@ -1923,7 +1923,7 @@ export default function App() {
     };
   }, [goToCalcFromTour, tourOpen, tourStepIndex]);
 
-  const printTool=async (id: string)=>{
+  const printTool=async (id: string, printMode?: "client" | "internal")=>{
     let exportTheme = documentTheme;
     if (activeClientId && authUser) {
       try {
@@ -1935,7 +1935,8 @@ export default function App() {
         return;
       }
     }
-    const el=document.querySelector(`[data-doc-id="${id}"]`);
+    const documentId = id === "brief" && printMode === "internal" ? `${id}-internal` : id;
+    const el=document.querySelector(`[data-doc-id="${documentId}"]`);
     if(!el){
       alert('El documento para esta herramienta aún no está disponible.\nCompleta el formulario hasta ver la vista de documento.');
       return;
