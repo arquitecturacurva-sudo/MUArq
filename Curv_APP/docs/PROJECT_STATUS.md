@@ -1,5 +1,15 @@
 # Curv App — Project Status
 
+## Phase 3.8 - Valorizacion de avance extraction and improvement (2026-10-05)
+
+- Based on latest origin/master 772e102, after Architectural Program PR #20 merged.
+- Valuation arithmetic and typed review issues, application state contract, browser adapter and view are separate; runtime remains the compatibility facade.
+- Existing `val.*` keys, shared fields, project scopes, `val` snapshot partition and branded document export are preserved. Optional retention and evidence-reference fields were added.
+- Runtime reduced from 853 to 507 lines; App and other tools are unchanged.
+- All 423 frontend tests, lint, typecheck and production build pass.
+- Progress and monetary input are bounded, with warnings for contract reconciliation, previous accumulation, retention and payments. The document explicitly distinguishes declared status from certification.
+- Local browser QA covers calculations, warnings, reload and project isolation. Full audit, sources and limits: [Phase 3.8](architecture/phase-3-valuation.md). Next: Orden de cambio after reviewing this PR.
+
 ## Phase 3.7 - Programa arquitectonico extraction (2026-10-05)
 
 - Based on latest origin/master f17abf1, after Construction Schedule PR #19 merged.

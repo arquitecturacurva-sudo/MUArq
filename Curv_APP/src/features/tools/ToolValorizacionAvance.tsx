@@ -1,1 +1,1 @@
-export { ToolValorizacionAvance as default } from "../runtime/runtime";
+export { ToolValorizacionAvance as default } from "../../composition/ValuationTool";
