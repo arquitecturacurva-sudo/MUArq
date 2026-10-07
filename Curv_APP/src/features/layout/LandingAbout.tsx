@@ -1,4 +1,4 @@
-import { trackLocalProductEvent } from "../runtime/runtime";
+import { trackLocalProductEvent } from "../runtime/projectServices";
 import {
   LANDING,
   SANS,

@@ -2,9 +2,9 @@ import type {
   CommercialStatus,
   ProjectCurrency,
   ProjectRecord,
-  ProjectSnapshot,
   TrackId,
-} from "../runtime/runtime";
+} from "../../domain/project/project";
+import type { ProjectSnapshot } from "../../application/project/projectDataService";
 
 export type DemoProjectId = "casa-ladera" | "cafe-nerea" | "oficinas-gotomarket";
 

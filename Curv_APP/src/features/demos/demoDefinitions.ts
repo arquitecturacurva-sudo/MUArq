@@ -1,4 +1,5 @@
-import type { ProjectBaseMetadata, ProjectRecord, ProjectSnapshot } from "../runtime/runtime";
+import type { ProjectBaseMetadata, ProjectRecord } from "../../domain/project/project";
+import type { ProjectSnapshot } from "../../application/project/projectDataService";
 import { getDemoStorageProjectId } from "./demoService";
 import type { DemoProjectDefinition, DemoProjectId } from "./types";
 

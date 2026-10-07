@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import { ArrowLeft, Moon, Sun } from "lucide-react";
 import { Button, Card, Field, FieldLabel, Input } from "../ui/kit";
-import { Brand } from "../runtime/runtime";
+import { Brand } from "../ui/documentHeader";
 import authBackground from "../../assets/auth/auth-background.webp";
 
 type AuthViewProps = {
