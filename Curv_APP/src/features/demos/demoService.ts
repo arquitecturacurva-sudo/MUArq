@@ -1,4 +1,5 @@
-import type { ProjectRecord, ProjectSnapshot } from "../runtime/runtime";
+import type { ProjectRecord } from "../../domain/project/project";
+import type { ProjectSnapshot } from "../../application/project/projectDataService";
 import type { DemoProjectDefinition, DemoProjectId } from "./types";
 
 export const DEMO_STORAGE_PROJECT_ID_PREFIX = "demo-";

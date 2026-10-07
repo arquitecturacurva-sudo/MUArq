@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, LayoutDashboard, LogOut, Moon, Palette, PlayCircle, Sun, Users } from "lucide-react";
 import { Button } from "../ui/kit";
-import { Brand } from "../runtime/runtime";
+import { Brand } from "../ui/documentHeader";
 
 export type AppSection = "dashboard" | "workspace" | "demos" | "branding" | "team-access";
 

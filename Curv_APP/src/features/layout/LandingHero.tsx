@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { trackLocalProductEvent } from "../runtime/runtime";
+import { trackLocalProductEvent } from "../runtime/projectServices";
 import { SANS, SERIF, pillInteractionCss, pillStyle } from "./landingTheme";
 import macFrame from "../../assets/landing/mac.png";
 import iconHouse from "../../assets/landing/icon-house.png";
