@@ -1,7 +1,9 @@
 # Phase 4 access verification
 
-**Date:** 2026-10-07  
-**Code base:** `ec2b301727dbb32a106b04fd55c7ee81162da8a4` (`origin/master` at branch creation)  
+**Date:** 2026-10-07
+
+**Code base:** `ec2b301727dbb32a106b04fd55c7ee81162da8a4` (`origin/master` at branch creation)
+
 **Status:** Local emulator checks passed; deployed QA acceptance pending.
 
 ## Reproducible local checks
