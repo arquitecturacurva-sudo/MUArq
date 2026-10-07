@@ -288,6 +288,42 @@ describe("tombstoneProjectByClient", () => {
 });
 
 describe("read path", () => {
+  it("round-trips all nine live tool partitions through the cloud document shape", async () => {
+    const tools = {
+      "project.client": "QA Studio",
+      "app.tools.p1": [{ id: "calc", checked: true }],
+      "calc.ar": "125",
+      "matrix.items": [{ id: "deliverable-1", included: true }],
+      "excl.items": [{ id: "exclusion-1", estado: "Excluido" }],
+      "cron.etapas": [{ id: "stage-1", weeks: 2 }],
+      "cot.partidas": [{ id: 1, cantidad: 3 }],
+      "obra.partidas": [{ id: 1, avance: 25 }],
+      "brief.rows": [{ id: "space-1", area: 20 }],
+      "val.parts": [{ id: 1, avance: 30 }],
+      "oc.cod": "OC-QA-01",
+    };
+    mocks.transactionGet.mockResolvedValue(existingDoc({ syncRevision: 0 }));
+    await upsertProjectByClient("c1", project, baseMeta, "uid-1", makeSnapshot(tools), 0);
+
+    const parent = setForPath("clients/c1/projects/p1")?.[1];
+    const toolPrefix = "clients/c1/projects/p1/toolData/";
+    const writtenToolPaths = setPaths().filter((path) => path.startsWith(toolPrefix));
+    expect(writtenToolPaths.sort()).toEqual(
+      PROJECT_TOOL_IDS.map((toolId) => `${toolPrefix}${toolId}`).sort()
+    );
+    const toolDocs = mocks.transactionSet.mock.calls
+      .filter(([ref]) => ref.path.startsWith(toolPrefix))
+      .map(([ref, data]) => ({ id: ref.path.slice(toolPrefix.length), data }));
+    listDocs(toolDocs);
+
+    const restored = await fetchProjectSnapshotByClient("c1", "p1", {
+      project, baseMeta, revision: 1, snapshotIndex: parent.snapshotIndex,
+    });
+    expect(restored?.tools).toEqual(tools);
+    expect(restored && getProjectSnapshotFingerprint(restored))
+      .toBe(getProjectSnapshotFingerprint(makeSnapshot(tools)));
+  });
+
   it("confirms missing projects from the server rather than the local cache", async () => {
     mocks.getDocFromServer.mockResolvedValue({ exists: () => false });
     await expect(getProjectSyncEntryByClient("c1", "p1")).resolves.toBeNull();
