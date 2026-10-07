@@ -28,12 +28,66 @@
 - Profile A: QA-A account, isolated browser storage.
 - Profile B: the same QA-A account, separate isolated browser storage.
 - Profile C: QA-B account, not a member of QA-A's tenant.
+- Profile D: an existing invited Viewer account, assigned only to the disposable QA project.
 - Credentials are temporary and must not be copied into this report, source files, logs, screenshots, or commits.
 - Do not create or delete accounts as part of this run.
 
+## Phase 4 nine-tool acceptance (open)
+
+Use a disposable, representative project P in QA-A's studio and a second disposable
+project Q as an isolation control. Use a unique non-customer marker in each field.
+Do not edit a customer project. Run the same sequence for every row: edit in P,
+wait for saved state, reload A, open Q and return to P, then open P in fresh profile
+B and compare the value. Export or print the named document from P and verify the
+marker is present and legible; the Q document must not inherit it. The automated
+collect/hydrate and cloud-document round-trip tests complement this browser check.
+
+| Tool | Representative persisted field | Document to inspect | A reload / P-Q-P / B hydrate / PDF |
+|---|---|---|---|
+| Honorarios `calc` | `calc.ar` (area) | `calc` | Pending / Pending / Pending / Pending |
+| Matriz `matrix` | `matrix.items` (deliverable) | `matrix` | Pending / Pending / Pending / Pending |
+| Exclusiones `excl` | `excl.items` (client text) | `excl` | Pending / Pending / Pending / Pending |
+| Cronograma etapas `cron` | `cron.etapas` (duration) | `cron` | Pending / Pending / Pending / Pending |
+| Cotizacion `cot` | `cot.partidas` (quantity) | `cot` | Pending / Pending / Pending / Pending |
+| Cronograma obra `cronobra` | `obra.partidas` (progress) | `cronobra` | Pending / Pending / Pending / Pending |
+| Programa `brief` | `brief.rows` (space and area) | `brief` and `brief-internal` | Pending / Pending / Pending / Pending |
+| Valorizacion `val` | `val.parts` (measured progress) | `val` | Pending / Pending / Pending / Pending |
+| Orden de cambio `oc` | `oc.cod` and `oc.desc` | `oc` | Pending / Pending / Pending / Pending |
+
+For the Programa client export, verify the summary rather than the full internal
+space table; verify the detailed table only in the internal document. A PDF check
+passes only when the downloaded/printed output opens and contains the expected
+content, not merely when the print button responds.
+
+After all nine rows, edit in B and reconcile in A without reload; repeat the
+existing conflict, offline, deletion and multi-tab cases below. Profile C must
+be denied the QA-A tenant and both projects. Profile D may read P but not Q and
+must be denied create/update/delete on both project and `toolData` documents.
+Record denied authenticated backend requests as well as absent UI controls.
+Exercise invitation creation, renewal, cancellation and acceptance only with
+disposable QA invitations; never place tokens or credentials in evidence.
+
+Evidence for this pass: commit SHA, exact Preview deployment ID/URL, Firebase
+project ID and rules hash, browser/profile labels, result for each table cell,
+redacted console/network errors, exported file names, and defect links. An
+unchecked or failed cell blocks sign-off. Promote the exact validated Preview
+artifact, then repeat a short nine-tool read/export smoke in production using
+the QA project before marking this matrix closed.
+
+### Phase 4 local baseline (2026-10-07)
+
+From `master` at `ec2b301`, the nine-tool cloud-document round-trip test passes.
+The full frontend suite passes 433 tests in 65 files; lint, typecheck and build
+pass. The production build reports the initial `index` JavaScript chunk at
+1,258.28 kB minified / 366.89 kB gzip and still emits Vite's 500 kB warning.
+These are bundle measurements only: startup, project-open and export timings,
+authenticated browser results, Preview deployment ID and production smoke are
+still pending. Record those timings in the same browser/device/network setup
+before making any loading change.
+
 ## Multi-device and cache matrix
 
-- [ ] A creates a project with `calc`, `matrix`, `cot`, and `val` data; B opens it fresh and sees the same values.
+- [ ] A populates all nine tool rows above; B opens the project fresh and sees the same values.
 - [ ] B edits each covered tool; A regains focus and reconciles without a full reload.
 - [ ] B repeats hydration with an intentionally old local cache and cloud remains authoritative when no local work is dirty.
 - [ ] A and B create a current revision conflict; neither local copy is overwritten automatically.
