@@ -1,5 +1,5 @@
 import { DK, G, UI } from "../ui/tokens";
-import { APP_TOUR_STEPS } from "../runtime/runtime";
+import { APP_TOUR_STEPS } from "../help/toolGuideContent";
 
 type OnboardingTourProps = {
   tourOpen: boolean;

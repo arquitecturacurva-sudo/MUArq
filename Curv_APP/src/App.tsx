@@ -33,10 +33,10 @@ import OnboardingTour from "./features/layout/OnboardingTour";
 import WorkspaceMain from "./features/layout/WorkspaceMain";
 import { WorkspaceBody, WorkspacePage } from "./features/layout/WorkspaceLayout";
 import WorkspaceSidebar from "./features/layout/WorkspaceSidebar";
+import { openPrint } from "./features/printing/openPrint";
+import { APP_TOUR_STEPS } from "./features/help/toolGuideContent";
+import { DEFAULT_TOOLS, DEFAULT_TOOL_STATES } from "./composition/toolRegistry";
 import {
-  APP_TOUR_STEPS,
-  DEFAULT_TOOLS,
-  DEFAULT_TOOL_STATES,
   DEFAULT_TRACKS,
   LEGACY_MIGRATION_FLAG_KEY,
   PROJECT_STORAGE_EVENT,
@@ -66,7 +66,6 @@ import {
   normalizeTracks,
   nowIso,
   type ProjectSnapshot,
-  openPrint,
   readStorage,
   readProjectBaseMetadata,
   setActiveStorageProjectId,

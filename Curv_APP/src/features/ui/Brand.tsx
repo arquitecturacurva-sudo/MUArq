@@ -1,1 +1,1 @@
-export { Brand as default } from "../runtime/runtime";
+export { Brand as default } from "./documentHeader";

@@ -4,7 +4,9 @@ import { HelpCircle } from "lucide-react";
 import InfoBubble from "../ui/InfoBubble";
 import { Button, Pill, SaveState } from "../ui/kit";
 import type { ProjectSaveStatus } from "../runtime/storage/projectSyncState";
-import { IconCalc, TOOL_ICONS, trackLocalProductEvent } from "../runtime/runtime";
+import { IconCalc } from "../ui/ToolIcons";
+import { TOOL_ICONS } from "../ui/toolIconRegistry";
+import { trackLocalProductEvent } from "../runtime/projectServices";
 
 type WorkspaceTool = {
   id: string;

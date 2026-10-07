@@ -4,7 +4,7 @@ import {
   type ProjectSnapshotTools,
 } from "./snapshot";
 
-/** Canonical tool ids. Mirrors DEFAULT_TOOLS in runtime.tsx and DEMO_TOOL_IDS in demoService.ts. */
+/** Canonical tool ids. Mirrors DEFAULT_TOOLS in composition/toolRegistry.tsx and DEMO_TOOL_IDS in demoService.ts. */
 export const PROJECT_TOOL_IDS = [
   "calc",
   "matrix",
@@ -20,7 +20,7 @@ export const PROJECT_TOOL_IDS = [
 export type ProjectToolId = (typeof PROJECT_TOOL_IDS)[number];
 
 /**
- * Display labels, duplicated from DEFAULT_TOOLS in runtime.tsx so that persistence-layer error
+ * Display labels, duplicated from DEFAULT_TOOLS in composition/toolRegistry.tsx so that persistence-layer error
  * messages can name the offending tool without importing the React component registry.
  */
 export const PROJECT_TOOL_LABELS: Readonly<Record<ProjectToolId, string>> = {

@@ -1,1 +1,1 @@
-export { InfoBubble as default } from "../runtime/runtime";
+export { InfoBubble as default } from "../help/toolGuide";

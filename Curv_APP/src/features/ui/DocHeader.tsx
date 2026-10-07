@@ -1,1 +1,1 @@
-export { DocHeader as default } from "../runtime/runtime";
+export { DocHeader as default } from "./documentHeader";

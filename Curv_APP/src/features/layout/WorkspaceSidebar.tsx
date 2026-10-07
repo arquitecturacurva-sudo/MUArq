@@ -18,15 +18,15 @@ import {
   TabsTrigger,
 } from "../ui/kit";
 import { DARK_THEME_VARS } from "../ui/theme";
+import { IconCalc } from "../ui/ToolIcons";
+import { TOOL_ICONS } from "../ui/toolIconRegistry";
 import {
-  IconCalc,
   PROJECT_CURRENCY_OPTIONS,
   PROJECT_STORAGE_EVENT,
   type LocalProductEvent,
   type ProjectCurrency,
   type ProjectRecord,
   type TrackId,
-  TOOL_ICONS,
   TRACK_LABELS,
   clearLocalProductEvents,
   readLocalProductEvents,
