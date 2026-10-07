@@ -5,6 +5,7 @@ import { doc, getDoc, getDocs, collection, query, where, documentId, setDoc, upd
 import { ref, uploadBytes, getMetadata } from "firebase/storage";
 
 const projectId = "demo-curv-team-access";
+const TOOL_IDS = ["calc", "matrix", "excl", "cron", "cot", "cronobra", "brief", "val", "oc"];
 if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw new Error("Emulators required; never run against a live project.");
 let env;
 const dbFor = uid => env.authenticatedContext(uid).firestore();
@@ -32,7 +33,9 @@ before(async () => {
       }
       for (const id of ["p1", "p2"]) {
         batch.set(doc(db, path(tenant, "projects/" + id)), { id, clientId: tenant, name: id });
-        batch.set(doc(db, path(tenant, "projects/" + id + "/toolData/calc")), { id: "calc", toolId: "calc", projectId: id, clientId: tenant, version: 1, revision: 1, updatedAt: "now", fingerprint: "a", data: {} });
+        for (const toolId of TOOL_IDS) {
+          batch.set(doc(db, path(tenant, "projects/" + id + "/toolData/" + toolId)), { id: toolId, toolId, projectId: id, clientId: tenant, version: 1, revision: 1, updatedAt: "now", fingerprint: "a", data: {} });
+        }
       }
     }
     // A tenant whose only effective admin is not the owner (legacy edge case).
@@ -47,20 +50,26 @@ after(async () => { await env?.cleanup(); });
 for (const uid of ["owner", "admin", "editor"]) test(uid + " reads projects and valid tool data", async () => {
   const db = dbFor(uid);
   await assertSucceeds(getDocs(collection(db, "clients/a/projects")));
-  await assertSucceeds(getDoc(doc(db, "clients/a/projects/p2/toolData/calc")));
+  for (const toolId of TOOL_IDS) {
+    await assertSucceeds(getDoc(doc(db, "clients/a/projects/p2/toolData/" + toolId)));
+  }
   await assertSucceeds(updateDoc(doc(db, "clients/a/projects/p2/toolData/calc"), { data: { amount: 2 } }));
 });
 for (const uid of ["viewer", "observer"]) test(uid + " only reads assigned projects including tool subcollections", async () => {
   const db = dbFor(uid);
   await assertSucceeds(getDoc(doc(db, "clients/a/projects/p1")));
-  await assertSucceeds(getDoc(doc(db, "clients/a/projects/p1/toolData/calc")));
+  for (const toolId of TOOL_IDS) {
+    await assertSucceeds(getDoc(doc(db, "clients/a/projects/p1/toolData/" + toolId)));
+    await assertFails(getDoc(doc(db, "clients/a/projects/p2/toolData/" + toolId)));
+    await assertFails(updateDoc(doc(db, "clients/a/projects/p1/toolData/" + toolId), { data: {} }));
+  }
+  await assertSucceeds(getDocs(collection(db, "clients/a/projects/p1/toolData")));
+  await assertFails(getDocs(collection(db, "clients/a/projects/p2/toolData")));
   await assertFails(getDoc(doc(db, "clients/a/projects/p2")));
-  await assertFails(getDoc(doc(db, "clients/a/projects/p2/toolData/calc")));
   await assertFails(getDoc(doc(db, "clients/b/projects/p1")));
   await assertFails(getDocs(collection(db, "clients/a/projects")));
   await assertSucceeds(getDocs(query(collection(db, "clients/a/projects"), where(documentId(), "in", ["p1"]))));
   await assertFails(updateDoc(doc(db, "clients/a/projects/p1"), { name: "Changed" }));
-  await assertFails(updateDoc(doc(db, "clients/a/projects/p1/toolData/calc"), { data: {} }));
   await assertFails(deleteDoc(doc(db, "clients/a/projects/p1")));
   await assertFails(getDoc(doc(db, "clients/a"))); // contains billing
   await assertFails(getDocs(collection(db, "clients/a/members")));
@@ -94,6 +103,10 @@ test("last effective admin cannot be removed or demoted, even in a batch", async
 test("unauthenticated requests and cross-tenant edits are denied", async () => {
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), "clients/a/projects/p1")));
   await assertFails(updateDoc(doc(dbFor("editor"), "clients/b/projects/p1"), { name: "Changed" }));
+  for (const toolId of TOOL_IDS) {
+    await assertFails(getDoc(doc(dbFor("outsider"), "clients/a/projects/p1/toolData/" + toolId)));
+    await assertFails(updateDoc(doc(dbFor("outsider"), "clients/a/projects/p1/toolData/" + toolId), { data: {} }));
+  }
 });
 test("logo reads respect active membership; all direct uploads remain denied", async () => {
   for (const uid of ["owner", "admin", "editor", "viewer", "observer"]) {
