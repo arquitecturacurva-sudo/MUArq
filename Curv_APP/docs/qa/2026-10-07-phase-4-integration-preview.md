@@ -18,6 +18,8 @@ This branch assembles the slices into one Vercel Preview candidate. It is not a 
 
 The initial compressed bytes differ by -302 from the clean master baseline of 518,618 bytes. This is too small and too narrow a measurement to claim a user-visible speed improvement. The large entry script remains.
 
+Checked-in rule hashes are `D3761139533342A3C55CB7E96D5BADF2673A1A307DCDA4740D6B1B034D984654` for `firestore.rules` and `323E202E6366462EF5C1B6DC8B6532580868C66264FAD50022052476B3B5A0FD` for `storage.rules` (SHA-256). Their deployed revisions are not yet verified. This branch does not modify either rules file.
+
 ## Required deployed evidence before release
 
 - [ ] Record the exact Preview URL, deployment ID, commit SHA, Firebase project, and deployed rules revision/hash.
