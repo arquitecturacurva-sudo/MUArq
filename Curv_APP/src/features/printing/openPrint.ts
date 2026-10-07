@@ -71,4 +71,3 @@ export function openPrint(html: string) {
     <div style="max-width:820px;margin:0 auto;">${html}</div>
   `;
 }
-
