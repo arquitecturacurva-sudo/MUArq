@@ -8,6 +8,7 @@ import { calculateStageSchedule, parseScheduleHonorarium, setStageWeeks, toggleS
 import { cardS, si, lb, DK, G } from "../ui/tokens";
 import { InlineEmptyStateCard, Fld, Inp, Btn } from "../ui/form-primitives";
 import { DocHeader } from "../ui/documentHeader";
+import { getContrastText } from "../../lib/branding/contrast";
 
 export function StageScheduleView({toolId, onPrint, state, currency, formatMoney: fmt}: {toolId: string; onPrint: () => void; state: StageScheduleState; currency: ProjectCurrency; formatMoney: (value: unknown) => string}) {
   const {cl:[cl,scl],pr:[pr,spr],fe:[fe,sfe],inicio:[inicio,sInicio],etapas:[etapas,setEtapas],honorario:[honorario,setHonorario],nota:[nota,setNota],hitosCobro:[hitosCobro,setHitosCobro]} = state;
@@ -170,7 +171,7 @@ export function StageScheduleView({toolId, onPrint, state, currency, formatMoney
                 <div style={{width:150,flexShrink:0,fontSize:10,fontWeight:600,paddingRight:10,textAlign:"right"}}>{e.label}</div>
                 <div style={{flex:1,background:"#F0EDE8",borderRadius:4,height:22,position:"relative",overflow:"hidden"}}>
                   <div style={{position:"absolute",left:offsetPct+"%",width:e.pct+"%",height:"100%",background:e.color,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    <span style={{fontSize:8,color:"#fff",fontWeight:700,whiteSpace:"nowrap",padding:"0 4px"}}>{e.semanas} sem · {fDateShort(e.start)}–{fDateShort(e.end)}</span>
+                    <span style={{fontSize:8,color:getContrastText(e.color),fontWeight:700,whiteSpace:"nowrap",padding:"0 4px"}}>{e.semanas} sem · {fDateShort(e.start)}–{fDateShort(e.end)}</span>
                   </div>
                 </div>
               </div>

@@ -6,7 +6,7 @@ import {
   deserializeBrandProfile,
   serializeBrandProfileDraft,
 } from "./brandProfileSerialization";
-import { getContrastRatio, getContrastText } from "./contrast";
+import { getContrastRatio, getContrastText, getReadableAccent } from "./contrast";
 import { createDefaultBrandProfile } from "./defaults";
 import { getDocumentBrandingCss, getDocumentFooterText } from "./documentBranding";
 import { FONT_PRESETS, getFontPreset, isFontPresetId } from "./fontPresets";
@@ -43,6 +43,14 @@ describe("branding primitives", () => {
     expect(getContrastText("#FFFFFF")).toBe("#111111");
     expect(getContrastText("#111111")).toBe("#FFFFFF");
     expect(getContrastRatio("#FFFFFF", "#111111")).toBeGreaterThan(15);
+  });
+
+  it("keeps document accents readable against light and dark studio paper", () => {
+    const darkAccent = getReadableAccent("#181A1F", "#315A8C");
+    const lightAccent = getReadableAccent("#F8F6F1", "#D6B368");
+    expect(getContrastRatio("#181A1F", darkAccent)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio("#F8F6F1", lightAccent)).toBeGreaterThanOrEqual(4.5);
+    expect(getReadableAccent("#FFFFFF", "#315A8C")).toBe("#315A8C");
   });
 
   it("rejects oversized and unsupported logo metadata", () => {
@@ -122,14 +130,15 @@ describe("BrandProfile serialization", () => {
     });
     expect(profile).not.toBeNull();
     if (!profile) return;
-    expect(brandProfileToDocumentTheme(profile)).toMatchObject({
+    const theme = brandProfileToDocumentTheme(profile);
+    expect(theme).toMatchObject({
       companyName: "Estudio Norte",
       headingFont: "Lora",
       bodyFont: "Inter",
-      accentText: "#111111",
       logoPosition: "center",
       showGeneratedWithCurv: false,
     });
+    expect(getContrastRatio(theme.accent, theme.accentText)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("maps the saved identity into export styles and footer content", () => {
@@ -150,5 +159,46 @@ describe("BrandProfile serialization", () => {
     expect(getDocumentBrandingCss(theme)).toContain("'Lora', Inter, sans-serif");
     expect(getDocumentFooterText(theme)).toBe("Arquitectura con propósito");
     expect(getDocumentFooterText({ ...theme, footerText: "" })).toBe("hola@estudio.pe");
+  });
+
+  it("uses dark document surfaces instead of white rows with white text", () => {
+    const profile = createDefaultBrandProfile({ ownerUid: "owner-1", companyName: "Estudio de Pruebas" });
+    const theme = brandProfileToDocumentTheme({
+      ...profile,
+      backgroundColor: "#181A1F",
+      primaryTextColor: "#FFFFFF",
+      accentColor: "#315A8C",
+    });
+    const css = getDocumentBrandingCss(theme);
+    expect(css).toContain("[data-doc-id] td");
+    expect(css).toContain("background: #20242A !important");
+    expect(css).toContain("color: #FFFFFF !important");
+    expect(css).toContain(`[data-brand-document-meta]`);
+    expect(getContrastRatio(theme.background, theme.accent)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps legacy labels and dark table headings readable in light documents", () => {
+    const profile = createDefaultBrandProfile({ ownerUid: "owner-1", companyName: "Estudio" });
+    const theme = brandProfileToDocumentTheme(profile);
+    const css = getDocumentBrandingCss(theme);
+    expect(getContrastRatio("#F8F6F1", theme.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain('[style*="color:#aaa" i]');
+    expect(css).toContain(getReadableAccent("#1A1A1A", theme.accent));
+  });
+
+  it("adapts accent and secondary text to custom studio backgrounds", () => {
+    const profile = createDefaultBrandProfile({ ownerUid: "owner-1", companyName: "Estudio" });
+    const themes = [
+      brandProfileToDocumentTheme({ ...profile, backgroundColor: "#C0C0C0", primaryTextColor: "#111111" }),
+      brandProfileToDocumentTheme({ ...profile, backgroundColor: "#707070", primaryTextColor: "#FFFFFF", accentColor: "#315A8C" }),
+    ];
+    for (const theme of themes) {
+      const paper = theme.text === "#FFFFFF" ? "#292E35" : "#F8F6F1";
+      expect(getContrastRatio(theme.background, theme.accent)).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(paper, theme.accent)).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(theme.background, theme.mutedText)).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(paper, theme.mutedText)).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(theme.accent, theme.accentText)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

@@ -40,3 +40,21 @@ export const hasSufficientContrast = (
   textColor: string,
   minimumRatio = 4.5
 ) => getContrastRatio(backgroundColor, textColor) >= minimumRatio;
+
+/** Keep the brand hue while making its document accent readable on the chosen paper. */
+export const getReadableAccent = (backgroundColor: string, accentColor: string): string => {
+  const background = normalizeHexColor(backgroundColor);
+  const accent = normalizeHexColor(accentColor);
+  if (!background || !accent || hasSufficientContrast(background, accent)) return accentColor;
+  const target = getContrastText(background);
+  const channel = (hex: string, offset: number) => Number.parseInt(hex.slice(offset, offset + 2), 16);
+  for (let step = 1; step <= 100; step += 1) {
+    const amount = step / 100;
+    const mixed = `#${[1, 3, 5].map(offset =>
+      Math.round(channel(accent, offset) * (1 - amount) + channel(target, offset) * amount)
+        .toString(16).padStart(2, "0")
+    ).join("").toUpperCase()}`;
+    if (hasSufficientContrast(background, mixed)) return mixed;
+  }
+  return target;
+};

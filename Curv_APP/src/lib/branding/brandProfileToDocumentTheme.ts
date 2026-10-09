@@ -1,4 +1,4 @@
-import { getContrastText } from "./contrast";
+import { getContrastText, getReadableAccent } from "./contrast";
 import type { BrandProfileContent, DocumentTheme } from "./types";
 
 export const brandProfileToDocumentTheme = (
@@ -6,13 +6,17 @@ export const brandProfileToDocumentTheme = (
   fallbackCompanyName = "Mi estudio"
 ): DocumentTheme => {
   const usesDarkText = profile.primaryTextColor === "#111111";
+  const documentPaper = usesDarkText ? "#F8F6F1" : "#292E35";
+  const readableOnPaperAndBrand = (color: string) =>
+    getReadableAccent(profile.backgroundColor, getReadableAccent(documentPaper, color));
+  const accent = readableOnPaperAndBrand(profile.accentColor);
   return {
     background: profile.backgroundColor,
     surface: usesDarkText ? "#FFFFFF" : "#20242A",
-    accent: profile.accentColor,
-    accentText: getContrastText(profile.accentColor),
+    accent,
+    accentText: getContrastText(accent),
     text: profile.primaryTextColor,
-    mutedText: usesDarkText ? "#5F6670" : "#D1D5DB",
+    mutedText: readableOnPaperAndBrand(usesDarkText ? "#5F6670" : "#D1D5DB"),
     border: usesDarkText ? "#D9DDE3" : "#4B5563",
     headingFont: profile.headingFont,
     bodyFont: profile.bodyFont,

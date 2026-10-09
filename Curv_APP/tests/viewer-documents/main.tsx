@@ -26,7 +26,14 @@ const project: ViewerProject = {
   } : { [`${id}.fe`]: "2026-10-09" } })),
 };
 const tenant = { id: "qa-study", name: "Estudio QA", ownerUid: "owner-qa", role: "viewer" as const, projectIds: [project.id] };
-const theme = brandProfileToDocumentTheme(createDefaultBrandProfile({ ownerUid: tenant.ownerUid, companyName: tenant.name }));
+const dark = new URLSearchParams(window.location.search).has("dark");
+const baseProfile = createDefaultBrandProfile({ ownerUid: tenant.ownerUid, companyName: tenant.name });
+const theme = brandProfileToDocumentTheme(dark ? {
+  ...baseProfile,
+  backgroundColor: "#181A1F",
+  primaryTextColor: "#FFFFFF",
+  accentColor: "#315A8C",
+} : baseProfile);
 
 createRoot(document.getElementById("root")!).render(
   <div style={{ ...LIGHT_THEME_VARS, minHeight: "100vh" }}>
