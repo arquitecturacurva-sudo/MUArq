@@ -44,7 +44,7 @@ function TenantTeam({ service, tenant, currentUserUid, projects, undoLastChange,
   const restoreFocus = () => { if (opener.current?.isConnected) opener.current.focus(); else heading.current?.focus(); };
   const onSuccess = (message: string) => { setNotice(message); setCanUndo(Boolean(undoLastChange)); };
   const collection = {
-    members: visible, tenant, projects: tenantProjects, canManage,
+    members: visible, tenant, projects: tenantProjects, canManage, readOnly,
     blockedReason: (member: TenantMembership) => actor ? getMemberMutationError(actor, member, { tenantId: tenant.id, ownerUid: tenant.ownerUid, members })?.message ?? null : "Sin permiso",
     onAction: (kind: "role" | "revoke", member: TenantMembership, event: React.MouseEvent<HTMLButtonElement>) => {
       opener.current = event.currentTarget; setAction({ kind, member });

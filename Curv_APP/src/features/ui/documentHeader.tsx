@@ -51,7 +51,7 @@ export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: stri
           </div>
           <div data-brand-document-title style={{fontSize:9,color:brandTheme?.mutedText || "#888",textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{title}</div>
         </div>
-        <div style={{textAlign:"right",fontSize:11,color:brandTheme?.mutedText || "#555",lineHeight:1.6}}><b style={{color:brandTheme?.text}}>{cl||"—"}</b><br/>{pr||"—"}<br/><span style={{fontSize:10}}>{fDate(fe)}</span></div>
+        <div data-brand-document-meta style={{textAlign:"right",fontSize:11,color:brandTheme?.mutedText || "#555",lineHeight:1.6}}><b style={{color:brandTheme?.text}}>{cl||"—"}</b><br/>{pr||"—"}<br/><span style={{fontSize:10}}>{fDate(fe)}</span></div>
       </div>
     </div>
   );

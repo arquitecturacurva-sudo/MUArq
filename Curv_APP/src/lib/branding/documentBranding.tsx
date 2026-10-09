@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, type ReactNode } from "react";
 import type { DocumentTheme } from "./types";
+import { getReadableAccent } from "./contrast";
 
 const DocumentBrandThemeContext = createContext<DocumentTheme | null>(null);
 
@@ -10,6 +11,8 @@ export const getDocumentBrandingCss = (theme: DocumentTheme) => `
   [data-doc-id] {
     --ui-accent: ${theme.accent};
     --ui-text: ${theme.text};
+    --ui-text-muted: ${theme.mutedText};
+    --ui-text-subtle: ${theme.mutedText};
     --ui-card: ${theme.background};
     --ui-border: ${theme.border};
     --ui-border-soft: ${theme.border};
@@ -32,11 +35,85 @@ export const getDocumentBrandingCss = (theme: DocumentTheme) => `
   [data-brand-document-header] {
     border-bottom-color: ${theme.accent} !important;
   }
+  [data-brand-document-meta] {
+    color: ${theme.mutedText} !important;
+  }
+  [data-brand-document-meta] b {
+    color: ${theme.text} !important;
+  }
+  [data-doc-id] :is(
+    [style*="color:#888" i],
+    [style*="color:#aaa" i],
+    [style*="color:#8a93a0" i]
+  ) {
+    color: ${theme.mutedText} !important;
+  }
+  [data-doc-id] [style*="background:var(--ui-text" i] {
+    background: #111827 !important;
+    color: #FFFFFF !important;
+  }
+  [data-doc-id] [style*="background:var(--ui-text" i] :is(
+    [style*="color:#666" i],
+    [style*="color:#888" i],
+    [style*="color:#aaa" i]
+  ) {
+    color: #D1D5DB !important;
+  }
+  [data-doc-id] [style*="background:var(--ui-text" i] [style*="color:var(--ui-accent" i] {
+    color: ${getReadableAccent("#111827", theme.accent)} !important;
+  }
+  [data-doc-id] tr[style*="background:#1a1a1a" i] [style*="color:var(--ui-accent" i] {
+    color: ${getReadableAccent("#1A1A1A", theme.accent)} !important;
+  }
   [data-brand-export-footer] {
     border-top-color: ${theme.border} !important;
     color: ${theme.mutedText} !important;
     font-family: ${cssFont(theme.bodyFont)} !important;
   }
+  ${theme.text === "#FFFFFF" ? `
+    /* Legacy document rows were authored for white paper. Dark studio identities
+       need matching surfaces; otherwise inherited white text disappears on them. */
+    [data-doc-id] table,
+    [data-doc-id] thead,
+    [data-doc-id] tbody,
+    [data-doc-id] tfoot,
+    [data-doc-id] tr {
+      background: ${theme.surface} !important;
+      color: ${theme.text} !important;
+    }
+    [data-doc-id] tbody tr:nth-child(even) {
+      background: #292E35 !important;
+    }
+    [data-doc-id] th,
+    [data-doc-id] td {
+      background: transparent !important;
+      color: ${theme.text} !important;
+    }
+    [data-doc-id] table th *,
+    [data-doc-id] table td * {
+      color: ${theme.text} !important;
+    }
+    [data-doc-id] :is(
+      [style*="background:#fff" i],
+      [style*="background:#fafaf7" i],
+      [style*="background:#f8f6f1" i],
+      [style*="background:#fbf9f4" i],
+      [style*="background:#fdfcf9" i]
+    ) {
+      background: ${theme.surface} !important;
+      color: ${theme.text} !important;
+      border-color: ${theme.border} !important;
+    }
+    [data-doc-id] :is(
+      [style*="color:#555" i],
+      [style*="color:#444" i],
+      [style*="color:#666" i],
+      [style*="color:#777" i],
+      [style*="color:#5e6873" i]
+    ) {
+      color: ${theme.mutedText} !important;
+    }
+  ` : ""}
 `;
 
 export const DocumentBrandThemeProvider = ({
@@ -100,6 +177,8 @@ const replaceBrandIdentity = (root: HTMLElement, theme: DocumentTheme) => {
 export const applyDocumentBranding = (root: HTMLElement, theme: DocumentTheme) => {
   root.style.setProperty("--ui-accent", theme.accent);
   root.style.setProperty("--ui-text", theme.text);
+  root.style.setProperty("--ui-text-muted", theme.mutedText);
+  root.style.setProperty("--ui-text-subtle", theme.mutedText);
   root.style.setProperty("--ui-card", theme.background);
   root.style.setProperty("--ui-border", theme.border);
   root.style.setProperty("--ui-border-soft", theme.border);

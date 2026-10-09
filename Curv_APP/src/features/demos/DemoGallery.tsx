@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { Info } from "lucide-react";
 import AppHeader from "../layout/AppHeader";
-import { UI } from "../runtime/runtime";
+import { UI } from "../ui/tokens";
 import { DEMO_DEFINITIONS } from "./demoDefinitions";
 import { DemoCards } from "./DemoCards";
 import type { DemoProjectDefinition } from "./types";
