@@ -1,5 +1,18 @@
 # Curv App — Project Status
 
+## Phase 4 - Stabilization proposal (2026-10-06)
+
+Phase 3 is complete on `master`: PR #22 merged as `ec2b301`, closing the ninth tool extraction. The nine tools now have separate feature/application/infrastructure/domain boundaries; `runtime.tsx` remains a 314-line compatibility facade with all 239 exports preserved. This is the baseline, not evidence that every production workflow has been retested after the full series of merges.
+
+Phase 4 has not previously been defined as an approved implementation scope. Proposed order:
+
+1. Run a cross-tool regression on a real project: edit, reload, switch projects, collect/restore snapshots, sync across authenticated devices, and export/print each of the nine tools. Record failures and fix data-loss or permission defects first. Keep legacy localStorage keys and the `ProjectSnapshot` contract stable.
+2. Audit direct consumers of `runtime.tsx` and migrate them in small groups to the extracted modules. Move the remaining print, guide and registry responsibilities behind explicit owners, retaining facade reexports until no caller needs them. Remove the facade only in a separately reviewed change.
+3. Verify production boundaries with Firebase emulator and real-account acceptance: tenant/project isolation, viewer project scope, invitation lifecycle and server-side authorization. Treat the confirmed admin/viewer invitation test as evidence for that flow only, not for all tool data or viewer usefulness.
+4. Measure bundle size and key workflow performance before making targeted loading changes. Re-run unit tests, lint, typecheck, build and browser acceptance after each slice.
+
+Exit criteria: the nine tools preserve their data and exports through reload, project switching and cloud recovery; access is enforced by the backend; compatibility imports are reduced without breaking them; and remaining risks are documented with reproducible evidence. Viewer presentation improvements and new product features should be scoped separately after this reliability pass.
+
 ## Phase 3.9 - Orden de cambio extraction (2026-10-06)
 
 - Started from origin/master 772e102 and integrated master 985409b after Valuation PR #21 merged.
@@ -8,7 +21,7 @@
 - Runtime now has 314 lines, down from 507 after valuation; all 239 exports remain intact. App, Firebase and other tools are unchanged.
 - Fixed invisible section titles in the print portal with theme-color fallbacks; local browser QA covers editing, reload, isolation and printing.
 - The integrated branch passes 432 frontend tests, lint, typecheck and production build.
-- Full audit and limits: [Phase 3.9](architecture/phase-3-change-order.md). This completes the extraction work for the ninth tool, pending PR review.
+- Full audit and limits: [Phase 3.9](architecture/phase-3-change-order.md). PR #22 merged into `master` as `ec2b301`; this completes extraction of all nine Phase 3 tools.
 
 ## Phase 3.8 - Valorizacion de avance extraction and improvement (2026-10-05)
 
