@@ -9,6 +9,6 @@ export function projectNames(member: TenantMembership, projects: readonly Projec
 }
 export interface MemberCollectionProps {
   members: readonly TenantMembership[]; tenant: TenantSummary; projects: readonly ProjectOption[];
-  canManage: boolean; blockedReason: (member: TenantMembership) => string | null;
+  canManage: boolean; readOnly?: boolean; blockedReason: (member: TenantMembership) => string | null;
   onAction: (kind: "role" | "revoke", member: TenantMembership, event: MouseEvent<HTMLButtonElement>) => void;
 }

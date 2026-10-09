@@ -5,9 +5,10 @@ import { projectNames, roleLabels, type MemberCollectionProps } from "./memberPr
 export function MemberIdentity({ member }: { member: TenantMembership }) {
   const name = member.displayName || member.email;
   return <div className="ta-identity"><span className="ta-avatar" aria-hidden="true">{name.split(" ").map(word => word[0]).slice(0, 2).join("").toUpperCase()}</span>
-    <span><strong>{name}</strong><small>{member.displayName ? member.email : "Invitacion pendiente"}</small></span></div>;
+    <span><strong>{name}</strong>{member.displayName ? <small>{member.email}</small> : member.status === "invited" ? <small>Invitacion pendiente</small> : null}</span></div>;
 }
-export function MemberActions({ member, canManage, blockedReason, onAction }: Pick<MemberCollectionProps, "canManage" | "blockedReason" | "onAction"> & { member: TenantMembership }) {
+export function MemberActions({ member, canManage, readOnly, blockedReason, onAction }: Pick<MemberCollectionProps, "canManage" | "readOnly" | "blockedReason" | "onAction"> & { member: TenantMembership }) {
+  if (readOnly) return <span className="ta-muted">Cambios no disponibles</span>;
   if (!canManage) return <span className="ta-muted">Solo consulta</span>;
   const reason = blockedReason(member);
   if (reason) return <span className="ta-protected">{member.isOwner ? "Propietario protegido" : reason}</span>;
