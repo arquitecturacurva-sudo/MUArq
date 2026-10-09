@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { ViewerWorkspace } from "../../src/features/invitations/ViewerWorkspace";
-import { LIGHT_THEME_VARS } from "../../src/features/ui/theme";
+import { THEME_VARS } from "../../src/features/ui/theme";
 import { PROJECT_TOOL_IDS } from "../../src/domain/project/toolPartition";
 import { createDefaultBrandProfile } from "../../src/lib/branding/defaults";
 import { brandProfileToDocumentTheme } from "../../src/lib/branding/brandProfileToDocumentTheme";
@@ -36,7 +36,7 @@ const theme = brandProfileToDocumentTheme(dark ? {
 } : baseProfile);
 
 createRoot(document.getElementById("root")!).render(
-  <div style={{ ...LIGHT_THEME_VARS, minHeight: "100vh" }}>
+  <div style={{ ...THEME_VARS, minHeight: "100vh" }}>
     <ViewerWorkspace tenant={tenant} readProject={async () => ({ ok: true, value: project })} readTheme={async () => theme} />
   </div>,
 );

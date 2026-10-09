@@ -26,9 +26,11 @@ export {
   CardTitle,
 } from "@/components/ui/card";
 export { Input } from "@/components/ui/input";
+export { Checkbox } from "@/components/ui/checkbox";
 export { Label } from "@/components/ui/label";
 export { Separator } from "@/components/ui/separator";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 export {
   Dialog,
   DialogClose,

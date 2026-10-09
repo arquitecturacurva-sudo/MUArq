@@ -36,6 +36,14 @@ describe("extracted browser storage compatibility", () => {
     expect(readStorage("calc.ar", "", undefined, "b")).toBe("200");
     expect(readStorage("app.activeProjectId", "")).toBe("b");
   });
+  it("keeps the sidebar preference global without dropping the historical theme key", () => {
+    writeStorage("app.sidebarCollapsed", true, "a");
+    writeStorage("app.darkMode", false, "a");
+    setActiveStorageProjectId("b");
+    expect(readStorage("app.sidebarCollapsed", false)).toBe(true);
+    expect(readStorage("app.darkMode", true)).toBe(false);
+    expect(storageKey("app.sidebarCollapsed", "a")).toBe(storageKey("app.sidebarCollapsed", "b"));
+  });
   it("retains fallback behavior for malformed JSON and disallowed values", () => {
     values.set(storageKey("calc.ar", "a"), "{broken");
     expect(readStorage("calc.ar", "fallback", undefined, "a")).toBe("fallback");

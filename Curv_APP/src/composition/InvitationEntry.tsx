@@ -8,7 +8,7 @@ import { loginWithEmail, loginWithGoogle, logout, registerWithEmail } from "../l
 import type { InvitationLink, InvitationPreview } from "../domain/tenant/invitations";
 import { firebaseInvitations } from "../infrastructure/tenant/firebaseInvitations";
 import { roleLabels } from "../features/team-access/memberPresentation";
-import { LIGHT_THEME_VARS } from "../features/ui/theme";
+import { THEME_VARS } from "../features/ui/theme";
 
 export default function InvitationEntry({ link, user }: { link: InvitationLink | null; user: User | null }) {
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [name, setName] = useState("");
@@ -32,7 +32,7 @@ export default function InvitationEntry({ link, user }: { link: InvitationLink |
       setError(error.code === "auth/email-already-in-use" ? "Ese correo ya tiene cuenta. Inicia sesion." : error.code === "auth/weak-password" ? "Usa una contrasena de al menos seis caracteres." : "No pudimos completar la solicitud. Comprueba tus datos y reintenta.");
     } finally { setBusy(false); }
   }
-  return <main className="team-access kit-surface" style={{ ...LIGHT_THEME_VARS, minHeight: "100vh", padding: 24 }}><section className="ta-panel" style={{ maxWidth: 560, margin: "24px auto", padding: 24 }}>
+  return <main className="team-access kit-surface" style={{ ...THEME_VARS, minHeight: "100vh", padding: 24 }}><section className="ta-panel" style={{ maxWidth: 560, margin: "24px auto", padding: 24 }}>
     <h1>{preview ? "Unete a " + preview.tenantName : "Unete a un estudio en Curv"}</h1><p>No crearemos un estudio adicional. Aceptaras el acceso que compartieron contigo.</p>
     {!link ? <p role="alert">El enlace esta incompleto. Solicita un enlace nuevo al administrador.</p> : !user ? <form onSubmit={event => { event.preventDefault(); void run(async () => {
       if (register) { const created = await registerWithEmail({ email, password, displayName: name }); await sendEmailVerification(created); setNotice("Te enviamos el correo de verificacion. Abrelo y vuelve a esta pestana."); }

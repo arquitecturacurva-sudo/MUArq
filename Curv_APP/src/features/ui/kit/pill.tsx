@@ -6,7 +6,7 @@ export type PillTone = "neutral" | "brand" | "success" | "warning" | "danger" | 
 
 /**
  * Tone colours are mixed against `transparent`, so one definition reads correctly on
- * both the light and the dark surface without maintaining a second palette.
+ * the card, panel and band surfaces.
  */
 const TONE_VAR: Record<PillTone, string> = {
   neutral: "var(--ui-text-muted)",
