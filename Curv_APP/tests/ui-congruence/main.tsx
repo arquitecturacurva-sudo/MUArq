@@ -103,7 +103,7 @@ export function LayoutQa() {
     return (
       <div style={{ ...THEME_VARS, minHeight: "100dvh", background: "var(--ui-bg)", color: "var(--ui-text)" }}>
         {header}
-        <main className="grid max-w-[1228px] gap-5 px-6 py-6">
+        <main className="mx-auto grid w-full max-w-[1228px] gap-5 px-6 py-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Recorrido visual · PR #11</p>
