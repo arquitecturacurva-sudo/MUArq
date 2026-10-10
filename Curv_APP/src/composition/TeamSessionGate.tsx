@@ -6,7 +6,7 @@ import { parseInvitationHash, type TeamSession } from "../domain/tenant/invitati
 import { Button } from "../components/ui/button";
 import { ViewerWorkspace } from "../features/invitations/ViewerWorkspace";
 import { readViewerProject } from "../infrastructure/firebase/viewerProjects";
-import { LIGHT_THEME_VARS } from "../features/ui/theme";
+import { THEME_VARS } from "../features/ui/theme";
 const InvitationEntry = lazy(() => import("./InvitationEntry"));
 // Invitation entry never mounts App, whose legacy auth listener provisions tenants.
 export default function TeamSessionGate({ children }: { children: ReactNode }) {
@@ -28,7 +28,7 @@ export default function TeamSessionGate({ children }: { children: ReactNode }) {
   if (loaded?.uid !== user.uid) return <p role="status">Cargando tus estudios...</p>;
   const session = loaded.session; const tenant = session.tenants.find(item => item.id === session.activeTenantId);
   const viewer = tenant?.role === "viewer";
-  return <div style={viewer ? { ...LIGHT_THEME_VARS, minHeight: "100vh" } : undefined}>
+  return <div style={viewer ? { ...THEME_VARS, minHeight: "100vh" } : undefined}>
     {session.tenants.length > 1 || viewer ? <nav className="kit-surface" aria-label="Estudio activo" style={{ padding: "8px 20px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
       <label htmlFor="session-study">Estudio</label><select id="session-study" name="active-study" value={tenant?.id || ""} disabled={busy} onChange={async event => { setBusy(true); const result = await firebaseInvitations.select(event.target.value); if (!result.ok) { setError(result.error.message); setBusy(false); return; } window.location.reload(); }}>
         {session.tenants.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>

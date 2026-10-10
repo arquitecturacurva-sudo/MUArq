@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.ui-congruence.tsbuildinfo"
+  },
+  "include": ["main.tsx"]
+}

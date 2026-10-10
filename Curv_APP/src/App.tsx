@@ -114,7 +114,7 @@ import {
   resolveProjectSyncConflict,
   type ProjectSaveStatus,
 } from "./features/runtime/storage/projectSyncState";
-import { DARK_THEME_VARS, LIGHT_THEME_VARS } from "./features/ui/theme";
+import { THEME_VARS } from "./features/ui/theme";
 import {
   classifyProjectSyncError,
   getProjectSyncRetryDelay,
@@ -165,7 +165,6 @@ export default function App() {
     (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "team-access" || value === "branding" || value === "demos" || value === "demo"
   );
   const [,setLandingSeen]=usePersistentState("app.landingSeen", false, (value): value is boolean => typeof value === "boolean");
-  const [darkMode,setDarkMode]=usePersistentState("app.darkMode",false);
   const [onboardingSeen,setOnboardingSeen]=usePersistentState("app.onboardingSeen",false);
   const [activeDemoId,setActiveDemoId]=useState<DemoProjectId | null>(null);
   const [pendingDemoId,setPendingDemoId]=useState<DemoProjectId | null>(null);
@@ -202,18 +201,17 @@ export default function App() {
   const [newProjectCurrency,setNewProjectCurrency]=useState<ProjectCurrency>("PEN");
   const [newProjectStatus,setNewProjectStatus]=useState<CommercialStatus>("Lead");
   const [newProjectTracks,setNewProjectTracks]=useState<Record<TrackId,boolean>>({...DEFAULT_TRACKS});
-  const themeVars: React.CSSProperties = darkMode ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+  const themeVars: React.CSSProperties = THEME_VARS;
   // Radix renders dialogs, selects and tooltips through a portal on <body>, outside the
   // themed wrappers. Without the palette on the document root those portals resolve
   // `var(--ui-*)` to nothing and render fully transparent.
   useEffect(() => {
     const root = document.documentElement;
-    const vars = darkMode ? DARK_THEME_VARS : LIGHT_THEME_VARS;
-    Object.entries(vars).forEach(([key, value]) => {
+    Object.entries(THEME_VARS).forEach(([key, value]) => {
       if (key.startsWith("--")) root.style.setProperty(key, String(value));
     });
-    root.dataset.theme = darkMode ? "dark" : "light";
-  }, [darkMode]);
+    root.removeAttribute("data-theme");
+  }, []);
   const normalizedProjects = useMemo(
     () => normalizeProjectRecords(projects).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)),
     [projects]
@@ -1358,9 +1356,9 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    document.body.style.background = darkMode ? "#0D1117" : "#F5F3EF";
-    document.body.style.color = darkMode ? "#E6EDF3" : "#1A1A1A";
-  }, [darkMode]);
+    document.body.style.background = "var(--ui-bg)";
+    document.body.style.color = "var(--ui-text)";
+  }, []);
 
   const tools = useMemo(() => {
     const checkedMap = new Map<string, boolean>();
@@ -2054,7 +2052,7 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+      <div style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
         <div style={{fontSize: 13, color: UI.textMuted}}>Cargando sesión...</div>
       </div>
     );
@@ -2062,7 +2060,7 @@ export default function App() {
 
   if (authUser && tenantState === "provisioning") {
     return (
-      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+      <div style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
         <div style={{fontSize: 13, color: UI.textMuted}}>Preparando tu espacio de trabajo...</div>
       </div>
     );
@@ -2072,7 +2070,7 @@ export default function App() {
   // every sync effect silently no-ops.
   if (authUser && tenantState === "error") {
     return (
-      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
+      <div style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
         <div style={{maxWidth: 420, display: "grid", gap: 12, textAlign: "center"}}>
           <div style={{fontSize: 15, fontWeight: 600, color: UI.text}}>
             No pudimos preparar tu espacio de trabajo
@@ -2105,9 +2103,7 @@ export default function App() {
   if (!authUser && route === "auth") {
     return (
       <AuthView
-        darkMode={darkMode}
         themeVars={themeVars}
-        setDarkMode={setDarkMode}
         busy={authBusy}
         error={authError}
         onBackLanding={() => {
@@ -2142,8 +2138,8 @@ export default function App() {
   }
 
   if (route === "team-access") {
-    return <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", background: UI.bg, color: DK}}>
-      <AppHeader darkMode={darkMode} setDarkMode={setDarkMode} title="Equipo y acceso" active="team-access"
+    return <div style={{...themeVars, minHeight: "100vh", background: UI.bg, color: DK}}>
+      <AppHeader title="Equipo y acceso" active="team-access"
         onBack={() => setRoute("home")} backLabel="Dashboard" onOpenDashboard={() => setRoute("home")}
         onOpenDemos={() => setRoute("demos")} onOpenTeamAccess={() => setRoute("team-access")}
         onOpenBranding={() => setRoute("branding")} onLogout={handleLogout} />
@@ -2154,10 +2150,8 @@ export default function App() {
   if (route === "branding") {
     if (!activeClientId) {
       return (
-        <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", background: UI.bg, color: DK}}>
+        <div style={{...themeVars, minHeight: "100vh", background: UI.bg, color: DK}}>
           <AppHeader
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
             title="Identidad del estudio"
             active="branding"
             onBack={closeBranding}
@@ -2175,10 +2169,8 @@ export default function App() {
       );
     }
     return (
-      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", background: UI.bg}}>
+      <div style={{...themeVars, minHeight: "100vh", background: UI.bg}}>
         <AppHeader
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
           title="Identidad del estudio"
           active="branding"
           onBack={closeBranding}
@@ -2212,8 +2204,6 @@ export default function App() {
           setRoute("branding");
         }}
         onLogout={handleLogout}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
         themeVars={themeVars}
       />
     );
@@ -2222,9 +2212,7 @@ export default function App() {
   if (route === "home" || (route === "workspace" && !activeProject) || (route === "demo" && !activeDemo)) {
     return (
       <HomeView
-        darkMode={darkMode}
         themeVars={themeVars}
-        setDarkMode={setDarkMode}
         onLogout={handleLogout}
         paywallAccess={clientAccess}
         paywallPlan={clientBilling?.plan || "BASE"}
@@ -2272,152 +2260,45 @@ export default function App() {
 
   if (!workspaceProject || !workspaceProjectId) {
     return (
-      <div data-theme={darkMode ? "dark" : "light"} style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", background: UI.bg, color: UI.textMuted}}>
+      <div style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", background: UI.bg, color: UI.textMuted}}>
         Preparando el espacio de trabajo…
       </div>
     );
   }
 
   return (
-    <WorkspacePage darkMode={darkMode} themeVars={themeVars}>
+    <WorkspacePage themeVars={themeVars}>
       <style>{`
-        [data-theme="dark"] {
-          color-scheme: dark;
-        }
-        [data-theme="dark"] input,
-        [data-theme="dark"] select,
-        [data-theme="dark"] textarea,
-        [data-theme="dark"] option {
-          background: #0d1117 !important;
-          color: #e6edf3 !important;
-          border-color: #30363d !important;
-        }
-        [data-theme="dark"] ::placeholder {
-          color: #8b98a7 !important;
-          opacity: 1;
-        }
-        [data-theme="dark"] table th {
-          background: #111720 !important;
-          color: #9da7b3 !important;
-          border-color: #30363d !important;
-        }
-        [data-theme="dark"] table td {
-          color: #d0d7de !important;
-          border-color: #2b313a !important;
-        }
-        [data-theme="dark"] table tbody td {
-          background: #111821 !important;
-        }
-        [data-theme="dark"] table tbody tr:nth-child(even) td {
-          background: #0f151d !important;
-        }
-        [data-theme="dark"] table tfoot td {
-          background: #131b24 !important;
-        }
-        [data-theme="dark"] table tr[style*="rgb(255, 255, 255)"],
-        [data-theme="dark"] table tr[style*="rgb(248, 248, 248)"],
-        [data-theme="dark"] table tr[style*="rgb(247, 247, 247)"],
-        [data-theme="dark"] table tr[style*="rgb(245, 243, 239)"],
-        [data-theme="dark"] table tr[style*="rgb(250, 250, 247)"],
-        [data-theme="dark"] table tr[style*="rgb(251, 249, 244)"],
-        [data-theme="dark"] table tr[style*="rgb(247, 245, 241)"],
-        [data-theme="dark"] table td[style*="rgb(255, 255, 255)"],
-        [data-theme="dark"] table td[style*="rgb(248, 248, 248)"],
-        [data-theme="dark"] table td[style*="rgb(247, 247, 247)"],
-        [data-theme="dark"] table td[style*="rgb(245, 243, 239)"],
-        [data-theme="dark"] table td[style*="rgb(250, 250, 247)"],
-        [data-theme="dark"] table td[style*="rgb(251, 249, 244)"],
-        [data-theme="dark"] table td[style*="rgb(247, 245, 241)"] {
-          background: #121821 !important;
-          color: #d0d7de !important;
-          border-color: #30363d !important;
-        }
-        [data-theme="dark"] [style*="background:#fff"],
-        [data-theme="dark"] [style*="background: #fff"],
-        [data-theme="dark"] [style*="background:#ffffff"],
-        [data-theme="dark"] [style*="background: #ffffff"] {
-          background: #161b22 !important;
-          border-color: #30363d !important;
-          color: #d0d7de !important;
-        }
-        [data-theme="dark"] [style*="background: rgb(255, 255, 255)"],
-        [data-theme="dark"] [style*="background:rgb(255,255,255)"],
-        [data-theme="dark"] [style*="background: rgb(248, 246, 241)"],
-        [data-theme="dark"] [style*="background:rgb(248,246,241)"],
-        [data-theme="dark"] [style*="background: rgb(245, 243, 239)"],
-        [data-theme="dark"] [style*="background:rgb(245,243,239)"],
-        [data-theme="dark"] [style*="background: rgb(250, 250, 247)"],
-        [data-theme="dark"] [style*="background:rgb(250,250,247)"],
-        [data-theme="dark"] [style*="background: rgb(251, 249, 244)"],
-        [data-theme="dark"] [style*="background:rgb(251,249,244)"],
-        [data-theme="dark"] [style*="background: rgb(247, 245, 241)"],
-        [data-theme="dark"] [style*="background:rgb(247,245,241)"],
-        [data-theme="dark"] [style*="background: rgb(240, 237, 232)"],
-        [data-theme="dark"] [style*="background:rgb(240,237,232)"],
-        [data-theme="dark"] [style*="background: rgb(253, 252, 249)"],
-        [data-theme="dark"] [style*="background:rgb(253,252,249)"] {
-          background: #161b22 !important;
-          border-color: #30363d !important;
-          color: #d0d7de !important;
-        }
-        [data-theme="dark"] [style*="rgb(229, 221, 208)"],
-        [data-theme="dark"] [style*="rgb(240, 235, 224)"],
-        [data-theme="dark"] [style*="rgb(221, 216, 204)"] {
-          border-color: #30363d !important;
-        }
-        [data-theme="dark"] [style*="color:#888"],
-        [data-theme="dark"] [style*="color: #888"],
-        [data-theme="dark"] [style*="color:#aaa"],
-        [data-theme="dark"] [style*="color: #aaa"],
-        [data-theme="dark"] [style*="color:#999"],
-        [data-theme="dark"] [style*="color: #999"],
-        [data-theme="dark"] [style*="color:#666"],
-        [data-theme="dark"] [style*="color: #666"],
-        [data-theme="dark"] [style*="color: rgb(170, 170, 170)"],
-        [data-theme="dark"] [style*="color:rgb(170,170,170)"],
-        [data-theme="dark"] [style*="color: rgb(153, 153, 153)"],
-        [data-theme="dark"] [style*="color:rgb(153,153,153)"],
-        [data-theme="dark"] [style*="color: rgb(136, 136, 136)"],
-        [data-theme="dark"] [style*="color:rgb(136,136,136)"],
-        [data-theme="dark"] [style*="color: rgb(102, 102, 102)"],
-        [data-theme="dark"] [style*="color:rgb(102,102,102)"] {
-          color: #9da7b3 !important;
-        }
-        [data-theme] * {
+        [data-workspace-page] * {
           scrollbar-width: thin;
           scrollbar-color: var(--ui-border) transparent;
         }
-        [data-theme] input:focus,
-        [data-theme] select:focus,
-        [data-theme] textarea:focus,
-        [data-theme] button:focus-visible {
+        [data-workspace-page] input:focus,
+        [data-workspace-page] select:focus,
+        [data-workspace-page] textarea:focus,
+        [data-workspace-page] button:focus-visible {
           outline: 2px solid rgba(201, 169, 110, 0.42) !important;
           outline-offset: 2px;
         }
-        [data-theme] table {
+        [data-workspace-page] table {
           border-color: var(--ui-border-soft) !important;
         }
-        [data-theme] table th {
-          font-weight: 900 !important;
+        [data-workspace-page] table th {
+          font-weight: 700 !important;
           letter-spacing: 0.2px !important;
           background: var(--ui-bg-band) !important;
         }
-        [data-theme] table td {
+        [data-workspace-page] table td {
           border-color: var(--ui-border-soft) !important;
         }
-        [data-theme] table input,
-        [data-theme] table select {
+        [data-workspace-page] table input,
+        [data-workspace-page] table select {
           border-radius: 5px !important;
-        }
-        [data-theme="dark"] button:not([data-tour-id="export"]) {
-          box-shadow: none;
         }
       `}</style>
 
       {/* Same navigation bar as the dashboard, so global actions never move between screens. */}
       <AppHeader
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
         title={readProjectBaseMetadata(workspaceProjectId).projectName.trim() || workspaceProject.name}
         active="workspace"
         onBack={() => (isDemoWorkspace ? returnToDemoGallery() : setRoute("home"))}

@@ -22,7 +22,7 @@ export default function TenantUnavailable({error, onRetry}: TenantUnavailablePro
   }
 
   return (
-    <div className="mx-auto max-w-[560px] px-5 py-12">
+    <div className="max-w-[560px] px-6 py-12">
       <Card className="gap-4 p-6">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" style={{color: "var(--ui-warning)"}} aria-hidden />

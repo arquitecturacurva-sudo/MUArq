@@ -16,7 +16,7 @@ export type SelProps = {
   options: string[];
 };
 export type BtnVariant = "dk" | "ol" | "gd";
-export type BtnProps = {
+export type BtnProps = Omit<React.ComponentProps<"button">, "onClick"> & {
   children?: React.ReactNode;
   onClick: React.MouseEventHandler<HTMLButtonElement>;
   v?: BtnVariant;
