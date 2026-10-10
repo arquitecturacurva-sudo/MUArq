@@ -1,5 +1,14 @@
 # Curv App — Project Status
 
+## Estado actual — 2026-10-09 (Lima): Fase 4 en validacion
+
+- `origin/master` esta en `0b229ff`: [PR #29](https://github.com/arquitecturacurva-sudo/MUArq/pull/29), [PR #30](https://github.com/arquitecturacurva-sudo/MUArq/pull/30) y [PR #31](https://github.com/arquitecturacurva-sudo/MUArq/pull/31) estan fusionadas. Esto confirma codigo en `master`, no una promocion verificada a produccion.
+- Las nueve herramientas ya tienen limites de feature/aplicacion/infraestructura/dominio. `runtime.tsx` conserva los 239 exports historicos como fachada de compatibilidad de 99 lineas; su eliminacion sigue reservada para otro PR. No se cambiaron las claves legacy de localStorage ni el contrato de `ProjectSnapshot` en este pase.
+- La PR #29 incorporo la matriz de regresion de nueve herramientas, pruebas de reglas y de invitaciones en emulador, migracion inicial de consumidores de la fachada, medicion reproducible del build y una presentacion de documentos legible para Viewer. Las pruebas locales documentadas pasan, pero no sustituyen la aceptacion autenticada ni demuestran que las reglas desplegadas coincidan con el repositorio.
+- Las PR #30 y #31 alinearon la interfaz general con el sistema visual aprobado y centraron el dashboard en pantallas anchas. La identidad de los documentos conserva contraste legible. La demo local de congruencia visual no equivale a una prueba con datos reales.
+- **Fase 4 abierta:** falta completar en un Preview identificado la [matriz de edicion, recarga, cambio de proyecto, restauracion y exportacion](qa/2026-07-26-firestore-snapshot-sync.md) para las nueve herramientas; la sincronizacion, conflictos y recuperacion offline con dos sesiones; y las [denegaciones del backend](qa/2026-10-07-phase-4-access-evidence.md) para Viewer sin asignacion y usuario ajeno. Tambien faltan la revision de reglas desplegadas, los [tiempos de navegador](qa/2026-10-07-phase-4-performance-baseline.md), la promocion del mismo artefacto probado y una comprobacion breve en produccion con proyecto QA desechable. No se deben usar proyectos de clientes. Un fallo de integridad o autorizacion bloquea el cierre.
+- Siguiente paso: ejecutar y registrar las celdas pendientes en la [puerta de aceptacion de Fase 4](qa/2026-10-07-phase-4-integration-preview.md), corregir primero cualquier perdida de datos o acceso indebido, y solo entonces decidir el cierre de la fase.
+
 ## Phase 3.9 - Orden de cambio extraction (2026-10-06)
 
 - Started from origin/master 772e102 and integrated master 985409b after Valuation PR #21 merged.
