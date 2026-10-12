@@ -1,697 +1,201 @@
 # Curv App — Project Status
 
-## Estado actual — 2026-10-09 (Lima): Fase 4 en validacion
-
-- `origin/master` esta en `0b229ff`: [PR #29](https://github.com/arquitecturacurva-sudo/MUArq/pull/29), [PR #30](https://github.com/arquitecturacurva-sudo/MUArq/pull/30) y [PR #31](https://github.com/arquitecturacurva-sudo/MUArq/pull/31) estan fusionadas. Esto confirma codigo en `master`, no una promocion verificada a produccion.
-- Las nueve herramientas ya tienen limites de feature/aplicacion/infraestructura/dominio. `runtime.tsx` conserva los 239 exports historicos como fachada de compatibilidad de 99 lineas; su eliminacion sigue reservada para otro PR. No se cambiaron las claves legacy de localStorage ni el contrato de `ProjectSnapshot` en este pase.
-- La PR #29 incorporo la matriz de regresion de nueve herramientas, pruebas de reglas y de invitaciones en emulador, migracion inicial de consumidores de la fachada, medicion reproducible del build y una presentacion de documentos legible para Viewer. Las pruebas locales documentadas pasan, pero no sustituyen la aceptacion autenticada ni demuestran que las reglas desplegadas coincidan con el repositorio.
-- Las PR #30 y #31 alinearon la interfaz general con el sistema visual aprobado y centraron el dashboard en pantallas anchas. La identidad de los documentos conserva contraste legible. La demo local de congruencia visual no equivale a una prueba con datos reales.
-- **Fase 4 abierta:** falta completar en un Preview identificado la [matriz de edicion, recarga, cambio de proyecto, restauracion y exportacion](qa/2026-07-26-firestore-snapshot-sync.md) para las nueve herramientas; la sincronizacion, conflictos y recuperacion offline con dos sesiones; y las [denegaciones del backend](qa/2026-10-07-phase-4-access-evidence.md) para Viewer sin asignacion y usuario ajeno. Tambien faltan la revision de reglas desplegadas, los [tiempos de navegador](qa/2026-10-07-phase-4-performance-baseline.md), la promocion del mismo artefacto probado y una comprobacion breve en produccion con proyecto QA desechable. No se deben usar proyectos de clientes. Un fallo de integridad o autorizacion bloquea el cierre.
-- Siguiente paso: ejecutar y registrar las celdas pendientes en la [puerta de aceptacion de Fase 4](qa/2026-10-07-phase-4-integration-preview.md), corregir primero cualquier perdida de datos o acceso indebido, y solo entonces decidir el cierre de la fase.
-
-## Phase 3.9 - Orden de cambio extraction (2026-10-06)
-
-- Started from origin/master 772e102 and integrated master 985409b after Valuation PR #21 merged.
-- The OC document, application state contract, browser persistence adapter, composition root and pure rules are separate; runtime remains a compatibility facade.
-- Existing `oc.*` keys, shared project code, project scopes, `oc` snapshot partition, four conditions and branded document export are preserved.
-- Runtime now has 314 lines, down from 507 after valuation; all 239 exports remain intact. App, Firebase and other tools are unchanged.
-- Fixed invisible section titles in the print portal with theme-color fallbacks; local browser QA covers editing, reload, isolation and printing.
-- The integrated branch passes 432 frontend tests, lint, typecheck and production build.
-- Full audit and limits: [Phase 3.9](architecture/phase-3-change-order.md). This completes the extraction work for the ninth tool, pending PR review.
-
-## Phase 3.8 - Valorizacion de avance extraction and improvement (2026-10-05)
-
-- Based on latest origin/master 772e102, after Architectural Program PR #20 merged.
-- Valuation arithmetic and typed review issues, application state contract, browser adapter and view are separate; runtime remains the compatibility facade.
-- Existing `val.*` keys, shared fields, project scopes, `val` snapshot partition and branded document export are preserved. Optional retention and evidence-reference fields were added.
-- Runtime reduced from 853 to 507 lines; App and other tools are unchanged.
-- All 423 frontend tests, lint, typecheck and production build pass.
-- Progress and monetary input are bounded, with warnings for contract reconciliation, previous accumulation, retention and payments. The document explicitly distinguishes declared status from certification.
-- Local browser QA covers calculations, warnings, reload and project isolation. Full audit, sources and limits: [Phase 3.8](architecture/phase-3-valuation.md). Next: Orden de cambio after reviewing this PR.
-
-## Phase 3.7 - Programa arquitectonico extraction (2026-10-05)
-
-- Based on latest origin/master f17abf1, after Construction Schedule PR #19 merged.
-- Space and relationship rules, application state contract, browser adapter and view are separate; runtime remains the compatibility facade.
-- Existing `brief.*` keys, shared fields, project scopes and `brief` snapshot partition are preserved.
-- Client-facing exports now show zone area, percentage and key observations; full space detail remains available through an explicit internal print mode.
-- Runtime reduced from 1465 to 853 lines with all 239 exports intact. App's print selector accepts the internal mode; other tools remain unchanged.
-- 410 frontend tests pass; local browser QA covers the summary, full document, both print portals, reload and project isolation. A date-sensitive stage-schedule test was stabilized without changing its production code.
-- Full audit and limits: [Phase 3.7](architecture/phase-3-architectural-program.md). Next: Valorizacion de avance after reviewing this PR.
-
-## Phase 3.6 - Cronograma de obra extraction (2026-10-05)
-
-- Based on latest origin/master ba3e9c0, after Construction Quotation PR #18 merged.
-- Schedule and quotation-sync rules, application state contract, browser adapter and view are separate; runtime remains the compatibility facade.
-- Existing `obra.*` keys, shared fields, project scopes, `cronobra` snapshot partition and document export are preserved.
-- Runtime reduced from 1708 to 1465 lines with all 239 exports intact. App and other tools are unchanged.
-- 401 frontend tests pass; local browser QA covers quotation sync, dependencies, progress reload, project isolation and print portal.
-- Full audit and limits: [Phase 3.6](architecture/phase-3-construction-schedule.md). Next: Programa arquitectonico after reviewing this PR.
-
-## Phase 3.5 - Cotizacion de obra extraction (2026-10-05)
-
-- Based on latest origin/master bd69922, after Stage Schedule PR #17 merged.
-- Quotation formulas and OCR row rules, application state port, browser adapter, PDF text reader and view are separate; runtime remains the compatibility facade.
-- Existing `cot.*` keys, shared fields, project scopes, snapshot partition, OCR review metadata and document export are preserved.
-- Runtime reduced from 2539 to 1708 lines with all 239 exports intact. App and other tools are unchanged.
-- 391 frontend tests pass; local browser QA covers quantities, recargos, reload, project isolation, embedded-text PDF import, review and print portal.
-- Full audit and limits: [Phase 3.5](architecture/phase-3-quotation.md). Next: Cronograma de obra after reviewing this PR.
-
-## Phase 3.4 - Cronograma por etapas extraction (2026-10-05)
-
-- Based on latest origin/master 5a2f8f5, after Exclusions PR #16 merged.
-- Schedule date/week rules, application state port, browser adapter and view are separate; runtime remains the compatibility facade.
-- Existing `cron.*` keys, shared fields, project scopes, snapshot partition, billing milestones and document export are preserved.
-- Runtime reduced from 2763 to 2539 lines with all 239 exports intact. App and other tools are unchanged.
-- 381 frontend tests pass; local browser QA covers stage duration, milestone state, reload, project isolation and print portal.
-- Full audit and limits: [Phase 3.4](architecture/phase-3-stage-schedule.md). Next: Cotizacion de obra after reviewing this PR.
-
-## Phase 3.3 - Exclusiones y supuestos extraction (2026-10-05)
-
-- Based on latest origin/master f95f8ab, after Matrix PR #14 merged.
-- Exclusions rules, state port, browser adapter and view are separate; runtime remains the compatibility facade.
-- Legacy `excl.*` keys, shared fields, project scopes, snapshot partition and export visibility are preserved.
-- Runtime reduced from 2920 to 2763 lines with all 239 exports intact. App and other tools are unchanged.
-- 372 frontend tests pass; local browser QA covers selection, custom rows, reload, isolation and print portal.
-- Full audit and limits: [Phase 3.3](architecture/phase-3-exclusions.md). Next: Cronograma por etapas after reviewing this PR.
-
-## Phase 3.2 - Matriz de entregables extraction (2026-09-29)
-
-- Based on origin/master 5a810bf after the Honorarios PR #13 merged and deployed to Vercel.
-- Matrix domain rules, browser state adapter and view are separate; runtime remains a compatibility facade.
-- Legacy `matrix.*` keys, shared fields, project scopes, snapshot partition and document export are preserved.
-- Runtime reduced from 3105 to 2920 lines. App and the other tools remain unchanged.
-- 356 frontend tests pass; local browser QA covers custom items, reload, project isolation and print portal.
-- Full audit and limits: [Phase 3.2](architecture/phase-3-matrix.md). Next: Exclusiones y supuestos after reviewing this PR.
-
-## Phase 3.1 - Honorarios extraction (2026-09-26)
-
-- Work based on latest origin/master a804766; branch codex/phase-3-fees.
-- Honorarios now separates pure calculation, injected project reads, browser state and view.
-- Dashboard uses the same calculation. Runtime reduced from 3313 to 3105 lines, preserving
-  all exports; App, legacy storage, snapshots, cloud permissions and other tools unchanged.
-- 348 frontend tests pass. Browser QA covers calculation, reload, project isolation and print portal.
-- User confirmed real admin/Viewer invitations work; Viewer presentation is intentionally deferred.
-- Full audit, file list, limitations and verification: [Phase 3.1](architecture/phase-3-fees.md).
-- Next: review Honorarios PR, then Matriz de entregables. This section does not claim deployment.
-
-
-## Invitations implementation - verified 2026-09-23
-
-This section supersedes the dated September 14 baseline below.
-
-- Implemented server-owned create/list/renew/cancel/preview/accept invitation operations,
-  seat reservations, verified-email acceptance, sanitized sessions and tenant switching.
-- Equipo y acceso exposes invitation links to active administrators. Links expire in
-  seven days and are shared manually; automatic invitation email is out of scope.
-- Viewer entry reads only assigned projects and offers no mutation controls.
-- Browser writes to invitations, rate counters and memberships remain denied. Owner-only
-  Identity and study naming rules are preserved. The runtime facade is unchanged.
-- Role changes and membership revocation remain disabled; cancelling a pending invitation
-  is supported. Expired records are retained, but no longer reserve seats.
-- Firebase Functions/rules deployed and indexes READY; PR #12 CI and Vercel preview passed.
-- Validation and deployment evidence: [invitation runbook](architecture/team-invitations-release.md).
-
-## Session close - 2026-09-14: Team Access production baseline
-
-This is the latest status; dated assessments below are historical and do not override it.
-
-- PR #10 merged into master: a536d44acb79f4cf58e1394942927ef113cd21b3.
-- Vercel production deployment succeeded. Modularization phases 0-2 and the shared UI
-  boundary are published; runtime remains a compatibility facade with nine tools intact.
-- Equipo y acceso is in the main navigation and reads the real active tenant, members
-  and stored seat limits for active administrators/editors.
-- **Invitations are NOT implemented or available in production.** The invite button is
-  hidden, membership mutations are disabled and the standalone demo is in-memory only.
-- Firebase project curv-app-ce938: Firestore/Storage rules and upsertBrandLogo,
-  getBrandLogo, deleteBrandLogo were deployed. Active rules matched tested source;
-  all three Functions rejected unauthenticated requests with HTTP 401.
-- Identity and tenant name changes require the active canonical owner. Saving Identity
-  updates companyName and clients.name together. Admin does not mean owner.
-- Browser membership writes remain denied. Viewer project scope is enforced in rules;
-  production Viewer navigation, scoped queries and sanitized tenant summary are pending.
-- Before deployment: aggregate audit found 20 tenants / 20 memberships, zero active
-  Viewers, inactive memberships or unknown roles. This is a dated audit, not a live count.
-- Verified: 295 frontend tests, 14 Functions tests, 19 emulator tests, lint/typecheck/build
-  and CI. Authenticated production UI acceptance with the owner session remains pending.
-- No full invitation/acceptance flow has been validated because it does not yet exist.
-
-### Next session
-
-Read [the backend invitation plan](architecture/team-access-invitations-plan.md) first.
-Confirm link sharing versus automatic email and the proposed seven-day expiry. Implement
-atomic invitation creation/acceptance, seat reservations, Auth bootstrap integration,
-real tenant switching and the Viewer flow. Done means a real invited account can accept
-and enter with correct permissions in production, not merely a visible button.
-
-Today ends with documentation only; no invitation implementation or additional deployment.
-Upgrade Functions Node.js 20 before its 2026-10-30 decommission. Preserve legacy storage,
-snapshots, billing protections and the frozen runtime boundary.
-
-
-**Audit date:** 2026-07-09
-**Firestore sync update:** 2026-07-26
-**Auditor role:** Technical / SaaS readiness review  
-**Repository:** `curv-app` v0.0.0
-
----
-
-## Executive summary
-
-Curv App is a **commercial/technical workspace for architecture firms** (CURVA). It supports proposals, deliverables, fee calculation, construction quoting, progress valuation, architectural briefs, and change orders — organized across three tracks: **Diseño**, **Construcción**, and **Seguimiento**.
-
-The product ships as:
-
-1. **Web SPA** (Vite + React)
-2. **Desktop app** (Electron, Windows x64)
-3. **Standalone HTML** (`standalone.html`, offline `file://` use)
-
-Backend concerns are handled mostly by **Firebase** (Auth + Firestore) with **Mercado Pago billing** via a provider-agnostic layer and **Vercel serverless API routes**. There is no dedicated application server.
-
-**Maturity estimate: functional prototype / pre-beta (roughly 45-55%).**
-
-This is not production-ready SaaS yet. Core domain tools are substantial and can support local workflows. Full project snapshots now have revision-aware Firestore synchronization, but deployed multi-device QA is still required before Phase 1 can be signed off. Billing activation is not reliably tied to tenants and team/admin features remain partial. The largest technical risk remains the combination of localStorage as the working tool datastore and a ~4,000-line monolith (`runtime.tsx`) that mixes storage, business logic, UI primitives, and all tools.
-
-For a developer taking over: treat the app as a valuable product prototype with real domain depth, not as a hardened SaaS platform.
-
-### Current reality check - 2026-07-09
-
-- **Usable today:** local project workflows, tool forms/calculations, proposal/PDF export, landing/home/workspace navigation, Firebase auth bootstrap, basic Firestore project shell sync, Mercado Pago checkout/webhook plumbing.
-- **Not reliable enough yet:** cross-device project content, billing-to-tenant activation, multi-user/team workflows, deletion consistency, conflict handling, release automation, regression safety.
-- **Primary data integrity gap:** most tool data still lives only in browser localStorage. Firestore sync currently covers project shell/base metadata much more than the actual working documents.
-- **Primary engineering gap:** almost no automated test coverage, so every change in `runtime.tsx` is high-regression-risk.
-- **Primary SaaS gap:** billing, tenants, roles, and cloud persistence exist as pieces, but not as a fully trustworthy lifecycle.
-
-### Readiness by area - honest assessment
-
-| Area | Status | Notes |
-|------|--------|-------|
-| Domain tools | Medium | Broad feature coverage and usable local flows, but tightly coupled and mostly untested |
-| UX shell | Medium | Landing/Home/Workspace are coherent after recent cleanup; forms still rely heavily on inline styles and some prompt-based edits |
-| Local persistence | Medium | Project-scoped localStorage works and legacy migration exists, but schema is implicit and brittle |
-| Cloud persistence | Medium, pending QA | Full project snapshots, revision conflicts, tombstones, retries, and multi-tab writer exclusion are implemented; deployed multi-profile QA remains |
-| Auth / tenancy | Low-medium | Firebase Auth and tenant docs exist, but provisioning paths and schema still diverge |
-| Billing | Low-medium | Checkout and webhook plumbing work; secure client association is incomplete |
-| Team / roles | Low | Service/rules pieces exist; no complete team management UX or frontend role enforcement |
-| QA / release | Low-medium | Unit coverage exists for sync primitives and snapshots; deployed end-to-end coverage and visible CI release workflow remain |
-
-### Production status update — 2026-07-07
-
-- [x] GitHub -> Vercel deploy is live at `https://mu-arq.vercel.app/`.
-- [x] Mercado Pago checkout links for BASE and PRO are working from production.
-- [x] `POST /api/billing/create-checkout` returns Mercado Pago subscription checkout URLs for both plans.
-- [x] `POST /api/billing/webhook` is reachable and accepts Mercado Pago's webhook simulator payload.
-- [ ] Automatic payment-to-client association remains a follow-up because plan checkout URLs do not currently attach `clientId` / `external_reference`.
-
-### Local implementation update - 2026-07-07
-
-- [x] Started local-only implementation block; no GitHub push and no Vercel deploy.
-- [x] `ProjectBaseMetadata` is reinforced as the canonical source for client, project, location, code, and currency.
-- [x] Legacy keys such as `calc.cl`, `matrix.ub`, `brief.cod`, `oc.cod`, `cot.*`, `obra.*`, and `val.*` remain readable without deleting old localStorage data.
-- [x] Firestore project hydration now brings `project + baseMeta` back to local `project.*` storage so Home and tools keep metadata aligned.
-- [x] Cotizacion de Obra PDF import now attempts embedded PDF text first and only falls back to Tesseract OCR when needed.
-- [x] OCR review now reports source, detected rows, incomplete rows, and blocks import of rows without a valid description.
-- [x] Added local UX/marketing roadmap: `docs/UX_MARKETING_ROADMAP.md`.
-
-### Local implementation update - 2026-07-08
-
-- [x] Workspace sidebar now includes a compact editable base ficha for client, project, location, code, and currency using `ProjectBaseMetadata`.
-- [x] Added local event tracking in `app.localEvents.v1` with a 250-event cap and a sidebar diagnostic panel for summary, recent events, JSON export, and cleanup.
-- [x] Instrumented local events for base ficha edits, OCR start/completion/import/review, proposal export, and landing demo clicks.
-- [x] Cotizacion de Obra imported PDF rows are marked with review metadata and can be filtered as pending OCR, highlighted, and marked reviewed.
-- [x] Landing now includes three vertical demo cards: residential, commercial interiorism, and design-build.
-- [x] This block remains local-only; no GitHub push and no Vercel deploy.
-
-### Local aesthetic overhaul update - 2026-07-08
-
-- [x] Introduced a Studio OS Premium visual layer with richer semantic tokens, refined cards, inputs, buttons, badges, metrics, shadows, and table/focus polish.
-- [x] Rebuilt Landing around a clearer sales narrative: problem, connected workflow, vertical demos, product proof, BASE/PRO pricing, and sticky conversion CTA.
-- [x] Reworked Home into a commercial dashboard with pipeline, operating metrics, quick project creation, recent project cards, and demo access.
-- [x] Refined Workspace chrome with a wider premium sidebar, project status/proposal progress, contextual header, saved-state chips, and export click tracking.
-- [x] Added local events for landing CTA clicks, Home project opens, Workspace export clicks, and tool first-step completion.
-- [x] Verified Landing desktop/mobile without horizontal overflow; Home/Workspace compile and lint cleanly, but browser access remains gated by auth in a fresh session.
-
-### UX/data consistency update - 2026-07-09
-
-- [x] UX cleanup pass was committed and pushed to `origin/master` as `cb05b5f` (`Polish Curv app UX layout`).
-- [x] Removed leftover Vite starter global CSS and normalized root layout, button/input sizing, responsive header actions, Home empty state, and Workspace mobile shell behavior.
-- [x] Added canonical project metadata flow for new projects: Home can now capture `Cliente` and `Codigo de cotizacion` at project creation and write them into `ProjectBaseMetadata`.
-- [x] `useSharedProjectTextField` now listens to project storage events so client/code edits can propagate across mounted tools without a page reload.
-- [x] `Orden de Cambio` now separates `Codigo OC` (`oc.cod`) from the canonical quote/project code (`project.code`), avoiding `OC-01` overwriting `COT-012`.
-- [x] Verified locally: setting ficha base to `GoTo Market` / `COT-012` propagated into tool fields; OC kept `OC-01` while `Cotizacion de referencia` showed `COT-012`.
-- [x] `npm.cmd run lint` and `npm.cmd run build` pass as of this update; Vite still reports the known large chunk warning.
-- [ ] The 2026-07-09 data consistency patch is implemented locally but should be committed/pushed separately after review. Current modified files are `src/App.tsx`, `src/features/layout/HomeView.tsx`, and `src/features/runtime/runtime.tsx`.
-- [ ] This does **not** solve full tool-data cloud sync. It improves metadata consistency inside the active local project scope only.
-
----
-
-## Architecture
-
-### High-level diagram
-
-```mermaid
-flowchart TB
-  subgraph clients [Client surfaces]
-    Web[Web SPA - Vite/React]
-    Desktop[Electron Desktop]
-    Standalone[standalone.html]
-  end
-
-  subgraph local [Browser local persistence]
-    LS[localStorage - scoped per project]
-  end
-
-  subgraph firebase [Firebase]
-    Auth[Firebase Auth]
-    FS[(Firestore)]
-    CF[Cloud Functions - onUserCreate]
-  end
-
-  subgraph vercel [Vercel Serverless]
-    Checkout[POST /api/billing/create-checkout]
-    Webhook[POST /api/billing/webhook]
-  end
-
-  subgraph external [Third-party]
-    MP[Mercado Pago Subscriptions + Webhooks]
-    Google[Google OAuth]
-  end
-
-  Web --> LS
-  Desktop --> LS
-  Standalone --> LS
-
-  Web --> Auth
-  Web --> FS
-  Desktop --> Auth
-  Desktop --> FS
-
-  Web --> Checkout
-  Checkout --> MP
-  MP --> Webhook
-  Webhook --> FS
-
-  Auth --> Google
-  CF --> FS
-```
-
-### Application layers
-
-| Layer | Technology | Responsibility |
-|-------|------------|----------------|
-| UI shell | `App.tsx` | Auth routing, billing gate, project CRUD, PDF export, cloud hydration |
-| Views | `src/features/layout/*` | Landing, auth, home dashboard, workspace chrome, onboarding |
-| Domain + tools | `src/features/runtime/runtime.tsx` | All 9 tools, storage, calculations, print/PDF helpers, UI primitives |
-| Services | `src/lib/*` | Firebase init, auth, tenant/client, billing, persistence, desktop bridge |
-| API | `api/billing/*` | Mercado Pago checkout + webhook → Firestore billing updates |
-| Functions | `functions/src/index.ts` | Auth trigger provisioning (legacy schema) |
-| Desktop | `electron/*` | Static server, OAuth popups, external URL handling |
-
-### Routing model (client-side)
-
-No React Router. Route is persisted in localStorage as `app.route`:
-
-- `landing` → marketing / entry
-- `auth` → login/register
-- `home` → project dashboard + paywall banner
-- `workspace` → active project tools (gated by billing)
-
-On every cold boot, the app **forces `landing` once** (`forceLandingOnBootRef` in `App.tsx`), even for authenticated users.
-
----
-
-## Technology stack
-
-| Concern | Choice |
-|---------|--------|
-| Frontend framework | **React 19** + **TypeScript 5.9** |
-| Build tool | **Vite 8** (`base: "./"` for Electron/file compatibility) |
-| Backend framework | **None** (Firebase BaaS + Vercel functions) |
-| Database | **Cloud Firestore** (+ **localStorage** as primary tool datastore) |
-| Authentication | **Firebase Auth** (email/password + Google popup) |
-| State management | **React `useState` / `useEffect`** + custom **`usePersistentState`** (localStorage). No Redux/Zustand/Context store. |
-| API structure | Vercel-style **`api/`** serverless handlers (not wired in-repo to `vite` dev proxy) |
-| Desktop | **Electron 37** + **electron-builder** (NSIS + portable) |
-| PDF/export | **html2canvas** + **jsPDF**; tool print via DOM portal |
-| OCR/import | **tesseract.js** + **pdfjs-dist** (in-tool PDF import) |
-| Payments | **Mercado Pago** subscriptions (preapproval + webhooks) via `BillingProvider` |
-| Linting | ESLint 9 (flat config) |
-| Tests | **None found** |
-
----
-
-## Folder responsibilities
-
-| Path | Responsibility |
-|------|----------------|
-| `src/` | Application source |
-| `src/App.tsx` | Root orchestrator (~1,100 lines): auth, projects, sync, export, layout switching |
-| `src/main.tsx` | React entry |
-| `src/features/runtime/runtime.tsx` | **Monolith**: storage layer, all tools, business constants, UI primitives, metrics |
-| `src/features/tools/` | Thin re-exports of tools from `runtime.tsx` |
-| `src/features/layout/` | Page-level views (Landing, Auth, Home, Workspace shell, tour) |
-| `src/features/ui/` | Mostly re-exports; `InfoBubble` is the only distinct UI module used |
-| `src/lib/firebase.ts` | Firebase client init + env validation |
-| `src/lib/auth/` | Auth wrappers (email, Google, logout, watch) |
-| `src/lib/tenant/` | Multi-tenant client/user/membership Firestore operations |
-| `src/lib/billing/` | Trial/paywall logic + checkout client |
-| `src/lib/persistence/` | Firestore project CRUD, snapshot sync state, conflict, retry, and writer-lease primitives |
-| `src/lib/desktop.ts` | Electron bridge helpers |
-| `api/` | Vercel serverless Mercado Pago + Firebase Admin billing sync |
-| `api/_lib/` | Shared Mercado Pago provider + Firebase Admin initialization |
-| `functions/` | Firebase Cloud Functions (`onUserCreate` provisioning) |
-| `electron/` | Main process, preload, local static server for OAuth |
-| `scripts/` | Standalone HTML build, desktop dev/build, icon prep, signing guard |
-| `docs/` | Firebase multitenant + billing ops notes |
-| `dist/` | Production web build output |
-| `standalone.html` | Single-file offline distribution artifact |
-| `release/` | Electron distributables (when built) |
-| `build/` | Desktop icon resources |
-| `firestore.rules` | Tenant security rules |
-| `firestore.indexes.json` | Collection group index for membership repair |
-| `firebase.json` | Functions deploy config only (no hosting block in repo) |
-
----
-
-## Dependency map (module interactions)
-
-```mermaid
-flowchart LR
-  App[App.tsx]
-
-  App --> Layout[features/layout/*]
-  App --> Runtime[features/runtime/runtime.tsx]
-  App --> AuthSvc[lib/auth/authService]
-  App --> ClientSvc[lib/tenant/clientService]
-  App --> Billing[lib/billing]
-  App --> Checkout[lib/billing/checkoutService]
-  App --> Projects[lib/persistence/clientProjects]
-  App --> Desktop[lib/desktop]
-
-  AuthSvc --> Firebase[lib/firebase]
-  ClientSvc --> Firebase
-  ClientSvc --> Billing
-  Projects --> Firebase
-  Projects --> Runtime
-  Checkout --> API[api/billing/*]
-
-  API --> MercadoPagoLib[api/_lib/billing]
-  API --> AdminLib[api/_lib/firebase-admin]
-
-  Layout --> Runtime
-  Tools[features/tools/*] --> Runtime
-
-  CF[functions/onUserCreate] --> Firestore[(Firestore)]
-  Firebase --> Firestore
-  AdminLib --> Firestore
-```
-
-**Data flow (authenticated user):**
-
-1. `watchAuth` → `ensureUserHasClient` → sets `activeClientId`
-2. `importLocalProjectsOnce` migrates local projects → Firestore (once per client)
-3. `listProjectsByClient` reconciles revisions and tombstones from cloud
-4. Dirty state is recorded immediately; an 800 ms debounce serializes full snapshot writes per project
-5. Focus, reconnect, sign-in, and project-open events trigger reconciliation without requiring a full reload
-6. Revision and remote-deletion conflicts require explicit “Usar nube” or “Conservar ambas” action
-
----
-
-## Current implemented features
-
-### Product / domain (9 tools)
-
-| Tool ID | Name | Track |
-|---------|------|-------|
-| `calc` | Calculadora de Honorarios | Diseño |
-| `matrix` | Matriz de Entregables | Diseño |
-| `excl` | Exclusiones y Supuestos | Diseño |
-| `cron` | Cronograma por Etapas | Diseño |
-| `cot` | Cotización de Obra | Construcción |
-| `cronobra` | Cronograma de Obra | Construcción |
-| `brief` | Programa Arquitectónico | Construcción |
-| `val` | Valorización de Avance | Seguimiento |
-| `oc` | Orden de Cambio | Seguimiento |
-
-### Platform
-
-- [x] Multi-project workspace with per-project scoped localStorage
-- [x] Legacy single-project → multi-project migration
-- [x] Dark/light theme (CSS variables)
-- [x] Onboarding tour
-- [x] Per-tool print views + bundled PDF proposal export
-- [x] Dashboard metrics / mini-gantt on home
-- [x] Firebase Auth (email + Google)
-- [x] Firestore multi-tenant model (`users`, `clients`, `members`, `projects`)
-- [x] Trial paywall (14-day default) + plan limits defined (BASE/PRO)
-- [x] Mercado Pago subscription checkout links (BASE/PRO) via `BillingProvider`
-- [x] Mercado Pago webhook endpoint deployed and simulator-compatible
-- [ ] Automatic Mercado Pago payment → `clientId` billing activation still needs a reliable association strategy
-- [x] Desktop Electron build pipeline (unsigned local / signed CI intended)
-- [x] Standalone HTML build
-- [x] Firestore security rules (tenant-scoped)
-- [x] PDF OCR import path (tesseract + pdfjs) inside tools
-
----
-
-## Missing features
-
-| Feature | Notes |
-|---------|-------|
-| Full cloud sync sign-off | Implemented for scoped project snapshots; complete Preview/production multi-profile validation remains |
-| Team management UI | `listClientMembers`, role limits exist in code but no invite/manage screens |
-| Role enforcement in UI | Firestore rules enforce roles; frontend does not read member role |
-| EMPRESA plan | Marketed on landing as "PRONTO"; not in `ClientPlan` type |
-| Firestore project delete | Local delete now writes a Firestore tombstone locally; needs deployed Firestore QA |
-| Client/tenant switcher UI | `setActiveClient` exists; no UI for multiple clients |
-| Real-time listener | Focus/open/reconnect reconciliation is implemented; there is no continuous Firestore `onSnapshot` listener |
-| Hosting / deploy config in repo | No `vercel.json`, no Firebase Hosting block |
-| CI/CD workflow | README references `.github/workflows/release-desktop.yml` — **file missing** |
-| Automated tests | Minimal Vitest coverage exists for snapshot, tombstone, and checkout; still no e2e |
-| i18n | Spanish hardcoded throughout |
-| Background offline queue | Dirty state and bounded retries survive locally, but there is no service-worker/background-sync queue |
-
----
-
-## Known issues
-
-### Critical / high
-
-1. **Tenant schema mismatch was corrected locally; deployed data still needs audit** (`functions/src/index.ts`)
-   - Local function code now writes `ownerUid`, member `uid`, `id`, `plan`, `limits`, and `billing`
-   - Existing deployed Firestore documents may still contain `ownerId` / member `userId`
-   - Risk remains until deployed Functions and real tenant documents are verified/migrated
-
-2. **Tool data sync is newly implemented but not production-proven**
-   - Local code now stores a `ProjectSnapshot` with scoped tool keys in project docs
-   - Real multi-device sync, conflict behavior, and Firestore rules need deployed QA
-
-3. **Checkout API auth was corrected locally; production verification pending**
-   - Local code requires Firebase ID token and verifies membership in `clientId`
-   - Still needs deployed Vercel/Firebase/Mercado Pago verification for BASE and PRO
-
-4. ~~**Dual provisioning paths**~~ — **resolved.** `onUserCreate` is deleted; the `ensureTenant`
-   callable is the only tenant writer and `clients/{clientId}` is `allow create: if false`, so the
-   browser cannot create one. Tenant ids are now generated (`cli_*`) rather than the owner's uid.
-   See `docs/firebase-multitenant.md`.
-
-### Medium
-
-6. **Forced landing on every app boot** — extra friction for returning users  
-7. **`firebase-admin` in root `package.json` dependencies** — server library colocated with frontend; risk of bundling misconfiguration (currently only used under `api/`)  
-8. **`node` listed as runtime dependency** in `package.json` — unusual and likely unintentional  
-9. **Vite dev server does not serve `/api/*`** — local Mercado Pago checkout fails unless Vercel CLI or proxy is used  
-10. **Project edit uses `window.prompt`** — brittle UX, no validation  
-11. **Logout clears local `projects` state** but not necessarily all localStorage keys  
-12. **No git-visible CI** despite README release checklist  
-
-### Low
-
-13. **`form-primitives.tsx`, `Brand.tsx`, `DocHeader.tsx`** — re-export shims; indirection without benefit  
-14. **`.env.local` present in repo workspace** — ensure secrets are not committed (verify `.gitignore`)  
-15. **Bugbot review** (2026-07-07): no branch diff available in this environment — no automated findings  
-
----
-
-## Technical debt
-
-| Area | Debt | Impact |
-|------|------|--------|
-| `runtime.tsx` (~4,173 lines) | God file: tools + storage + UI + constants | Hard to test, review, or parallelize |
-| `App.tsx` (~1,131 lines) | God component orchestration | Same |
-| Persistence model | Full-document snapshots with revision-level conflicts, not field merges | Concurrent edits require explicit copy preservation |
-| Type safety | Widespread `any` in tools | Runtime bugs |
-| Styling | Inline styles everywhere | No design system reuse |
-| Error handling | `console.warn` for sync failures | Silent degradation |
-| Documentation vs code | README promises CI workflow that is absent | Release process gap |
-| Cloud Function | Stale schema, overlaps client logic | Operational confusion |
-| Membership model | Partially implemented | Can't ship team features without UI + fixes |
-
----
-
-## Suggested roadmap
-
-### Phase 0 — Stabilize foundation (1–2 weeks)
-
-1. Align `functions/src/index.ts` with `clientService` schema (`ownerUid`, `uid`, `billing`, `plan`, `limits`, `id`)
-2. Remove or gate duplicate provisioning (function **or** client bootstrap, not both)
-3. ~~Add Firestore rules for `smoke_persistence` or remove smoke code~~ — smoke code removed; collection stays denied
-4. Authenticate checkout API (Firebase ID token verification)
-5. Add `vercel.json` + document local API dev workflow
-6. Restore/create `.github/workflows/release-desktop.yml`
-7. Remove `node` from frontend dependencies; move `firebase-admin` to devDependencies or a server-only package
-
-### Phase 1 — Data integrity (2–3 weeks)
-
-1. Define `ProjectSnapshot` schema: all scoped tool keys serialized into Firestore project doc (or subcollection)
-2. Implement bidirectional sync with versioning / `updatedAt` conflict strategy
-3. Firestore delete when project deleted locally
-4. Persist `app.tools.*` and active tool per project to cloud
-5. Validate the dated multi-profile matrix in `docs/qa/2026-07-26-firestore-snapshot-sync.md` and promote the exact approved artifact
-
-### Phase 2 — Product completeness (3–4 weeks)
-
-1. Team management UI (invite, roles, plan limits enforcement)
-2. Read member role in UI → viewer read-only mode
-3. Client switcher for users in multiple tenants
-4. Replace `window.prompt` with proper modals
-5. Skip forced landing when session exists (remember last route)
-
-### Phase 3 — Quality & scale (ongoing)
-
-1. Split `runtime.tsx` into `storage/`, `tools/`, `domain/`, `ui/`
-2. Add Vitest unit tests for billing, storage, calculations
-3. Playwright e2e for auth + project + export happy path
-4. Firebase Hosting or Vercel static deploy for web
-5. EMPRESA plan or remove from marketing
-6. Observability (Sentry, structured logging for webhooks)
-
----
-
-## Recommended coding conventions
-
-Follow existing patterns unless refactoring:
-
-1. **TypeScript strict mode** — keep `strict: true`; avoid new `any`; prefer typed helpers in `lib/`
-2. **Persistence** — use `usePersistentState` / `readStorage` / `writeStorage` with project scope; never raw `localStorage` in tools
-3. **Firestore access** — only through `src/lib/*` service modules, never directly in views
-4. **Env vars** — `VITE_*` for client; server secrets without prefix in `api/` only
-5. **Components** — new UI in `features/`; do not add to `runtime.tsx` unless fixing a critical bug
-6. **Styling** — match inline style + CSS variable theme (`--ui-*`) until a deliberate design pass
-7. **Spanish copy** — keep user-facing strings in Spanish for consistency
-8. **Minimal dependencies** — justify new packages; prefer browser/Firebase primitives
-9. **No breaking changes** to localStorage key schema without migration flag (see `LEGACY_MIGRATION_FLAG_KEY` pattern)
-10. **Commits** — small, feature-focused; do not commit `.env.local` or service account JSON
-
----
-
-## Risks
-
-| Risk | Likelihood | Severity | Mitigation |
-|------|------------|----------|------------|
-| User data loss on new device | High | High | Phase 1 full snapshot sync |
-| Billing mis-association via open checkout API | Medium | High | Token auth on checkout |
-| Monolith regression on any change | High | Medium | Split + tests |
-| Electron OAuth breakage on Firebase/Google policy changes | Medium | Medium | Document authorized domains; test each release |
-| Firestore rules/index drift | Medium | High | Deploy scripts in CI; integration tests against emulator |
-| Mercado Pago webhook/client association drift | Medium | High | Staging webhook, idempotent handlers, and persistent checkout-session mapping |
-| localStorage quota exceeded (large projects) | Low | Medium | Compress snapshots; cloud primary storage |
-
----
-
-## Next development priorities
-
-1. **Fix tenant provisioning schema** (Cloud Function ↔ clientService ↔ Firestore rules)  
-2. **Implement full project snapshot sync** to Firestore (biggest user-visible gap)  
-3. **Secure billing endpoints**  
-4. **Add CI workflow** for desktop release + typecheck/lint  
-5. **Begin `runtime.tsx` decomposition** — start with storage extraction  
-6. **Add minimal test harness** (Vitest + Firebase emulator)  
-7. **Defer new features** until data model and auth/billing are trustworthy  
-
----
-
-## Environment variables
-
-### Client (`.env` / `.env.local` — `VITE_` prefix)
-
-| Variable | Purpose |
-|----------|---------|
-| `VITE_FIREBASE_API_KEY` | Firebase web API key |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Auth domain |
-| `VITE_FIREBASE_PROJECT_ID` | Project ID |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Storage bucket |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | FCM sender ID |
-| `VITE_FIREBASE_APP_ID` | Firebase app ID |
-| `VITE_BILLING_PORTAL_URL` | External billing page (desktop opens in browser) |
-
-Placeholder `xxx` disables Firebase initialization. The obsolete Firestore smoke probe has been removed.
-
-### Server — Vercel `api/` (no `VITE_` prefix)
-
-| Variable | Purpose |
-|----------|---------|
-| `BILLING_PROVIDER` | Billing provider id (`mercadopago`) |
-| `MP_ACCESS_TOKEN` | Mercado Pago access token |
-| `MP_WEBHOOK_SECRET` | Webhook signature secret |
-| `MP_PREAPPROVAL_PLAN_BASE` | Preapproval plan id for BASE |
-| `MP_PREAPPROVAL_PLAN_PRO` | Preapproval plan id for PRO |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Admin SDK credentials (JSON string) |
-| `FIREBASE_SERVICE_ACCOUNT_B64` | Alternative base64-encoded service account |
-| `APP_BASE_URL` | Fallback origin for checkout URLs |
-
-### Desktop signing (optional)
-
-| Variable | Purpose |
-|----------|---------|
-| `CSC_LINK` | Code signing certificate (PFX) |
-| `CSC_KEY_PASSWORD` | Certificate password |
-| `REQUIRE_SIGNING` | Fail build if signing env missing |
-
-### Electron dev
-
-| Variable | Purpose |
-|----------|---------|
-| `CURV_DESKTOP_DEV_SERVER_URL` | Override dev server URL |
-
----
-
-## Third-party services
-
-| Service | Usage |
-|---------|-------|
-| Firebase Auth | Email/password + Google sign-in |
-| Cloud Firestore | Users, clients, members, projects, billing metadata |
-| Firebase Cloud Functions | `onUserCreate` tenant bootstrap |
-| Mercado Pago | Subscription checkout + webhook billing lifecycle |
-| Google OAuth | Via Firebase Auth popup |
-| Vercel (implied) | Hosts SPA + `api/` serverless routes |
-| GitHub Releases (documented) | Desktop artifact distribution |
-| html2canvas / jsPDF | Client-side PDF generation |
-| tesseract.js / pdfjs-dist | PDF text extraction/import |
-| Electron | Desktop shell |
-
----
-
-## Deployment configuration (as documented in repo)
-
-| Target | Mechanism | Status in repo |
-|--------|-----------|----------------|
-| Web build | `npm run build` -> `dist/` | Config present; verified 2026-07-07 |
-| Web hosting | GitHub -> Vercel | Live at `https://mu-arq.vercel.app/` |
-| API | `api/` Vercel functions | Live; checkout and webhook verified |
-| Firestore rules | `firebase deploy --only firestore:rules` | Documented |
-| Firestore indexes | `firebase deploy --only firestore:indexes` | Required for membership repair |
-| Cloud Functions | `firebase deploy --only functions` | Config present |
-| Desktop | `npm run desktop:dist` → `release/*.exe` | Config present |
-| CI release | Tag `v*` → build + GitHub Release | **Workflow file missing** |
-
----
-
-## Bugbot review note
-
-Bugbot was requested on 2026-07-07 against branch changes. **No diff was available** in this workspace (likely no git history or clean tree). Re-run after meaningful commits on a feature branch.
-
----
-
-*This document reflects repository and local workspace state at audit time. It is intentionally conservative: several useful workflows exist, but the app should still be treated as pre-beta SaaS until cloud sync, billing integrity, tests, and tenant lifecycle are hardened.*
+**Actualizado:** 12 de octubre de 2026 (America/Lima).
+**Master verificado en GitHub:** `94444a0398a51c1459f4fd79f83276533a42c77c`.
+**Producto:** Curv App, workspace comercial y tecnico para estudios de arquitectura, interiorismo y construccion.
+**Estado:** pre-Beta avanzada; Fase 4 pendiente de cierre de aceptacion y publicacion.
+**Preparacion estimada vigente:** **7,2/10**. **Captacion:** **5/10 estudios fundadores (50%)**.
+
+## 1. Resumen vigente
+
+Curv dispone de nueve herramientas, ficha compartida, documentos con identidad del estudio, demos, autenticacion, sincronizacion de proyectos y un flujo de invitaciones con acceso Viewer. Las herramientas ya estan separadas del antiguo monolito. CI, pruebas unitarias, reglas y pruebas de invitaciones existen en master.
+
+El product owner confirmo el 10 de octubre la validacion de los recorridos de las nueve herramientas y del aislamiento de permisos. La sincronizacion con dos sesiones sigue pendiente, con cierre previsto para esta semana, del 12 al 18 de octubre. Tambien quedan la preparacion comercial del cobro y los ajustes de marca/personalizacion antes de publicar la version validada.
+
+Este documento sustituye las conclusiones antiguas que describian ausencia de pruebas, CI, invitaciones o separacion de herramientas. Fusionar codigo no acredita por si solo una version probada en produccion.
+
+## 2. Master y procedencia
+
+| Referencia | Estado comprobado |
+|---|---|
+| Master remoto | `94444a0398a51c1459f4fd79f83276533a42c77c`, consultado el 12 de octubre |
+| Ultimo cambio | PR #32: actualizacion documental del estado de Fase 4 |
+| Fecha de ese commit en Lima | 11 de octubre de 2026, 19:21 |
+| Master anterior | `0b229ff0e769e0406aa6a611c0655defa9b88357` |
+| Diferencia respecto al anterior | Un commit; solo cambia `Curv_APP/docs/PROJECT_STATUS.md` |
+| Integracion funcional previa | PR #29: integracion Fase 4; PR #30: sistema visual; PR #31: dashboard centrado |
+| Produccion | No se verifico en este pase que el despliegue live ejecute este SHA |
+| Ejecucion de pruebas en este pase | Revision documental y lectura de fuentes de master; no nueva ejecucion de suites ni QA autenticada |
+
+La copia local tiene codigo anterior a master y sus comandos Git no pueden resolver el directorio del repositorio en esta sesion. Por eso la fuente tecnica de esta revision es el SHA remoto fijo, no los archivos locales de aplicacion. Solo se actualiza documentacion; no se resetea ni reemplaza codigo local.
+
+Fuentes: [master verificado](https://github.com/arquitecturacurva-sudo/MUArq/commit/94444a0398a51c1459f4fd79f83276533a42c77c), [comparacion con el master anterior](https://github.com/arquitecturacurva-sudo/MUArq/compare/0b229ff0e769e0406aa6a611c0655defa9b88357...94444a0398a51c1459f4fd79f83276533a42c77c).
+
+## 3. Evaluacion de preparacion
+
+Se mantiene la evaluacion solicitada para la primera semana de octubre, elaborada el 10 de octubre con avances documentados hasta el dia 9 y confirmaciones del product owner del dia 10. La revision del 12 confirma que el nuevo master solo incorpora documentacion: no justifica subir las notas.
+
+Son estimaciones razonadas de preparacion, no porcentajes de funcionalidades completadas. Media simple de seis dimensiones: 43/6, redondeada a **7,2/10**. El indicador no sustituye las puertas criticas de salida. El 5,3/10 de agosto es historico y no documentaba una formula de agregacion comparable.
+
+| Dimension | Agosto, historico | Octubre, vigente | Fundamento / limite |
+|---|---:|---:|---|
+| Cobertura funcional | 8/10 | **8/10** | Nueve herramientas y recorridos validados por el product owner. Tramitologia sigue siendo futura. |
+| Coherencia de experiencia | 6/10 | **8/10** | Sistema visual alineado y dashboard centrado. Branding e Identidad pendientes. |
+| Continuidad de datos | 5/10 | **6/10** | Snapshots, revisiones, conflictos, reintentos y listener de proyectos implementados. Matriz de dos sesiones pendiente. |
+| Seguridad y permisos | 6/10 | **7/10** | Permisos validados por el product owner y cobertura de reglas/invitaciones. Asociacion del pago al estudio pendiente de confirmacion. |
+| Publicacion y calidad | 3/10 | **6/10** | CI y suites documentadas; falta cierre del artefacto, tiempos de navegador y comprobacion final en produccion. |
+| Capacidad de evolucion | 4/10 | **8/10** | Nueve herramientas separadas; runtime es una fachada. App sigue concentrando orquestacion y subsiste compatibilidad legacy. |
+| **Preparacion global** | **5,3/10** | **7,2/10** | **Pre-Beta avanzada, condicionada al cierre de pendientes.** |
+
+## 4. Puertas de salida a Beta cerrada
+
+| Puerta | Estado al 12 de octubre | Trabajo restante |
+|---|---|---|
+| 1. Recorridos de nueve herramientas | **Validada por el product owner el 10 de octubre** | Adjuntar version y evidencia al registro de aceptacion. |
+| 2. Sincronizacion, conflictos y recuperacion | **Pendiente; prevista del 12 al 18 de octubre** | Probar dos sesiones, recarga, cambios concurrentes, ambas resoluciones de conflicto, offline y eliminacion/recuperacion. |
+| 3. Permisos y aislamiento | **Validada por el product owner el 10 de octubre** | Adjuntar version, perfiles y evidencia de backend al cierre. |
+| 4. Oferta y cobro | **Precios mensuales definidos; recorrido comercial sin confirmacion de cierre** | Alinear oferta y planes del proveedor; verificar pago → estudio → acceso, webhook, cancelacion y reintentos. |
+| 5. Preparacion y publicacion | **Pendiente** | Retirar branding de Curva Arquitectura del Dashboard, retocar Identidad, medir rendimiento, publicar el artefacto probado y comprobar produccion/recuperacion. |
+
+Las matrices versionadas aun contienen casillas de aceptacion desplegada pendientes. Se conserva la distincion entre validacion comunicada por el product owner y evidencia incorporada al repositorio; no se atribuye una nueva ejecucion de QA a esta actualizacion. Cualquier fallo critico de perdida de datos, acceso indebido o cobro incorrecto impide el cierre.
+
+Fuentes de aceptacion:
+- [Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md).
+- [Curv_APP/docs/qa/2026-07-26-firestore-snapshot-sync.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-07-26-firestore-snapshot-sync.md).
+- [Curv_APP/docs/qa/2026-10-07-phase-4-access-evidence.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-access-evidence.md).
+
+## 5. Producto disponible y limites
+
+| Familia | Herramientas actuales |
+|---|---|
+| Diseño | Honorarios, matriz de entregables, exclusiones y supuestos, cronograma por etapas |
+| Construccion | Cotizacion de obra, cronograma de obra, programa arquitectonico |
+| Seguimiento | Valorizacion de avance, orden de cambio |
+| PRO futuro | Tramitologia: notificaciones a partir de un calendario; no implementada ni exigida para la Beta BASE |
+
+Capacidades transversales: proyectos con ficha compartida, monedas y documentos, importacion PDF/OCR con revision, demos, identidad del estudio y vistas de lectura para Viewer. El programa arquitectonico distingue resumen para cliente y detalle interno. La valorizacion muestra advertencias y distingue datos declarados de certificacion.
+
+La ficha compartida no implica propagacion automatica de todos los calculos. Exportar una valorizacion no acredita cobro. Facturacion SUNAT, ERP, BIM, firma contractual y nuevos informes/actas no se presentan como capacidades probadas.
+
+## 6. Arquitectura y deuda actual
+
+| Capa | Responsabilidad vigente |
+|---|---|
+| `src/domain/` | Reglas, tipos y calculos puros de proyecto, herramientas y acceso |
+| `src/application/` | Contratos y casos de uso; estado y operaciones de herramientas |
+| `src/infrastructure/` | Adaptadores de persistencia y servicios externos |
+| `src/composition/` | Conexion de vistas, contratos y adaptadores; registro de herramientas |
+| `src/features/` | Experiencia, herramientas, UI compartida, documentos, branding y equipo |
+| `src/features/runtime/runtime.tsx` | Fachada temporal de compatibilidad; **112 lineas fisicas** en el SHA revisado |
+| `src/App.tsx` | Orquestacion de sesion, proyectos, sincronizacion, rutas y exportacion; **2.380 lineas fisicas** |
+| `api/billing/` | Checkout y webhook con Firebase Admin y Mercado Pago |
+| `functions/` | Aprovisionamiento canonico, invitaciones, sesion, plazas e identidad |
+| `.github/workflows/` | Validacion de Team Access y publicacion desktop |
+
+Las cifras de lineas se obtienen del texto del SHA verificado. Sustituyen el recuento anterior de 99 lineas para runtime; no indican por si solas un cambio funcional.
+
+Se preservan claves legacy de localStorage y el contrato ProjectSnapshot. Persisten snapshots de documento completo y conflictos por revision, sin fusion de campos. El arranque hacia landing sigue presente en App. Mantener la fachada y reducir gradualmente la orquestacion de App son deuda posterior al cierre de Beta.
+
+Stack revisado: React 19, TypeScript 5.9, Vite 8, Tailwind 4, Firebase Auth/Firestore/Storage/Functions, Mercado Pago, Electron 37, jsPDF/html2canvas y pdfjs/Tesseract. Functions declara Node 20, mientras CI usa Node 24: revisar la actualizacion y compatibilidad del runtime de Functions. No se ha revalidado en este pase la distribucion desktop ni standalone.
+
+Fuentes: [Curv_APP/src/features/runtime/runtime.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/features/runtime/runtime.tsx), [Curv_APP/src/App.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/App.tsx), [Curv_APP/package.json](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/package.json), [Curv_APP/functions/package.json](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/functions/package.json).
+
+## 7. Datos, proyectos y equipos
+
+La sincronizacion incluye contenido de herramientas, revisiones, tombstones, reintentos y exclusion de escritores. La correccion de consistencia Live/Preview ya incorpora lectura confirmada por servidor y listener de cambios comprometidos; la afirmacion antigua de que no existe listener queda retirada. Los proyectos limpios ausentes en nube no deben recrearse; las copias con trabajo pendiente deben conservarse como conflicto recuperable.
+
+Equipo y acceso ya incluye invitacion por enlace, renovacion/cancelacion, aceptacion con correo verificado, comprobacion de plazas y Viewer limitado a proyectos asignados. Los enlaces vencen en siete dias y se almacenan como hash. No hay envio automatico de correo. Cambio de rol, revocacion de membresias y transferencia de propietario siguen fuera del flujo operativo documentado; no confundirlos con cancelar una invitacion.
+
+Hay evidencia historica del 23 de septiembre de Functions presentes, rechazo anonimo y reglas/indices comprobados. No se convierte esa comprobacion historica en una nueva verificacion del 12 de octubre.
+
+Fuentes: [Curv_APP/docs/qa/2026-10-05-project-sync-consistency.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-05-project-sync-consistency.md), [Curv_APP/docs/architecture/team-invitations-release.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/architecture/team-invitations-release.md).
+
+## 8. Branding e Identidad
+
+El encabezado compartido aun renderiza `Brand` en master. La retirada del branding de Curva Arquitectura del Dashboard solicitada por el product owner permanece pendiente.
+
+Identidad ya dispone de nombre/datos de contacto, logo, colores, presets de tipografia, vista previa, guardado y controles de contraste. Los retoques concretos de personalizacion aun deben definirse. Validar que su aplicacion a documentos conserva legibilidad y no altera calculos ni contenido.
+
+Fuentes: [Curv_APP/src/features/layout/AppHeader.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/features/layout/AppHeader.tsx), [Curv_APP/src/features/branding/BrandSettingsView.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/features/branding/BrandSettingsView.tsx).
+
+## 9. Oferta, estudios fundadores y validacion comercial
+
+| Oferta aprobada por el product owner | Precio mensual |
+|---|---:|
+| Primeros diez estudios fundadores | **S/ 29,00** |
+| BASE regular posterior | **S/ 59,90** |
+| PRO | **S/ 89,90** |
+
+**Captacion vigente:** cinco estudios de diez; faltan cinco. No se comunicaron nuevas altas desde el reporte del 10 de octubre. Duracion del beneficio fundador, plan incluido, impuestos y limites comerciales definitivos no estan especificados.
+
+Estos precios sustituyen las alternativas anuales antiguas. El LandingView actual se divide en Hero, Problems, Solution y About; ya no corresponde atribuirle la antigua tabla de precios en ese mismo archivo. Falta cotejar el importe y frecuencia realmente configurados en Mercado Pago y alinear toda la oferta.
+
+Posicionamiento vigente: ayudar al estudio a preparar propuestas, ordenar alcances y documentar valorizaciones y cambios desde una ficha de proyecto. Prioridad comercial: estudios pequenos de arquitectura/interiorismo con propuestas u obra activas. Lima sigue siendo el foco operativo propuesto del piloto.
+
+No hay resultados nuevos documentados de pagos, retencion o rentabilidad. Medir por estudio primer documento real, segundo uso, ahorro de tiempo comparable, incidencias, minutos de soporte y pago confirmado. El analisis de mercado del 1 de octubre se conserva en el archivo historico local; sus fuentes externas y periodos no se actualizaron en este pase.
+
+## 10. Cobro y escenarios economicos
+
+El checkout exige token y membresia. El proveedor tiene firmas de webhook y controles de eventos duplicados, tardios y de suscripcion incorrecta. En el codigo revisado, la rama sin `cardTokenId` retorna un enlace al plan; la rama con token escribe `external_reference = clientId`. El input frontend no declara ese token. Por tanto sigue pendiente demostrar la asociacion efectiva del recorrido normal pago → estudio, sin afirmar que ya este resuelta.
+
+Escenarios aritmeticos de ingreso mensual, suponiendo cuentas activas que pagan el precio indicado; no son ventas observadas ni beneficio:
+
+| Escenario | Ingreso mensual bruto |
+|---|---:|
+| Cinco fundadores pagados | S/ 145 |
+| Diez fundadores pagados | S/ 290 |
+| Diez cuentas BASE regulares | S/ 599 |
+| Diez cuentas PRO | S/ 899 |
+
+No extrapolar los antiguos TAM/SAM/SOM, punto de equilibrio o ingresos anuales calculados a otros precios. Recalcularlos con mezcla de planes, impuestos, comisiones, soporte y costos reales antes de usarlos para una decision financiera. No hay datos suficientes para estimar CAC, LTV o renovacion.
+
+Fuentes: [Curv_APP/api/_lib/billing/mercado-pago-provider.js](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/api/_lib/billing/mercado-pago-provider.js), [Curv_APP/src/lib/billing/billingService.ts](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/lib/billing/billingService.ts).
+
+## 11. Calidad, rendimiento y release
+
+Ultima evidencia combinada registrada en la integracion del 7 de octubre:
+
+| Comprobacion | Resultado documentado |
+|---|---:|
+| Frontend unitario/integracion | 433 pruebas en 65 archivos |
+| Functions | 14 pruebas |
+| Reglas Firestore/Storage en emulador | 20 pruebas |
+| Invitaciones en emuladores | 12 pruebas |
+| Lint, TypeScript y build | Correctos |
+| Navegador local | Landing renderiza; CTA de demo llega a login |
+
+Estos resultados pertenecen a su ejecucion documentada, no a una suite ejecutada hoy. El workflow Team Access ejecuta frontend, Functions y ambas suites de emulador en PR hacia master. El workflow desktop existe; queda por comprobar un release desktop actual. La consulta de Actions por el SHA de master no devolvio ejecuciones asociadas; no se declara CI verde de ese SHA a partir de ello. La evidencia previa de PR #32 es de su revision, no automaticamente de master.
+
+La medicion limpia de la integracion registra **1.782.465 bytes brutos / 518.316 gzip** de JS/CSS inicial enlazado desde HTML. El script de entrada sigue siendo grande. El baseline anterior era 518.618 gzip: no se atribuye una mejora perceptible a 302 bytes. Los tiempos de arranque, apertura e impresion/exportacion siguen pendientes de medicion con navegador y condiciones fijas.
+
+No hay evidencia de una suite E2E completa de navegador ejecutada en CI para autenticacion, proyecto, recuperacion y retorno de checkout. Las pruebas de servicios/emulador no la sustituyen.
+
+Orden de cierre: identificar Preview/SHA/Firebase/reglas, adjuntar aceptacion, completar sync y tiempos, revisar cobro, promover el mismo artefacto, comprobar produccion con proyecto QA desechable y dejar referencia de rollback. No usar proyectos de clientes para pruebas destructivas.
+
+Fuentes: [Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md), [Curv_APP/docs/qa/2026-10-07-phase-4-performance-baseline.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-performance-baseline.md), [.github/workflows/team-access.yml](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/.github/workflows/team-access.yml), [.github/workflows/release-desktop.yml](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/.github/workflows/release-desktop.yml).
+
+## 12. Prioridades y responsables funcionales
+
+| Prioridad | Responsable funcional | Resultado de cierre |
+|---|---|---|
+| Sincronizacion esta semana | Ingenieria + QA | Matriz de dos sesiones sin perdida de datos y con recuperacion comprobada |
+| Marca e Identidad | Producto + frontend | Dashboard con marca acordada y personalizacion definida/probada |
+| Oferta y cobro | Producto + comercial + backend | Precios coherentes y pago asociado al estudio correcto |
+| Evidencia de release | Lider tecnico + QA | Version identificada, aceptacion adjunta, rendimiento, promocion y rollback |
+| Piloto fundador | Comercial + soporte | Seguimiento de los cinco estudios actuales y captacion de cinco adicionales |
+
+Tras estos cierres: decidir Beta cerrada, actualizar la nota con evidencia, medir uso recurrente y construir Tramitologia PRO con alcance definido (calendario, eventos, canales y preferencias de notificacion). No se fija una fecha de lanzamiento solo por la prevision de cierre de sync.
+
+## 13. Variables y operacion
+
+Cliente: configuracion Firebase `VITE_FIREBASE_*` y portal de billing `VITE_BILLING_PORTAL_URL`. Servidor: proveedor, token/secreto de Mercado Pago, IDs de planes BASE/PRO, credencial Firebase Admin y `APP_BASE_URL`. No copiar valores de secretos a documentacion ni asumir que Preview/produccion usan identica configuracion.
+
+Web y API: Vercel. Identidad/datos/acceso: Firebase. Desktop: Electron/NSIS/portable. Standalone: artefacto HTML. Verificar cada superficie antes de declararla lista para Beta; esta revision no prueba todas las distribuciones.
+
+## 14. Historial conservado
+
+- [Copia local anterior a esta revision](history/PROJECT_STATUS_LOCAL_BEFORE_2026-10-12.md): conserva el analisis peruano, decisiones y evaluaciones anteriores de esta conversacion.
+- [Project Status de master al SHA revisado](history/PROJECT_STATUS_MASTER_94444a0.md): conserva la secuencia de extracciones y notas de julio a octubre.
+- Los archivos historicos conservan su contenido original; sus rutas relativas se interpretaban desde docs/ antes de archivarlos. Para navegar el master historico usar [la version inmutable original](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/PROJECT_STATUS.md).
+
+Las conclusiones vigentes son las de este documento. Las cifras de mercado, fechas, resultados de pruebas y pendientes antiguos en los archivos historicos no se consideran revalidados ni automaticamente activos.
