@@ -188,4 +188,24 @@ describe("per-project sync state", () => {
     });
     expect(readProjectSyncState("project-a", storage).conflict).toBeUndefined();
   });
+  it("restarts normal cloud saving from the loaded revision after using cloud, without retaining the old conflict or error", () => {
+    const storage = new MemoryStorage();
+    markProjectHydrated("project-a", 2, "2026-10-15T00:00:00Z", storage);
+    markProjectDirty("project-a", "2026-10-15T00:01:00Z", storage);
+    markProjectSyncConflict("project-a", { kind: "revision", remoteRevision: 7, detectedAt: "2026-10-15T00:02:00Z" }, storage);
+    markProjectSyncError("project-a", "old save failed", storage);
+
+    resolveProjectSyncConflict("project-a", "use-cloud", { revision: 7, updatedAt: "2026-10-15T00:02:00Z" }, storage);
+    const loaded = readProjectSyncState("project-a", storage);
+    expect(loaded).toMatchObject({ dirty: false, cloudRevision: 7, cloudUpdatedAt: "2026-10-15T00:02:00Z" });
+    expect(loaded.conflict).toBeUndefined();
+    expect(loaded.lastError).toBeUndefined();
+
+    const edit = markProjectDirty("project-a", "2026-10-15T00:03:00Z", storage);
+    expect(edit).toMatchObject({ dirty: true, cloudRevision: 7, localRevision: 8 });
+    expect(edit.conflict).toBeUndefined();
+    markProjectCloudSaved("project-a", edit.localRevision, 8, "2026-10-15T00:04:00Z", storage);
+    expect(readProjectSyncState("project-a", storage)).toMatchObject({ dirty: false, cloudRevision: 8, cloudUpdatedAt: "2026-10-15T00:04:00Z" });
+    expect(readProjectSyncState("project-a", storage).conflict).toBeUndefined();
+  });
 });

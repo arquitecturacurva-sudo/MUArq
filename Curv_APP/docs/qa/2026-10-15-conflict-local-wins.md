@@ -12,6 +12,8 @@ Se agrega **Usar mi version** a los conflictos de revision. El usuario confirma 
 
 Usar nube continua reemplazando la copia local. Esta mejora no incorpora Deshacer ni reconstruye una copia local que ya fue descartada anteriormente. Conservar ambas mantiene su comportamiento.
 
+Despues de Usar nube se limpian conflicto/error locales y se actualiza la revision de referencia, la huella del contenido y el indicador de guardado. Se solicita una reconciliacion para reabrir el guardado normal si una lectura previa habia dejado cerrado el gate global. La siguiente edicion permanece en el mismo proyecto y se guarda contra la revision de nube recien cargada. No se marca el conjunto de proyectos como sincronizado solo por cargar uno.
+
 ## Integridad
 
 - La lectura remota debe coincidir con la revision del conflicto confirmado.
@@ -25,7 +27,7 @@ Durante la revision se detecto que Usar nube y Conservar ambas aplicaban directa
 
 ## Validacion local
 
-- Suite frontend: 475 pruebas en 71 archivos, correctas.
+- Suite frontend tras la ampliacion de Usar nube: 476 pruebas en 71 archivos, correctas; incluye el ciclo nube → edicion local → guardado.
 - TypeScript, lint y build: correctos.
 - Casos añadidos: misma identidad de proyecto y datos completos; revision cambiada antes o durante la transaccion; proyecto ausente/eliminado; cambio de sesion/revision local; snapshot de otro estudio; fallo de lectura; conservacion de ediciones durante la escritura; revision posterior protegida; reconstruccion de toolData, compatibilidad legacy y fallo de reconstruccion.
 - El test runner requirio ejecucion fuera del aislamiento por EPERM al renombrar sus temporales. El fallo de entorno inicial no se contabiliza como resultado de las pruebas.
@@ -40,5 +42,6 @@ Durante la revision se detecto que Usar nube y Conservar ambas aplicaban directa
 5. Eliminar remotamente: la copia local se conserva y Usar mi version deja de ofrecerse.
 6. Probar Usar nube y Conservar ambas en un proyecto con datos migrados a toolData; verificar datos de las herramientas y su exportacion.
 7. Revisar los tres controles a 390 px y con teclado. No utilizar proyectos de clientes para estas comprobaciones.
+8. Tras Usar nube, comprobar Guardado en la nube; editar un campo, esperar el nuevo guardado y verificar en la segunda sesion los datos anteriores de nube y el nuevo campo, sin duplicar el proyecto.
 
 La validacion de navegador autenticado, el despliegue y la resolucion de los proyectos reales del video no se declaran ejecutados con este cambio. El punto dos de Beta permanece abierto hasta completar su matriz.

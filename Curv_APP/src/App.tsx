@@ -1223,6 +1223,9 @@ export default function App() {
       revision,
       updatedAt: snapshot?.updatedAt || project.updatedAt,
     });
+    // The next local edit must be compared with the loaded cloud copy, not the
+    // discarded local fingerprint, so it starts a normal save at this revision.
+    rememberProjectFingerprint(projectId);
     const byId = new Map(currentProjects.map((item) => [item.id, item]));
     byId.set(projectId, project);
     setProjects(normalizeProjectRecords(Array.from(byId.values())));
@@ -1238,6 +1241,7 @@ export default function App() {
 
   const resolveActiveConflictWithCloud = useCallback(async () => {
     const projectId = activeProjectIdRef.current;
+    const uid = authContextRef.current.uid;
     if (!projectId || !activeClientId || savingProjectIdsRef.current.has(projectId)) return;
     const conflictKind = readProjectSyncState(projectId).conflict?.kind;
     const accepted = window.confirm(
@@ -1256,6 +1260,9 @@ export default function App() {
           { getProjectSyncEntryByClient, fetchProjectSnapshotByClient }, activeClientId, projectId
         );
         guard.assertOwner();
+        if (authContextRef.current.uid !== uid || authContextRef.current.clientId !== activeClientId || activeProjectIdRef.current !== projectId) {
+          throw new Error("Cambió la sesión o el proyecto. Abre el proyecto y confirma nuevamente.");
+        }
         if (readProjectSyncState(projectId).localRevision !== confirmedLocalRevision) {
           throw new Error(
             "La copia local cambió mientras se cargaba la nube. Revísala y confirma nuevamente."
@@ -1265,6 +1272,9 @@ export default function App() {
         resolutionApplied = true;
       });
       clearScheduledProjectRetry(projectId);
+      // Reopen the global save gate through reconciliation if a previous list/read
+      // error left it closed. Do not mark all projects hydrated from this one read.
+      setReconcileTick((value) => value + 1);
     } catch (error) {
       if (error instanceof ProjectSyncLeaseLostError && resolutionApplied) {
         cloudHydratedRef.current = false;
@@ -1279,6 +1289,7 @@ export default function App() {
     } finally {
       savingProjectIdsRef.current.delete(projectId);
       setSavingProjectIds(new Set(savingProjectIdsRef.current));
+      setSyncTick((value) => value + 1);
     }
   }, [activeClientId, applyResolvedRemoteEntry, clearScheduledProjectRetry]);
 
