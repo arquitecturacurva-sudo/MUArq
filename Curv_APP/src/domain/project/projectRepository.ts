@@ -8,7 +8,7 @@ export interface ProjectRepository {
   fetchProjectSnapshotByClient(clientId: string, projectId: string, hydration: ProjectHydrationSnapshot): Promise<ProjectSnapshot | undefined>;
   getProjectSyncEntryByClient(clientId: string, projectId: string): Promise<ProjectSyncEntry | null>;
   listProjectSyncEntriesByClient(clientId: string): Promise<ProjectSyncEntry[]>;
-  upsertProjectByClient(clientId: string, project: ProjectRecord, baseMeta: ProjectBaseMetadata, ownerUid: string, snapshot?: ProjectSnapshot, expectedRevision?: number): Promise<ProjectSyncCommit>;
+  upsertProjectByClient(clientId: string, project: ProjectRecord, baseMeta: ProjectBaseMetadata, ownerUid: string, snapshot?: ProjectSnapshot, expectedRevision?: number, options?: { requireExisting: boolean }): Promise<ProjectSyncCommit>;
   batchUpsertProjectsByClient(clientId: string, ownerUid: string, projects: ProjectRecord[], readBaseMeta: (projectId: string) => ProjectBaseMetadata, readSnapshot?: (projectId: string, clientId: string) => ProjectSnapshot): Promise<void>;
   tombstoneProjectByClient(clientId: string, projectId: string, deletedByUid: string, expectedRevision?: number): Promise<ProjectSyncCommit>;
 }

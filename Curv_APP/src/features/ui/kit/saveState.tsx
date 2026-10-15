@@ -7,11 +7,12 @@ export interface SaveStateProps {
   onRetrySave: () => void;
   onUseCloudCopy: () => void;
   onKeepBothCopies: () => void;
+  onUseLocalCopy?: () => void;
   conflictBusy: boolean;
 }
 
 // Presentation only: callers own persistence and conflict resolution.
-export function SaveState({ saveState, onRetrySave, onUseCloudCopy, onKeepBothCopies, conflictBusy }: SaveStateProps) {
+export function SaveState({ saveState, onRetrySave, onUseCloudCopy, onKeepBothCopies, onUseLocalCopy, conflictBusy }: SaveStateProps) {
   const saveTone: Record<SaveStatus, PillTone> = {
     saving: "warning",
     saved_local: "info",
@@ -27,6 +28,7 @@ export function SaveState({ saveState, onRetrySave, onUseCloudCopy, onKeepBothCo
       data-tour-id="saved-state"
       aria-live="polite"
       title={saveState.detail}
+      className={saveState.status === "conflict" ? "max-w-full flex-wrap whitespace-normal" : undefined}
       tone={saveTone[saveState.status]}
     >
       {(saveState.status === "error" || saveState.status === "offline") && (
@@ -59,6 +61,17 @@ export function SaveState({ saveState, onRetrySave, onUseCloudCopy, onKeepBothCo
           >
             Conservar ambas
           </button>
+          {onUseLocalCopy && (
+            <button
+              type="button"
+              onClick={onUseLocalCopy}
+              disabled={conflictBusy}
+              className="kit-focus ml-1 cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-ui font-semibold underline disabled:cursor-wait disabled:opacity-55"
+              style={{color: "inherit"}}
+            >
+              Usar mi versión
+            </button>
+          )}
         </>
       )}
     </StatusPill>

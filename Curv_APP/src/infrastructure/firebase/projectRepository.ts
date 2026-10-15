@@ -521,7 +521,8 @@ export const upsertProjectByClient = async (
   baseMeta: ProjectBaseMetadata,
   ownerUid: string,
   snapshot?: ProjectSnapshot,
-  expectedRevision?: number
+  expectedRevision?: number,
+  options?: { requireExisting: boolean }
 ): Promise<ProjectSyncCommit> => {
   const db = ensureDb();
   const ref = projectDocRef(clientId, project.id);
@@ -543,6 +544,10 @@ export const upsertProjectByClient = async (
     const currentSnapshot = await transaction.get(ref);
     const currentPayload = currentSnapshot.exists() ? currentSnapshot.data() : undefined;
     const currentRevision = getStoredProjectRevision(currentPayload);
+    // Conflict replacement must never recreate a remotely deleted legacy revision-0 project.
+    if (options?.requireExisting && !currentSnapshot.exists()) {
+      throw new ProjectRevisionConflictError(currentRevision);
+    }
     if (typeof expectedRevision === "number" && currentRevision !== expectedRevision) {
       throw new ProjectRevisionConflictError(currentRevision);
     }

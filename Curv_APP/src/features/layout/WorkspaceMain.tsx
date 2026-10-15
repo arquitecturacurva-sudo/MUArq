@@ -24,6 +24,7 @@ type WorkspaceMainProps = {
   onRetrySave: () => void;
   onUseCloudCopy: () => void;
   onKeepBothCopies: () => void;
+  onUseLocalCopy?: () => void;
   conflictBusy: boolean;
   activeTrackTools: WorkspaceTool[];
   renderedTools?: WorkspaceTool[];
@@ -42,6 +43,7 @@ export default function WorkspaceMain({
   onRetrySave,
   onUseCloudCopy,
   onKeepBothCopies,
+  onUseLocalCopy,
   conflictBusy,
   activeTrackTools,
   renderedTools,
@@ -83,7 +85,7 @@ export default function WorkspaceMain({
               {included ? "Incluida en propuesta" : "No incluida"}
             </Pill>
             <SaveState saveState={saveState} onRetrySave={onRetrySave}
-              onUseCloudCopy={onUseCloudCopy} onKeepBothCopies={onKeepBothCopies} conflictBusy={conflictBusy} />
+              onUseCloudCopy={onUseCloudCopy} onKeepBothCopies={onKeepBothCopies} onUseLocalCopy={onUseLocalCopy} conflictBusy={conflictBusy} />
             <Button
               variant="ghost"
               size="icon"
