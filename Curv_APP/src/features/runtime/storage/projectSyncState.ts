@@ -174,6 +174,28 @@ export const clearProjectSyncError = (
   return writeProjectSyncState(projectId, { ...current, lastError: undefined }, storage);
 };
 
+/** A confirmed local-wins commit clears only conflicts covered by that commit. */
+export const markLocalConflictCloudSaved = (
+  projectId: string,
+  attemptedLocalRevision: number,
+  cloudRevision: number,
+  cloudUpdatedAt: string,
+  storage: Storage | undefined = getDefaultStorage()
+) => {
+  const current = readProjectSyncState(projectId, storage);
+  if (current.cloudRevision > cloudRevision || (current.conflict?.remoteRevision ?? 0) > cloudRevision) return current;
+  const changedDuringSave = current.localRevision !== attemptedLocalRevision;
+  return writeProjectSyncState(projectId, {
+    ...current,
+    cloudRevision: safeRevision(cloudRevision),
+    cloudUpdatedAt,
+    updatedAt: changedDuringSave ? current.updatedAt : cloudUpdatedAt,
+    dirty: changedDuringSave,
+    lastError: undefined,
+    conflict: undefined,
+  }, storage);
+};
+
 export const markProjectSyncConflict = (
   projectId: string,
   conflict: ProjectSyncConflict,
