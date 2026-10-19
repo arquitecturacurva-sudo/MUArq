@@ -19,7 +19,7 @@ Diseño aprobado: [Identidad y componentes en Figma](https://www.figma.com/desig
 
 - `npm run build`: aprobado. Persiste el aviso de tamaño de bundles de Vite.
 - `npm test`: 71 archivos, 476 pruebas aprobadas.
-- ESLint dirigido a los componentes modificados: aprobado.
+- `npm run lint` completo: aprobado, incluyendo la vista QA. Se separó su componente exportado del punto de arranque para cumplir la regla de Fast Refresh.
 - Navegador: logo inverso sobre fondo oscuro; Dashboard; herramientas con sidebar expandido y colapsado; selección de matriz cambia inclusión y contador 9/9 → 8/9.
 - Navegador: control de ejemplo medido a 14 px y fondo blanco, incluso con modo oscuro del sistema.
 - Móvil de 390 px: sin desbordamiento horizontal de página; campos de herramientas a 16 px; sidebar completo y sin control de colapsado.

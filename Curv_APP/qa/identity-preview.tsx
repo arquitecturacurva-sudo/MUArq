@@ -1,6 +1,5 @@
 // Development-only visual fixture. Uses a dedicated local project, never a Firebase session.
 import { useState } from 'react';
-import { createRoot } from 'react-dom/client';
 import type { ComponentProps } from 'react';
 import '../src/index.css';
 import '../src/styles/kit.css';
@@ -31,7 +30,7 @@ hydrateProjectSnapshot(projectId, {...demo.snapshot, projectId, baseMeta: {...de
 Object.entries(THEME_VARS).forEach(([key,value])=>document.documentElement.style.setProperty(key,String(value)));
 const noop = () => {};
 
-function IdentityPreview() {
+export function IdentityPreview() {
   const [view,setView] = useState('Dashboard');
   const [active,setActive] = useState('matrix');
   const [track,setTrack] = useState<TrackId>('diseno');
@@ -70,7 +69,4 @@ function IdentityPreview() {
     </>}
   </>;
 }
-const root = import.meta.hot?.data.root ?? createRoot(document.getElementById('root')!);
-if (import.meta.hot) import.meta.hot.data.root = root;
-root.render(<IdentityPreview/>);
 
