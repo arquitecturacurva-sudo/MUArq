@@ -1,0 +1,18 @@
+.curv-brand {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.curv-symbol { position: relative; display: inline-block; flex-shrink: 0; }
+.curv-symbol img { display: block; }
+.curv-symbol-filter { position: absolute; pointer-events: none; }
+.curv-wordmark {
+  display: block;
+  font-family: Montserrat, Inter, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}

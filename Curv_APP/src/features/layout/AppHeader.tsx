@@ -42,11 +42,11 @@ export default function AppHeader({
   children,
 }: AppHeaderProps) {
   const navItemClass = (section: AppSection) =>
-    active === section ? "text-foreground" : "text-muted-foreground";
+    active === section ? "bg-accent text-foreground" : "text-muted-foreground";
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-border-soft bg-card px-6 py-3">
-      <div className="flex min-w-0 items-center gap-2">
+    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-0 border-b border-solid border-border-soft bg-card px-6 py-4">
+      <div className="flex min-w-0 max-w-full items-center gap-3">
         {onBack && (
           <Button
             variant="ghost"
@@ -59,15 +59,15 @@ export default function AppHeader({
           </Button>
         )}
         <Brand dark />
-        <span className="truncate font-medium" title={title}>{title}</span>
+        <span className="min-w-0 max-w-64 truncate text-ui font-medium" title={title}>{title}</span>
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-1">
-        <Button variant="ghost" className={navItemClass("dashboard")} onClick={onOpenDashboard}>
+        <Button variant="ghost" className={navItemClass("dashboard")} aria-current={active === "dashboard" ? "page" : undefined} onClick={onOpenDashboard}>
           <LayoutDashboard aria-hidden />
           Dashboard
         </Button>
-        <Button variant="ghost" className={navItemClass("demos")} onClick={onOpenDemos}>
+        <Button variant="ghost" className={navItemClass("demos")} aria-current={active === "demos" ? "page" : undefined} onClick={onOpenDemos}>
           <PlayCircle aria-hidden />
           Demos
         </Button>
@@ -78,7 +78,7 @@ export default function AppHeader({
           </Button>
         )}
         {onOpenBranding && (
-          <Button variant="ghost" className={navItemClass("branding")} onClick={onOpenBranding}>
+          <Button variant="ghost" className={navItemClass("branding")} aria-current={active === "branding" ? "page" : undefined} onClick={onOpenBranding}>
             <Palette aria-hidden />
             Identidad
           </Button>

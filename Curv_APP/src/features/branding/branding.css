@@ -1,16 +1,14 @@
 .brand-settings-shell {
   min-height: 100vh;
   padding: 24px clamp(18px, 3vw, 42px) 42px;
-  background:
-    radial-gradient(circle at 92% 4%, color-mix(in srgb, var(--ui-accent, #c9a96e) 16%, transparent), transparent 28%),
-    var(--ui-bg, #f4f2ee);
+  background: var(--ui-bg, #f4f2ee);
   color: var(--ui-text, #171a1f);
   font-family: var(--sans);
 }
 
 .brand-settings-header,
 .brand-settings-layout {
-  width: min(1460px, 100%);
+  width: min(1180px, 100%);
   margin-inline: auto;
 }
 
@@ -45,7 +43,7 @@
 
 .brand-settings-heading h1 {
   margin: 0 0 4px;
-  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  font-size: 18px;
   letter-spacing: -0.035em;
 }
 
@@ -86,7 +84,7 @@
 
 .brand-settings-layout {
   display: grid;
-  grid-template-columns: minmax(460px, 0.92fr) minmax(500px, 1.08fr);
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -94,9 +92,9 @@
 .brand-settings-controls,
 .brand-preview-panel {
   border: 1px solid var(--ui-border, #d8d1c5);
-  border-radius: 20px;
+  border-radius: 8px;
   background: var(--ui-card, #fff);
-  box-shadow: var(--ui-shadow, 0 12px 28px rgba(24, 27, 32, 0.08));
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -155,7 +153,7 @@
 .brand-textarea {
   width: 100%;
   border: 1px solid var(--ui-border, #d8d1c5);
-  border-radius: 10px;
+  border-radius: 6px;
   outline: none;
   background: var(--ui-input-bg, #fff);
   color: var(--ui-input-text, #171a1f);
@@ -165,7 +163,7 @@
 }
 
 .brand-text-input,
-.brand-select { height: 42px; padding: 0 12px; }
+.brand-select { height: 36px; padding: 0 12px; }
 .brand-textarea { min-height: 78px; padding: 10px 12px; resize: vertical; }
 
 .brand-text-input:focus,
@@ -231,9 +229,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 15px;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 0.84rem;
   font-weight: 800;
   cursor: pointer;
@@ -254,7 +252,7 @@
 .brand-text-button {
   border: 0;
   background: transparent;
-  color: var(--ui-danger, #c9483a);
+  color: var(--ui-text-muted, #5d6470);
 }
 
 .brand-primary-button:disabled,
@@ -459,9 +457,57 @@
   place-items: center;
   min-height: 720px;
   padding: clamp(20px, 4vw, 46px);
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.035) 25%, transparent 25%) 0 0 / 18px 18px,
-    var(--ui-dark-panel, #151e29);
+  background: var(--ui-bg, #f4f2ee);
+}
+
+/* Shared product UI; the document itself retains the studio's saved typography. */
+@media screen {
+  .brand-settings-heading p,
+  .brand-save-status,
+  .brand-controls-intro p,
+  .brand-controls-section > p,
+  .brand-form-field,
+  .brand-text-input,
+  .brand-select,
+  .brand-textarea,
+  .brand-primary-button,
+  .brand-secondary-button,
+  .brand-text-button,
+  .brand-field-help,
+  .brand-inline-message,
+  .brand-field-error,
+  .brand-fieldset legend,
+  .brand-color-preset,
+  .brand-font-option span,
+  .brand-font-option small,
+  .brand-toggle-card > span,
+  .brand-checkbox-row,
+  .brand-contrast-warning,
+  .brand-save-error,
+  .brand-preview-toolbar span,
+  .brand-preview-toolbar small { font-size: 14px; line-height: 1.45; }
+
+  .brand-form-field,
+  .brand-primary-button,
+  .brand-secondary-button,
+  .brand-text-button,
+  .brand-fieldset legend,
+  .brand-color-preset,
+  .brand-font-option span,
+  .brand-toggle-card > span,
+  .brand-checkbox-row { font-weight: 500; }
+
+  .brand-controls-intro h2,
+  .brand-controls-section h2 { font-size: 18px; font-weight: 600; }
+  .brand-live-badge { font-size: 14px !important; }
+  .brand-logo-card,
+  .brand-font-option,
+  .brand-toggle-card { border-radius: 8px; }
+  .brand-preview-page { box-shadow: 0 1px 4px rgba(17, 28, 37, 0.08); }
+
+  .brand-primary-button:hover:not(:disabled) { background: var(--ui-btn-dk-hover); }
+  .brand-secondary-button:hover:not(:disabled),
+  .brand-text-button:hover:not(:disabled) { background: var(--ui-accent-soft); }
 }
 
 .brand-preview-page {
