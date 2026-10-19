@@ -10,7 +10,7 @@ export function CIcon({size = 26, c = "#fff"}: {size?: number; c?: string}) {
   const filterId = `curv-symbol-${useId().replace(/:/g, "")}`;
   const reversed = c === "#fff" || c === "#FFFFFF" || c === "var(--ui-btn-dk-text)";
   return (
-    <span className="curv-symbol" style={{width: size, height: size}} aria-hidden="true">
+    <span className="curv-symbol" style={{width: `var(--curv-symbol-size, ${size}px)`, height: `var(--curv-symbol-size, ${size}px)`}} aria-hidden="true">
       {reversed && (
         <svg width="0" height="0" className="curv-symbol-filter" aria-hidden="true">
           <defs>
@@ -20,13 +20,13 @@ export function CIcon({size = 26, c = "#fff"}: {size?: number; c?: string}) {
           </defs>
         </svg>
       )}
-      <img src={symbolUrl} width={size} height={size} alt="" style={reversed ? {filter: `url(#${filterId})`} : undefined} />
+      <img src={symbolUrl} width={size} height={size} alt="" style={{width: "100%", height: "100%", ...(reversed ? {filter: `url(#${filterId})`} : {})}} />
     </span>
   );
 }
 
 export function Wordmark({color = "#fff", height = 36}: {color?: string; height?: number}) {
-  return <span className="curv-wordmark" style={{color, fontSize: height * 120 / 224}}>CURV APP</span>;
+  return <span className="curv-wordmark" style={{color, fontSize: `var(--curv-wordmark-size, ${height * 120 / 224}px)`}}>CURV APP</span>;
 }
 
 export function Brand({dark = false, sm = false}: {dark?: boolean; sm?: boolean}) {
