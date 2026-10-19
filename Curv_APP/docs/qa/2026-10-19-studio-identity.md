@@ -17,6 +17,12 @@ Los controles usan los componentes de CURV APP. La personalización se aplica al
 
 ## Reproducción y límites
 
+### Corrección: logo y nombre comercial
+
+La cabecera conserva siempre el nombre comercial junto al logo, tanto en la vista previa como en el encabezado real y en las copias preparadas para exportar. Mantiene las tres alineaciones y permite que el contenido se ajuste en varias líneas.
+
+Verificación de la corrección: 30 pruebas de identidad y branding correctas, build y lint correctos; comprobación visual local con logo y nombre visibles simultáneamente. Las pruebas cubren las tres alineaciones de la vista previa y el nombre en la cabecera real con logo.
+
 Abrir `/qa/identity.html` con el servidor de desarrollo y seleccionar **Identidad**. La revisión usa los componentes de presentación reales con datos en memoria; no escribe en Firebase y pierde los cambios al recargar.
 
 Esta revisión no acredita una nueva prueba de guardado autenticado contra Firestore/Storage ni la salida del diálogo nativo de impresión. El flujo de persistencia existente se conserva; debe comprobarse en el preview autenticado antes de integrar.

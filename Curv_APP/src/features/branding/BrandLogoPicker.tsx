@@ -29,7 +29,7 @@ export function BrandLogoPicker({logoUrl, companyName, busy, actionState, messag
         </div>
       </div>
       <p className="brand-field-help">PNG, JPG, WEBP o SVG · máximo 2 MB. Recomendado: 300 × 100 px con fondo transparente.</p>
-      <p className="brand-field-help">Si no subes un logo, usaremos el nombre de tu estudio.</p>
+      <p className="brand-field-help">El nombre de tu estudio siempre aparece en los documentos, junto al logo si lo subes.</p>
       <span className="brand-visually-hidden" role="status" aria-live="polite">{actionState === "uploading" ? "Subiendo logo." : actionState === "removing" ? "Eliminando logo." : ""}</span>
       {message && <p className="brand-inline-message" role="status" aria-live="polite">{message}</p>}
       {error && <p className="brand-field-error" role="alert">{error}</p>}

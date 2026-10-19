@@ -146,6 +146,10 @@ const replaceBrandIdentity = (root: HTMLElement, theme: DocumentTheme) => {
   if (!identity) return;
   identity.replaceChildren();
   identity.style.display = "flex";
+  identity.style.alignItems = "center";
+  identity.style.flexWrap = "wrap";
+  identity.style.gap = "12px";
+  identity.style.textAlign = theme.logoPosition;
   identity.style.justifyContent =
     theme.logoPosition === "center"
       ? "center"
@@ -162,7 +166,6 @@ const replaceBrandIdentity = (root: HTMLElement, theme: DocumentTheme) => {
     logo.style.maxHeight = "52px";
     logo.style.objectFit = "contain";
     identity.appendChild(logo);
-    return;
   }
 
   const wordmark = document.createElement("strong");
@@ -171,6 +174,8 @@ const replaceBrandIdentity = (root: HTMLElement, theme: DocumentTheme) => {
   wordmark.style.fontFamily = cssFont(theme.headingFont);
   wordmark.style.fontSize = "20px";
   wordmark.style.letterSpacing = "-0.02em";
+  wordmark.style.minWidth = "0";
+  wordmark.style.overflowWrap = "anywhere";
   identity.appendChild(wordmark);
 };
 
