@@ -3,6 +3,7 @@ import {
   clearProjectSyncConflict,
   clearProjectSyncError,
   markProjectCloudSaved,
+  markLocalConflictCloudSaved,
   markProjectDirty,
   markProjectHydrated,
   markProjectSyncConflict,
@@ -23,6 +24,33 @@ class MemoryStorage implements Storage {
 }
 
 describe("per-project sync state", () => {
+  it("clears an explicitly replaced conflict only after a confirmed cloud commit", () => {
+    const storage = new MemoryStorage();
+    markProjectDirty("a", "2026-10-15T00:00:00Z", storage);
+    markProjectSyncConflict("a", { kind: "revision", remoteRevision: 7, detectedAt: "2026-10-15T00:00:00Z" }, storage);
+    markLocalConflictCloudSaved("a", 1, 8, "2026-10-15T00:01:00Z", storage);
+    expect(readProjectSyncState("a", storage)).toMatchObject({ dirty: false, cloudRevision: 8, cloudUpdatedAt: "2026-10-15T00:01:00Z" });
+    expect(readProjectSyncState("a", storage).conflict).toBeUndefined();
+  });
+  it("retains edits made while a local-wins commit was in flight", () => {
+    const storage = new MemoryStorage();
+    markProjectDirty("a", "2026-10-15T00:00:00Z", storage);
+    markProjectSyncConflict("a", { kind: "revision", remoteRevision: 7, detectedAt: "2026-10-15T00:00:00Z" }, storage);
+    markProjectDirty("a", "2026-10-15T00:00:30Z", storage);
+    markLocalConflictCloudSaved("a", 1, 8, "2026-10-15T00:01:00Z", storage);
+    expect(readProjectSyncState("a", storage)).toMatchObject({ dirty: true, cloudRevision: 8, updatedAt: "2026-10-15T00:00:30Z" });
+    expect(readProjectSyncState("a", storage).conflict).toBeUndefined();
+  });
+  it("does not erase a newer remote deletion or roll back an already hydrated revision", () => {
+    const storage = new MemoryStorage();
+    markProjectDirty("a", "2026-10-15T00:00:00Z", storage);
+    markProjectSyncConflict("a", { kind: "remote-deleted", remoteRevision: 9, detectedAt: "2026-10-15T00:01:00Z" }, storage);
+    const before = readProjectSyncState("a", storage);
+    expect(markLocalConflictCloudSaved("a", 1, 8, "2026-10-15T00:01:00Z", storage)).toEqual(before);
+    markProjectHydrated("b", 10, "2026-10-15T00:02:00Z", storage);
+    markLocalConflictCloudSaved("b", 1, 8, "2026-10-15T00:01:00Z", storage);
+    expect(readProjectSyncState("b", storage).cloudRevision).toBe(10);
+  });
   it("tracks dirty revisions independently per project", () => {
     const storage = new MemoryStorage();
     markProjectDirty("project-a", "2026-07-09T16:00:00.000Z", storage);
@@ -158,6 +186,26 @@ describe("per-project sync state", () => {
       cloudRevision: 1,
       dirty: true,
     });
+    expect(readProjectSyncState("project-a", storage).conflict).toBeUndefined();
+  });
+  it("restarts normal cloud saving from the loaded revision after using cloud, without retaining the old conflict or error", () => {
+    const storage = new MemoryStorage();
+    markProjectHydrated("project-a", 2, "2026-10-15T00:00:00Z", storage);
+    markProjectDirty("project-a", "2026-10-15T00:01:00Z", storage);
+    markProjectSyncConflict("project-a", { kind: "revision", remoteRevision: 7, detectedAt: "2026-10-15T00:02:00Z" }, storage);
+    markProjectSyncError("project-a", "old save failed", storage);
+
+    resolveProjectSyncConflict("project-a", "use-cloud", { revision: 7, updatedAt: "2026-10-15T00:02:00Z" }, storage);
+    const loaded = readProjectSyncState("project-a", storage);
+    expect(loaded).toMatchObject({ dirty: false, cloudRevision: 7, cloudUpdatedAt: "2026-10-15T00:02:00Z" });
+    expect(loaded.conflict).toBeUndefined();
+    expect(loaded.lastError).toBeUndefined();
+
+    const edit = markProjectDirty("project-a", "2026-10-15T00:03:00Z", storage);
+    expect(edit).toMatchObject({ dirty: true, cloudRevision: 7, localRevision: 8 });
+    expect(edit.conflict).toBeUndefined();
+    markProjectCloudSaved("project-a", edit.localRevision, 8, "2026-10-15T00:04:00Z", storage);
+    expect(readProjectSyncState("project-a", storage)).toMatchObject({ dirty: false, cloudRevision: 8, cloudUpdatedAt: "2026-10-15T00:04:00Z" });
     expect(readProjectSyncState("project-a", storage).conflict).toBeUndefined();
   });
 });

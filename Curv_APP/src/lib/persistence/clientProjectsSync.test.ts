@@ -116,6 +116,12 @@ beforeEach(() => {
 });
 
 describe("upsertProjectByClient", () => {
+  it("does not resurrect a legacy revision-zero project removed after local-wins confirmation", async () => {
+    mocks.transactionGet.mockResolvedValue({ exists: () => false });
+    await expect(upsertProjectByClient("c1", project, baseMeta, "uid-1", makeSnapshot({ "calc.area": 100 }), 0, { requireExisting: true }))
+      .rejects.toBeInstanceOf(ProjectRevisionConflictError);
+    expect(mocks.transactionSet).not.toHaveBeenCalled();
+  });
   it("writes only the tool documents whose content changed", async () => {
     const before = { "calc.area": 100, "cot.partidas": [{ d: "muro" }] };
     mocks.transactionGet.mockResolvedValue(existingDoc({

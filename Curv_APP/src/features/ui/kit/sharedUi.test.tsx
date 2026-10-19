@@ -45,6 +45,17 @@ describe("shared UI compatibility", () => {
     const empty = renderToStaticMarkup(<DataTable caption="Equipo" rows={[]} columns={columns} rowKey={row => row.id} emptyState="Sin miembros" />);
     expect(empty).toContain('<td colSpan="1">Sin miembros</td>');
   });
+  it("offers local-wins only when explicitly enabled for a conflict and disables all actions while saving", () => {
+    const props = {
+      onRetrySave: () => {}, onUseCloudCopy: () => {}, onKeepBothCopies: () => {},
+      onUseLocalCopy: () => {}, conflictBusy: true,
+    };
+    const conflict = renderToStaticMarkup(<SaveState {...props} saveState={{ status: "conflict", label: "Conflicto", detail: "Detalle" }} />);
+    expect(conflict).toContain("Usar mi versión");
+    expect((conflict.match(/disabled=""/g) ?? []).length).toBe(3);
+    const saved = renderToStaticMarkup(<SaveState {...props} saveState={{ status: "saved_cloud", label: "Guardado", detail: "Detalle" }} />);
+    expect(saved).not.toContain("Usar mi versión");
+  });
   it("always renders the status label independently of its colour", () => {
     const html = renderToStaticMarkup(<StatusPill label="Sin conexion" tone="warning" />);
     expect(html).toContain("Sin conexion");

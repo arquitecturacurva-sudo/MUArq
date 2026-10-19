@@ -106,6 +106,7 @@ import {
   clearProjectSyncError,
   clearProjectSyncState,
   markProjectCloudSaved,
+  markLocalConflictCloudSaved,
   markProjectDirty,
   markProjectHydrated,
   markProjectSyncConflict,
@@ -114,6 +115,8 @@ import {
   resolveProjectSyncConflict,
   type ProjectSaveStatus,
 } from "./features/runtime/storage/projectSyncState";
+import { replaceCloudWithLocal } from "./application/project/replaceCloudWithLocal";
+import { readConflictCloudEntry } from "./application/project/readConflictCloudEntry";
 import { THEME_VARS } from "./features/ui/theme";
 import {
   classifyProjectSyncError,
@@ -1134,7 +1137,9 @@ export default function App() {
         label: activeProjectSyncState.conflict.kind === "remote-deleted"
           ? "Eliminado en otro dispositivo"
           : "Conflicto de versiones",
-        detail: "Tu copia local está protegida. Elige usar la nube o conservar ambas copias.",
+        detail: activeProjectSyncState.conflict.kind === "remote-deleted"
+          ? "Tu copia local está protegida. Puedes conservarla como un proyecto nuevo."
+          : "Tu copia local está protegida. Elige usar la nube, conservar ambas o sustituir la nube por tu versión.",
       };
     }
     if (savingProjectIds.has(activeProjectId)) {
@@ -1218,6 +1223,9 @@ export default function App() {
       revision,
       updatedAt: snapshot?.updatedAt || project.updatedAt,
     });
+    // The next local edit must be compared with the loaded cloud copy, not the
+    // discarded local fingerprint, so it starts a normal save at this revision.
+    rememberProjectFingerprint(projectId);
     const byId = new Map(currentProjects.map((item) => [item.id, item]));
     byId.set(projectId, project);
     setProjects(normalizeProjectRecords(Array.from(byId.values())));
@@ -1233,6 +1241,7 @@ export default function App() {
 
   const resolveActiveConflictWithCloud = useCallback(async () => {
     const projectId = activeProjectIdRef.current;
+    const uid = authContextRef.current.uid;
     if (!projectId || !activeClientId || savingProjectIdsRef.current.has(projectId)) return;
     const conflictKind = readProjectSyncState(projectId).conflict?.kind;
     const accepted = window.confirm(
@@ -1247,8 +1256,13 @@ export default function App() {
     let resolutionApplied = false;
     try {
       await withProjectSyncLease(activeClientId, projectId, async (guard) => {
-        const entry = await getProjectSyncEntryByClient(activeClientId, projectId);
+        const entry = await readConflictCloudEntry(
+          { getProjectSyncEntryByClient, fetchProjectSnapshotByClient }, activeClientId, projectId
+        );
         guard.assertOwner();
+        if (authContextRef.current.uid !== uid || authContextRef.current.clientId !== activeClientId || activeProjectIdRef.current !== projectId) {
+          throw new Error("Cambió la sesión o el proyecto. Abre el proyecto y confirma nuevamente.");
+        }
         if (readProjectSyncState(projectId).localRevision !== confirmedLocalRevision) {
           throw new Error(
             "La copia local cambió mientras se cargaba la nube. Revísala y confirma nuevamente."
@@ -1258,6 +1272,9 @@ export default function App() {
         resolutionApplied = true;
       });
       clearScheduledProjectRetry(projectId);
+      // Reopen the global save gate through reconciliation if a previous list/read
+      // error left it closed. Do not mark all projects hydrated from this one read.
+      setReconcileTick((value) => value + 1);
     } catch (error) {
       if (error instanceof ProjectSyncLeaseLostError && resolutionApplied) {
         cloudHydratedRef.current = false;
@@ -1272,8 +1289,95 @@ export default function App() {
     } finally {
       savingProjectIdsRef.current.delete(projectId);
       setSavingProjectIds(new Set(savingProjectIdsRef.current));
+      setSyncTick((value) => value + 1);
     }
   }, [activeClientId, applyResolvedRemoteEntry, clearScheduledProjectRetry]);
+
+  const replaceActiveConflictWithLocal = useCallback(async () => {
+    const projectId = activeProjectIdRef.current;
+    const uid = authUser?.uid;
+    const clientId = activeClientId;
+    if (!projectId || !uid || !clientId || savingProjectIdsRef.current.has(projectId)) return;
+    const syncState = readProjectSyncState(projectId);
+    const conflict = syncState.conflict;
+    if (conflict?.kind !== "revision") return;
+    if (!navigator.onLine) {
+      window.alert("Conéctate a internet para sustituir la versión de la nube. Tu copia local está protegida.");
+      return;
+    }
+    if (!window.confirm(
+      "Se sustituirá la versión de la nube por tus datos locales en este mismo proyecto. Los demás navegadores recibirán tu versión. La versión anterior de la nube no podrá recuperarse con esta acción. ¿Deseas usar tu versión?"
+    )) return;
+
+    const isCurrentSession = () => authContextRef.current.uid === uid && authContextRef.current.clientId === clientId;
+    savingProjectIdsRef.current.add(projectId);
+    setSavingProjectIds(new Set(savingProjectIdsRef.current));
+    const confirmedCommit: { current: { revision: number; updatedAt: string } | null } = { current: null };
+    try {
+      await withProjectSyncLease(clientId, projectId, async (guard) => {
+        const commit = await replaceCloudWithLocal(
+          { getProjectSyncEntryByClient, upsertProjectByClient },
+          {
+            uid, clientId, projectId,
+            expectedRemoteRevision: conflict.remoteRevision,
+            assertCurrent: () => {
+              guard.assertOwner();
+              if (!isCurrentSession() || activeProjectIdRef.current !== projectId) {
+                throw new Error("Cambió la sesión o el proyecto. Abre el proyecto y confirma nuevamente.");
+              }
+              if (readProjectSyncState(projectId).localRevision !== syncState.localRevision) {
+                throw new Error("Tu copia local cambió. Revísala y confirma nuevamente qué versión deseas usar.");
+              }
+            },
+            readLocalCopy: () => {
+              const project = normalizeProjectRecords(
+                readStorage<ProjectRecord[]>("app.projects", [], isProjectRecordArray)
+              ).find((item) => item.id === projectId);
+              if (!project) throw new Error("La copia local ya no está disponible.");
+              return { project, snapshot: collectProjectSnapshot(projectId, clientId) };
+            },
+          }
+        );
+        confirmedCommit.current = commit;
+        if (!isCurrentSession()) return;
+        markLocalConflictCloudSaved(projectId, syncState.localRevision, commit.revision, commit.updatedAt);
+        rememberProjectFingerprint(projectId);
+        guard.assertOwner();
+      });
+      clearScheduledProjectRetry(projectId);
+      if (isCurrentSession()) setReconcileTick((value) => value + 1);
+    } catch (error) {
+      if (!isCurrentSession()) return;
+      if (error instanceof ProjectSyncLeaseLostError && confirmedCommit.current) {
+        const commit = confirmedCommit.current;
+        markLocalConflictCloudSaved(projectId, syncState.localRevision, commit.revision, commit.updatedAt);
+        cloudHydratedRef.current = false;
+        setReconcileTick((value) => value + 1);
+        return;
+      }
+      if (error instanceof ProjectRevisionConflictError) {
+        // Preserve the transaction's authoritative revision even if the follow-up read fails.
+        let remoteEntry: ProjectSyncEntry | null | undefined;
+        try { remoteEntry = await getProjectSyncEntryByClient(clientId, projectId); }
+        catch { /* Keep the revision conflict when connectivity prevents a fresh read. */ }
+        if (!isCurrentSession()) return;
+        markProjectSyncConflict(projectId, {
+          kind: remoteEntry === null || remoteEntry?.kind === "deleted" ? "remote-deleted" : "revision",
+          remoteRevision: remoteEntry?.revision ?? error.remoteRevision,
+          detectedAt: nowIso(),
+        });
+        window.alert("La nube cambió o el proyecto fue eliminado. Tu copia local se conserva. Revisa el conflicto y confirma nuevamente.");
+      } else {
+        const message = error instanceof Error ? error.message : "No se pudo guardar tu versión en la nube.";
+        markProjectSyncError(projectId, message);
+        window.alert(message);
+      }
+    } finally {
+      savingProjectIdsRef.current.delete(projectId);
+      setSavingProjectIds(new Set(savingProjectIdsRef.current));
+      setSyncTick((value) => value + 1);
+    }
+  }, [activeClientId, authUser, clearScheduledProjectRetry, rememberProjectFingerprint]);
 
   const preserveActiveConflictCopy = useCallback(async () => {
     const projectId = activeProjectIdRef.current;
@@ -1287,7 +1391,9 @@ export default function App() {
     let resolutionApplied = false;
     try {
       await withProjectSyncLease(activeClientId, projectId, async (guard) => {
-        const remoteEntry = await getProjectSyncEntryByClient(activeClientId, projectId);
+        const remoteEntry = await readConflictCloudEntry(
+          { getProjectSyncEntryByClient, fetchProjectSnapshotByClient }, activeClientId, projectId
+        );
         guard.assertOwner();
 
         // Capture after the remote read so every edit made while Firebase was responding is
@@ -2342,6 +2448,7 @@ export default function App() {
         onRetrySave={retryActiveProjectSave}
         onUseCloudCopy={resolveActiveConflictWithCloud}
         onKeepBothCopies={preserveActiveConflictCopy}
+        onUseLocalCopy={activeProjectSyncState.conflict?.kind === "revision" ? replaceActiveConflictWithLocal : undefined}
         conflictBusy={savingProjectIds.has(activeProjectId)}
         activeTrackTools={activeTrackTools}
         renderedTools={isDemoWorkspace ? demoRenderedTools : undefined}
