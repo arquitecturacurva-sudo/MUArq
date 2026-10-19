@@ -12,10 +12,7 @@ import HomeView from '../src/features/layout/HomeView';
 import WorkspaceSidebar from '../src/features/layout/WorkspaceSidebar';
 import WorkspaceMain from '../src/features/layout/WorkspaceMain';
 import { WorkspaceBody, WorkspacePage } from '../src/features/layout/WorkspaceLayout';
-import { BrandPreview } from '../src/features/branding/BrandPreview';
-import { BrandTextField } from '../src/features/branding/BrandTextField';
-import { ColorSelector } from '../src/features/branding/ColorSelector';
-import { createDefaultBrandProfile } from '../src/lib/branding/defaults';
+import { LocalBrandEditor } from './LocalBrandEditor';
 import { DEFAULT_TOOLS } from '../src/composition/toolRegistry';
 import { DEMO_DEFINITIONS } from '../src/features/demos/demoDefinitions';
 import { computeDashboardMetrics, hydrateProjectSnapshot, readProjectBaseMetadata, setActiveStorageProjectId } from '../src/features/runtime/runtime';
@@ -37,7 +34,6 @@ export function IdentityPreview() {
   const [tools,setTools] = useState(DEFAULT_TOOLS);
   const [save,setSave] = useState<SaveStatus>('saved_local');
   const [action,setAction] = useState('');
-  const [profile,setProfile] = useState({...createDefaultBrandProfile({ownerUid:'qa-local',companyName:'Mi estudio de arquitectura'}),accentColor:'#C7A565',backgroundColor:'#FAF9F6'});
   const nav = {onOpenDashboard:()=>setView('Dashboard'),onOpenDemos:()=>setView('Componentes'),onOpenTeamAccess:noop,onOpenBranding:()=>setView('Identidad')};
   const trackIds = track==='diseno'?['calc','matrix','excl','cron']:track==='construccion'?['cot','cronobra','brief']:['val','oc'];
   const currentTools = tools.filter(t=>trackIds.includes(t.id));
@@ -62,10 +58,7 @@ export function IdentityPreview() {
       </WorkspaceBody>
     </WorkspacePage>:<>
       <AppHeader title="Identidad" active="branding" {...nav}/>
-      <main className="brand-settings-shell">
-        <header className="brand-settings-header"><div className="brand-settings-heading"><div><h1>Identidad de tu estudio</h1><p>Personaliza tus documentos y vistas previas externas.</p></div></div></header>
-        <div className="brand-settings-layout"><section className="brand-settings-controls"><div className="brand-controls-section"><h2>Datos del estudio</h2><div className="brand-form-grid"><BrandTextField id="qa-company" label="Nombre comercial" value={profile.companyName} fullWidth onChange={companyName=>setProfile(p=>({...p,companyName}))}/></div></div><div className="brand-controls-section"><h2>Apariencia del documento</h2><p>Los colores del estudio se aplican al documento.</p><div className="brand-form-grid"><ColorSelector id="qa-background" presets={[]} label="Fondo" value={profile.backgroundColor} onChange={backgroundColor=>setProfile(p=>({...p,backgroundColor}))}/><ColorSelector id="qa-accent" presets={[]} label="Énfasis" value={profile.accentColor} onChange={accentColor=>setProfile(p=>({...p,accentColor}))}/></div></div></section><BrandPreview profile={profile} fallbackCompanyName="Mi estudio"/></div>
-      </main>
+      <LocalBrandEditor />
     </>}
   </>;
 }
