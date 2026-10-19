@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
+import { Building2, Calculator, LayoutDashboard, Table2, Users } from "lucide-react";
 import { trackLocalProductEvent } from "../runtime/projectServices";
+import Brand from "../ui/Brand";
 import { SANS, SERIF, pillInteractionCss, pillStyle } from "./landingTheme";
 import macFrame from "../../assets/landing/mac.png";
-import iconHouse from "../../assets/landing/icon-house.png";
-import iconBlueprint from "../../assets/landing/icon-blueprint.png";
-import iconTape from "../../assets/landing/icon-tape.png";
-import iconPencilRuler from "../../assets/landing/icon-pencil-ruler.png";
 
 type LandingHeroProps = {
   canContinueWorkspace: boolean;
@@ -13,17 +11,15 @@ type LandingHeroProps = {
   continueWorkspace: () => void;
 };
 
-/** Brand wordmark shown in the centre of the hero nav. */
-const BRAND_LABEL = "archi OS";
-
 /** Screen cut-out of mac.png, measured from the transparent region of the asset. */
 const MAC_SCREEN = {left: "12.97%", top: "4.91%", width: "74.53%", height: "83.61%"};
 
 const ROTATING_ICONS = [
-  {src: iconHouse, alt: "Proyecto de vivienda"},
-  {src: iconBlueprint, alt: "Planos del proyecto"},
-  {src: iconTape, alt: "Medición en obra"},
-  {src: iconPencilRuler, alt: "Diseño y detalle"},
+  {Icon: LayoutDashboard, label: "Dashboard"},
+  {Icon: Users, label: "Equipo"},
+  {Icon: Calculator, label: "Calculadora"},
+  {Icon: Table2, label: "Matriz de entregables"},
+  {Icon: Building2, label: "Edificación"},
 ] as const;
 
 const ICON_ROTATION_MS = 2600;
@@ -133,8 +129,8 @@ export default function LandingHero({
           ))}
         </div>
 
-        <div style={{fontFamily: SANS, fontWeight: 200, fontSize: 18, letterSpacing: "0.01em", whiteSpace: "nowrap"}}>
-          {BRAND_LABEL}
+        <div style={{display: "flex", justifyContent: "center"}}>
+          <Brand />
         </div>
 
         <div data-hero-nav-right style={{display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, flexWrap: "wrap"}}>
@@ -194,7 +190,8 @@ export default function LandingHero({
         </h1>
 
         <div
-          aria-hidden={false}
+          role="img"
+          aria-label={ROTATING_ICONS[iconIndex].label}
           style={{
             position: "relative",
             width: 88,
@@ -202,22 +199,22 @@ export default function LandingHero({
             marginTop: 44,
           }}
         >
-          {ROTATING_ICONS.map((icon, index) => (
-            <img
-              key={icon.src}
-              src={icon.src}
-              alt={index === iconIndex ? icon.alt : ""}
+          {ROTATING_ICONS.map(({Icon, label}, index) => (
+            <span
+              key={label}
+              aria-hidden="true"
               style={{
                 position: "absolute",
                 inset: 0,
                 width: "100%",
                 height: "100%",
-                objectFit: "contain",
                 opacity: index === iconIndex ? 1 : 0,
                 transform: index === iconIndex ? "scale(1)" : "scale(0.94)",
                 transition: "opacity 620ms ease, transform 620ms ease",
               }}
-            />
+            >
+              <Icon size={88} strokeWidth={1.7} color="#C7A565" aria-hidden="true" />
+            </span>
           ))}
         </div>
 

@@ -7,6 +7,7 @@ Diseño aprobado: [Identidad y componentes en Figma](https://www.figma.com/desig
 ## Implementación
 
 - Símbolo SVG original descargado desde Figma y servido localmente; wordmark en Montserrat Bold. Variante inversa mediante filtro de color, conservando el módulo dorado y el SVG original.
+- Homepage: sustituido “archi OS” por el logo compartido. Los cuatro iconos ilustrados se reemplazan por LayoutDashboard, Users, Calculator, Table2 y Building2, de la misma librería Lucide usada en los componentes `CURV / Icon / …` de Figma; se mantiene la rotación y la preferencia de movimiento reducido.
 - Paleta tinta `#111C25`, marfil `#FAF9F6`, oro `#C7A565`; estados semánticos con fondos suaves y textos oscuros.
 - Componentes existentes de botones, campos, selectores, tabs, tarjetas, estados de guardado y vacíos actualizados. Se conserva la fachada legacy.
 - Cabecera con navegación activa; sidebar de 264/56 px con las mismas acciones; área de herramientas centrada hasta 1000 px.
