@@ -546,7 +546,7 @@ export function ArchitecturalProgramView({toolId, onPrint, state}: {toolId: stri
           <div style={{marginTop:24,borderTop:"1px solid #E5DDD0",paddingTop:16}}>
             <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
               {[
-                {titulo:"Elaborado por — CURVA Arquitectos", nom:resp, fecha:fDate(feLev)},
+                {titulo:"Elaborado por — Estudio", nom:resp, fecha:fDate(feLev)},
                 {titulo:"Validado por — Cliente", nom:cl, fecha:"_______________"},
               ].map(a=>(
                 <div key={a.titulo} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"14px 16px"}}>

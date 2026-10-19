@@ -10,6 +10,9 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* The app has one light palette. OS dark mode must not activate stock shadcn overrides. */
+@custom-variant dark (&:where([data-ui-theme="dark"], [data-ui-theme="dark"] *));
+
 @layer base {
   /*
    * Tailwind's `border` utility only sets border-width; without this, border-style

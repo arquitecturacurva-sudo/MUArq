@@ -4,17 +4,22 @@ import { cn } from "@/lib/utils";
 
 export type PillTone = "neutral" | "brand" | "success" | "warning" | "danger" | "info";
 
-/**
- * Tone colours are mixed against `transparent`, so one definition reads correctly on
- * the card, panel and band surfaces.
- */
 const TONE_VAR: Record<PillTone, string> = {
   neutral: "var(--ui-text-muted)",
-  brand: "var(--ui-accent)",
+  brand: "var(--ui-warning)",
   success: "var(--ui-success)",
   warning: "var(--ui-warning)",
   danger: "var(--ui-danger)",
   info: "var(--ui-info)",
+};
+
+const TONE_BG: Record<PillTone, string> = {
+  neutral: "var(--ui-panel)",
+  brand: "var(--ui-accent-soft)",
+  success: "var(--ui-success-bg)",
+  warning: "var(--ui-warning-bg)",
+  danger: "var(--ui-danger-bg)",
+  info: "var(--ui-info-bg)",
 };
 
 export type PillProps = React.ComponentProps<typeof Badge> & {
@@ -34,14 +39,9 @@ export function Pill({className, tone = "neutral", dot = false, children, style,
       variant="outline"
       className={cn("gap-1.5 font-medium", className)}
       style={{
-        /*
-         * Text stays on the theme foreground so a pill is legible on any surface —
-         * tinted tone text (gold on cream, for instance) fails contrast badly. The
-         * tone is carried by the dot, border and background wash instead.
-         */
-        color: "var(--ui-text)",
-        borderColor: `color-mix(in srgb, ${toneColor} 38%, transparent)`,
-        background: `color-mix(in srgb, ${toneColor} 14%, transparent)`,
+        color: toneColor,
+        borderColor: "transparent",
+        background: TONE_BG[tone],
         ...style,
       }}
       {...props}

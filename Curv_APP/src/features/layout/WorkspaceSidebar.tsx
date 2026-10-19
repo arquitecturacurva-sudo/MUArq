@@ -220,7 +220,7 @@ export default function WorkspaceSidebar({
         data-collapsed={collapsed ? "" : undefined}
         // The width is the only thing that changes between states, so the transition can
         // stay on a single property and never fight the tool pane's `flex: 1`.
-        className={`flex h-full shrink-0 flex-col overflow-hidden border-0 border-r border-solid border-border transition-[width] duration-200 ${collapsed ? "w-[56px]" : "w-[268px]"}`}
+        className={`flex h-full shrink-0 flex-col overflow-hidden border-0 border-r border-solid border-border-soft transition-[width] duration-200 ${collapsed ? "w-[56px]" : "w-[264px]"}`}
         style={{background: UI.panel}}
       >
         {/*
@@ -259,7 +259,7 @@ export default function WorkspaceSidebar({
                       aria-current={isActive ? "page" : undefined}
                       className="kit-focus flex w-full cursor-pointer items-center justify-center border-0 border-l-[3px] border-solid bg-transparent py-2.5 transition-colors"
                       style={{
-                        background: isActive ? UI.card : "transparent",
+                        background: isActive ? UI.accentSoft : "transparent",
                         borderLeftColor: isActive ? G : "transparent",
                       }}
                     >
@@ -324,7 +324,7 @@ export default function WorkspaceSidebar({
                       key={t.id}
                       className="flex items-center border-0 border-l-[3px] border-solid transition-colors"
                       style={{
-                        background: isActive ? UI.card : "transparent",
+                        background: isActive ? UI.accentSoft : "transparent",
                         borderLeftColor: isActive ? G : "transparent",
                       }}
                     >

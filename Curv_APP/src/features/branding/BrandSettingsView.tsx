@@ -284,7 +284,7 @@ export const BrandSettingsView = ({
       <div className="brand-settings-layout">
         <section className="brand-settings-controls" aria-label="Controles de identidad">
           <div className="brand-controls-intro">
-            <h2>Marca del workspace</h2>
+            <h2>Datos del estudio</h2>
             <p>
               {profileExists
                 ? "Los cambios guardados se aplicarán a los documentos externos."

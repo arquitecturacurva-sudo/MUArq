@@ -219,6 +219,7 @@ export default function HomeView({
       {/* Keep the 24px page gutter while centering the dashboard at wide widths. */}
       <div className="px-6 pb-8 pt-4">
       <div className="mx-auto grid w-full max-w-[1180px] gap-4">
+        <SectionTitle title="Dashboard" hint="Proyectos, actividad comercial y estado operativo de tu estudio." />
 
         {showPaywall && (
           <Card className="flex flex-wrap items-center justify-between gap-3 p-4" style={{borderColor: "var(--ui-warning)"}}>

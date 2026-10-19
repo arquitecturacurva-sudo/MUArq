@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
+import { Building2, Calculator, CalendarDays, FileText, LayoutDashboard, Table2, Users } from "lucide-react";
 import { trackLocalProductEvent } from "../runtime/projectServices";
-import { SANS, SERIF, pillInteractionCss, pillStyle } from "./landingTheme";
+import Brand from "../ui/Brand";
+import { SERIF, pillInteractionCss, pillStyle } from "./landingTheme";
 import macFrame from "../../assets/landing/mac.png";
-import iconHouse from "../../assets/landing/icon-house.png";
-import iconBlueprint from "../../assets/landing/icon-blueprint.png";
-import iconTape from "../../assets/landing/icon-tape.png";
-import iconPencilRuler from "../../assets/landing/icon-pencil-ruler.png";
 
 type LandingHeroProps = {
   canContinueWorkspace: boolean;
@@ -13,17 +11,15 @@ type LandingHeroProps = {
   continueWorkspace: () => void;
 };
 
-/** Brand wordmark shown in the centre of the hero nav. */
-const BRAND_LABEL = "archi OS";
-
 /** Screen cut-out of mac.png, measured from the transparent region of the asset. */
 const MAC_SCREEN = {left: "12.97%", top: "4.91%", width: "74.53%", height: "83.61%"};
 
 const ROTATING_ICONS = [
-  {src: iconHouse, alt: "Proyecto de vivienda"},
-  {src: iconBlueprint, alt: "Planos del proyecto"},
-  {src: iconTape, alt: "Medición en obra"},
-  {src: iconPencilRuler, alt: "Diseño y detalle"},
+  {Icon: LayoutDashboard, label: "Dashboard"},
+  {Icon: Users, label: "Equipo"},
+  {Icon: Calculator, label: "Calculadora"},
+  {Icon: Table2, label: "Matriz de entregables"},
+  {Icon: Building2, label: "Edificación"},
 ] as const;
 
 const ICON_ROTATION_MS = 2600;
@@ -89,6 +85,11 @@ export default function LandingHero({
         ${pillInteractionCss("[data-curv-hero-v2]")}
         [data-curv-hero-v2] [data-quiet]:hover { color: #FFFFFF; }
         [data-curv-hero-v2] [data-quiet]:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 3px; }
+        [data-hero-preview-brand] {
+          --curv-symbol-size: 2.2cqw;
+          --curv-wordmark-size: 1.18cqw;
+          --curv-brand-gap: 0.55cqw;
+        }
         @media (max-width: 860px) {
           [data-curv-hero-v2] [data-hero-nav] {
             grid-template-columns: 1fr !important;
@@ -133,8 +134,8 @@ export default function LandingHero({
           ))}
         </div>
 
-        <div style={{fontFamily: SANS, fontWeight: 200, fontSize: 18, letterSpacing: "0.01em", whiteSpace: "nowrap"}}>
-          {BRAND_LABEL}
+        <div style={{display: "flex", justifyContent: "center"}}>
+          <Brand />
         </div>
 
         <div data-hero-nav-right style={{display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, flexWrap: "wrap"}}>
@@ -194,7 +195,8 @@ export default function LandingHero({
         </h1>
 
         <div
-          aria-hidden={false}
+          role="img"
+          aria-label={ROTATING_ICONS[iconIndex].label}
           style={{
             position: "relative",
             width: 88,
@@ -202,22 +204,22 @@ export default function LandingHero({
             marginTop: 44,
           }}
         >
-          {ROTATING_ICONS.map((icon, index) => (
-            <img
-              key={icon.src}
-              src={icon.src}
-              alt={index === iconIndex ? icon.alt : ""}
+          {ROTATING_ICONS.map(({Icon, label}, index) => (
+            <span
+              key={label}
+              aria-hidden="true"
               style={{
                 position: "absolute",
                 inset: 0,
                 width: "100%",
                 height: "100%",
-                objectFit: "contain",
                 opacity: index === iconIndex ? 1 : 0,
                 transform: index === iconIndex ? "scale(1)" : "scale(0.94)",
                 transition: "opacity 620ms ease, transform 620ms ease",
               }}
-            />
+            >
+              <Icon size={88} strokeWidth={1.7} color="#C7A565" aria-hidden="true" />
+            </span>
           ))}
         </div>
 
@@ -239,45 +241,65 @@ export default function LandingHero({
             style={{
               position: "absolute",
               ...MAC_SCREEN,
-              background: "linear-gradient(160deg, #10151D 0%, #070A0E 60%, #05070A 100%)",
+              background: "var(--ui-bg, #F4F2EE)",
+              color: "var(--ui-text, #111C25)",
+              fontFamily: "Inter, sans-serif",
               overflow: "hidden",
               display: "grid",
               gridTemplateColumns: "26% 1fr",
             }}
           >
-            <div style={{borderRight: "1px solid #1B2430", padding: "5% 6%", textAlign: "left"}}>
-              <div style={{fontFamily: SANS, fontWeight: 400, fontSize: "0.85cqw", color: "#C9A96E", letterSpacing: "0.12em"}}>
-                PROYECTO
+            <div style={{background: "var(--ui-panel, #FAF9F6)", borderRight: "1px solid var(--ui-border-soft, #E7E1D7)", padding: "7% 6%", textAlign: "left"}}>
+              <div data-hero-preview-brand style={{paddingBottom: "9%", marginBottom: "8%", borderBottom: "1px solid var(--ui-border-soft, #E7E1D7)"}}>
+                <Brand dark sm />
               </div>
-              {["Ficha base", "Honorarios", "Entregables", "Cotización", "Cronograma", "Valorización"].map((item, index) => (
+              <div style={{fontWeight: 500, fontSize: "0.9cqw", color: "var(--ui-text-muted, #5D6470)", marginBottom: "8%"}}>PROYECTO</div>
+              {[
+                {label: "Ficha base", Icon: FileText},
+                {label: "Honorarios", Icon: Calculator},
+                {label: "Entregables", Icon: Table2},
+                {label: "Cotización", Icon: Building2},
+                {label: "Cronograma", Icon: CalendarDays},
+                {label: "Valorización", Icon: Table2},
+              ].map(({label, Icon}, index) => (
                 <div
-                  key={item}
+                  key={label}
                   style={{
-                    fontFamily: SANS,
-                    fontWeight: 200,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.6cqw",
+                    fontWeight: index === 1 ? 500 : 400,
                     fontSize: "1cqw",
-                    color: index === 1 ? "#F4F7FB" : "#7C8898",
-                    padding: "4% 0",
-                    borderBottom: "1px solid #141C26",
+                    color: index === 1 ? "var(--ui-text, #111C25)" : "var(--ui-text-muted, #5D6470)",
+                    background: index === 1 ? "var(--ui-accent-soft, #F1EBDF)" : "transparent",
+                    padding: "5% 6%",
+                    marginBottom: "2%",
+                    borderRadius: "0.5cqw",
                   }}
                 >
-                  {item}
+                  <Icon style={{width: "1.2cqw", height: "1.2cqw", flexShrink: 0}} strokeWidth={1.7} aria-hidden="true" />
+                  {label}
                 </div>
               ))}
             </div>
-            <div style={{padding: "5% 5%", textAlign: "left", display: "flex", flexDirection: "column", gap: "3%"}}>
-              <div style={{fontFamily: SERIF, fontSize: "1.6cqw", color: "#F4F7FB"}}>Propuesta de honorarios</div>
-              <div style={{height: 1, background: "#1B2430"}} />
+            <div style={{padding: "5% 5%", textAlign: "left", display: "flex", flexDirection: "column", gap: "5%"}}>
+              <div style={{display: "flex", alignItems: "center", gap: "0.8cqw", padding: "3%", border: "1px solid var(--ui-border-soft, #E7E1D7)", borderRadius: "0.7cqw", background: "var(--ui-card, #FFFFFF)"}}>
+                <Calculator style={{width: "1.5cqw", height: "1.5cqw", flexShrink: 0, color: "var(--ui-warning, #78551A)"}} strokeWidth={1.7} aria-hidden="true" />
+                <span style={{fontWeight: 600, fontSize: "1.5cqw"}}>Propuesta de honorarios</span>
+              </div>
+              <div style={{padding: "4%", border: "1px solid var(--ui-border-soft, #E7E1D7)", borderRadius: "0.7cqw", background: "var(--ui-card, #FFFFFF)"}}>
               {[
                 ["Anteproyecto", "S/ 18,400"],
                 ["Proyecto ejecutivo", "S/ 32,900"],
                 ["Supervisión de obra", "S/ 12,600"],
               ].map(([label, value]) => (
-                <div key={label} style={{display: "flex", justifyContent: "space-between", gap: "4%"}}>
-                  <span style={{fontFamily: SANS, fontWeight: 200, fontSize: "1.1cqw", color: "#9AA6B4"}}>{label}</span>
-                  <span style={{fontFamily: SANS, fontWeight: 400, fontSize: "1.1cqw", color: "#F4F7FB"}}>{value}</span>
+                <div key={label} style={{display: "flex", justifyContent: "space-between", gap: "4%", padding: "3% 0", borderBottom: "1px solid var(--ui-border-soft, #E7E1D7)"}}>
+                  <span style={{fontWeight: 400, fontSize: "1.1cqw", color: "var(--ui-text-muted, #5D6470)"}}>{label}</span>
+                  <span style={{fontWeight: 500, fontSize: "1.1cqw"}}>{value}</span>
                 </div>
               ))}
+                <div style={{display: "flex", justifyContent: "space-between", gap: "4%", paddingTop: "5%", fontSize: "1.3cqw", fontWeight: 600}}><span>Total</span><span>S/ 63,900</span></div>
+              </div>
             </div>
           </div>
           <img

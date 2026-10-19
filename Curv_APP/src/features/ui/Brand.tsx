@@ -1,1 +1,1 @@
-export { Brand as default } from "./documentHeader";
+export { Brand as default } from "./productBrand";

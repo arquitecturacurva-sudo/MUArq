@@ -104,7 +104,7 @@ export function ChangeOrderView({toolId, onPrint, state, moneySymbol}: {toolId: 
         <p style={{...lb,color:G,margin:"8px 0"}}>5. Aprobación</p>
         <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px"}}>
           <div style={{border:"1px solid #E5DDD0",borderRadius:6,padding:12}}>
-            <p style={{...lb,margin:"0 0 8px"}}>Emite — CURVA Arquitectos</p>
+            <p style={{...lb,margin:"0 0 8px"}}>Emite — Estudio</p>
             <Fld label="Nombre"><Inp value={emiteNom} onChange={semiteNom} placeholder="Arquitecto responsable"/></Fld>
             <Fld label="Cargo"><Inp value={emiteCargo} onChange={semiteCargo} placeholder="Cargo"/></Fld>
             <Fld label="Fecha"><input type="date" value={emiteFe} onChange={e=>semiteFe(e.target.value)} style={si}/></Fld>
@@ -166,7 +166,7 @@ export function ChangeOrderView({toolId, onPrint, state, moneySymbol}: {toolId: 
         </Sec>
         <Sec n="6" title="Aprobación">
           <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-            {[{titulo:"Emite — CURVA Arquitectos",nom:emiteNom,cargo:emiteCargo,fecha:fDate(emiteFe)},{titulo:"Aprueba — Cliente",nom:apruebaNom,cargo:apruebaCargo,fecha:fDate(apruebeFe)}].map(a=>(
+            {[{titulo:"Emite — Estudio",nom:emiteNom,cargo:emiteCargo,fecha:fDate(emiteFe)},{titulo:"Aprueba — Cliente",nom:apruebaNom,cargo:apruebaCargo,fecha:fDate(apruebeFe)}].map(a=>(
               <div key={a.titulo} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:"14px 16px"}}>
                 <div style={{...lb,color:G,marginBottom:10}}>{a.titulo}</div>
                 <div style={{borderTop:"1px solid #DDD",paddingTop:8,marginBottom:8,height:28}}/>
