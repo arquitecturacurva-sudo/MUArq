@@ -25,6 +25,6 @@ export const FontPresetSelector = ({ value, onChange }: FontPresetSelectorProps)
         </button>
       ))}
     </div>
-    <p className="brand-field-help">Presets controlados y compatibles con el motor de documentos.</p>
+    <p className="brand-field-help">Cada combinación se aplica a los títulos y al texto de tus documentos.</p>
   </fieldset>
 );

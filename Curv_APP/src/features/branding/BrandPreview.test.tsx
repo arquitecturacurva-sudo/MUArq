@@ -7,6 +7,19 @@ import { DocHeader } from "../runtime/runtime";
 import { BrandPreview } from "./BrandPreview";
 
 describe("BrandPreview", () => {
+  it.each(["left", "center", "right"] as const)("keeps the studio name beside the logo with %s alignment", (logoPosition) => {
+    const profile = {
+      ...createDefaultBrandProfile({ ownerUid: "owner-1", companyName: "Estudio Norte" }),
+      logoUrl: "data:image/png;base64,logo",
+      logoPosition,
+    };
+    const markup = renderToStaticMarkup(<BrandPreview profile={profile} fallbackCompanyName="Mi estudio" />);
+    const header = markup.match(/<header[^>]*>(.*?)<\/header>/)?.[1];
+    expect(header).toContain('alt="Logo de Estudio Norte"');
+    expect(header).toMatch(/<strong[^>]*>Estudio Norte<\/strong>/);
+    expect(markup).toContain(`text-align:${logoPosition}`);
+  });
+
   it("always renders a wordmark and applies document-only identity values", () => {
     const profile = {
       ...createDefaultBrandProfile({ ownerUid: "owner-1" }),
@@ -40,6 +53,7 @@ describe("BrandPreview", () => {
 
     expect(markup).toContain("Logo de Estudio Norte");
     expect(markup).toContain("data:image/png;base64,logo");
+    expect(markup).toMatch(/<strong[^>]*>Estudio Norte<\/strong>/);
     expect(markup).toContain("#315A8C");
     expect(markup).toContain("justify-content:flex-end");
   });

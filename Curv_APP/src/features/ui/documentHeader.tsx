@@ -15,12 +15,13 @@ export const DocHeader = ({title,cl,pr,fe}: {title: string; cl: string; pr: stri
     <div data-brand-document-header style={{borderBottom:`2px solid ${brandTheme?.accent || G}`,paddingBottom:13,marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:20}}>
         <div style={{minWidth:0,flex:1}}>
-          <div data-brand-document-identity style={{display:"flex",justifyContent:alignment}}>
-            {brandTheme?.logoUrl ? (
+          <div data-brand-document-identity style={{display:"flex",justifyContent:alignment,alignItems:"center",flexWrap:"wrap",gap:12,textAlign:brandTheme?.logoPosition}}>
+            {brandTheme ? <>
+              {brandTheme.logoUrl && (
               <img src={brandTheme.logoUrl} alt={`Logo de ${brandTheme.companyName}`} style={{display:"block",maxWidth:170,maxHeight:52,objectFit:"contain"}} />
-            ) : brandTheme ? (
-              <strong style={{color:brandTheme.text,fontFamily:`'${brandTheme.headingFont}', Inter, sans-serif`,fontSize:20,letterSpacing:"-0.02em"}}>{brandTheme.companyName}</strong>
-            ) : (
+              )}
+              <strong style={{minWidth:0,overflowWrap:"anywhere",color:brandTheme.text,fontFamily:`'${brandTheme.headingFont}', Inter, sans-serif`,fontSize:20,letterSpacing:"-0.02em"}}>{brandTheme.companyName}</strong>
+            </> : (
               <Brand dark/>
             )}
           </div>

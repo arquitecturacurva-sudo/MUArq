@@ -26,8 +26,8 @@ export const BrandPreview = ({ profile, fallbackCompanyName }: BrandPreviewProps
     <section className="brand-preview-panel" aria-label="Vista previa del documento">
       <div className="brand-preview-toolbar">
         <div>
-          <span>Vista previa</span>
-          <small>Documento comercial · página 1</small>
+          <span>Vista previa del documento</span>
+          <small>Documento de ejemplo · página 1</small>
         </div>
         <span className="brand-live-badge"><i /> En vivo</span>
       </div>
@@ -39,9 +39,8 @@ export const BrandPreview = ({ profile, fallbackCompanyName }: BrandPreviewProps
           <header className="brand-document-header" style={headerAlignment}>
             {theme.logoUrl ? (
               <img src={theme.logoUrl} alt={`Logo de ${theme.companyName}`} />
-            ) : (
-              <strong style={{ fontFamily: headingFont }}>{theme.companyName}</strong>
-            )}
+            ) : null}
+            <strong style={{ fontFamily: headingFont }}>{theme.companyName}</strong>
           </header>
 
           <div className="brand-document-rule" style={{ background: theme.accent }} />

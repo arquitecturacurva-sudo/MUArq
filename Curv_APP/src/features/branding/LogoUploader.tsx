@@ -6,6 +6,7 @@ import {
   type BrandLogoUploadResult,
 } from "../../lib/storage/brandLogoStorage";
 import { runLockedBrandMutation } from "./brandMutationLock";
+import { BrandLogoPicker } from "./BrandLogoPicker";
 
 type LogoUploaderProps = {
   clientId: string;
@@ -69,7 +70,7 @@ export const LogoUploader = ({
         await deleteBrandLogo(clientId);
       });
       onRemoved();
-      setMessage("Logo eliminado. Usaremos el nombre del estudio como wordmark.");
+      setMessage("Logo eliminado. Usaremos el nombre de tu estudio.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No pudimos eliminar el logo.");
     } finally {
@@ -77,45 +78,14 @@ export const LogoUploader = ({
     }
   };
 
-  return (
-    <fieldset className="brand-fieldset" disabled={disabled} aria-busy={busy}>
-      <legend>Logo</legend>
-      <div className="brand-logo-card">
-        <div className="brand-logo-visual">
-          {logoUrl ? (
-            <img src={logoUrl} alt={`Logo de ${companyName || "tu estudio"}`} />
-          ) : (
-            <span>{companyName.trim() || "Mi estudio"}</span>
-          )}
-        </div>
-        <div className="brand-logo-actions">
-          <label className="brand-secondary-button" aria-disabled={busy}>
-            {actionState === "uploading" ? "Subiendo…" : logoUrl ? "Reemplazar logo" : "Subir logo"}
-            <input
-              className="brand-visually-hidden"
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
-              disabled={busy}
-              onChange={handleFile}
-            />
-          </label>
-          {logoUrl ? (
-            <button type="button" className="brand-text-button" disabled={busy} onClick={handleRemove}>
-              {actionState === "removing" ? "Eliminando…" : "Eliminar"}
-            </button>
-          ) : null}
-        </div>
-      </div>
-      <p className="brand-field-help">PNG, JPG, WEBP o SVG · máximo 2 MB · recomendado 300 × 100 px.</p>
-      <span className="brand-visually-hidden" role="status" aria-live="polite">
-        {actionState === "uploading"
-          ? "Subiendo logo."
-          : actionState === "removing"
-            ? "Eliminando logo."
-            : ""}
-      </span>
-      {message ? <p className="brand-inline-message" role="status" aria-live="polite">{message}</p> : null}
-      {error ? <p className="brand-field-error" role="alert">{error}</p> : null}
-    </fieldset>
-  );
+  return <BrandLogoPicker
+    logoUrl={logoUrl}
+    companyName={companyName}
+    busy={busy}
+    actionState={actionState}
+    message={message}
+    error={error}
+    onFileChange={handleFile}
+    onRemove={() => { void handleRemove(); }}
+  />;
 };
