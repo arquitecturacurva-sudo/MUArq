@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Curv · Validación de sincronización para Beta</title>
+  <style>
+    :root{font-family:Segoe UI,Arial,sans-serif;color:#202923;background:#f5f4f0;line-height:1.5}
+    *{box-sizing:border-box}body{margin:0}main{max-width:960px;margin:auto;padding:36px 24px 64px}
+    header{margin-bottom:24px}.eyebrow{color:#667468;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+    h1{font-size:32px;line-height:1.15;margin:10px 0}h2{font-size:20px;margin:0 0 14px}p{margin:8px 0;color:#58635b}
+    .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px}button{font:inherit;border:1px solid #d3d9d2;border-radius:8px;padding:9px 14px;background:white;cursor:pointer}button.primary{background:#254b38;color:white;border-color:#254b38}
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #adbfac;outline-offset:3px}
+    .card{background:white;border:1px solid #dfe3dc;border-radius:12px;padding:22px;margin:16px 0;break-inside:avoid}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{display:grid;gap:5px;font-size:14px;font-weight:600}
+    input:not([type=checkbox]),select,textarea{width:100%;min-width:0;border:1px solid #cbd3ca;border-radius:6px;padding:9px;font:inherit;background:white;color:inherit}textarea{resize:vertical;min-height:80px}
+    .check{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #edf0eb}.check:last-child{border-bottom:0}.check input{width:18px;height:18px;flex:none;margin:4px 0 0;accent-color:#254b38}.check:has(input:checked){color:#5f6e61}
+    .hint{font-size:13px}.gate{border-left:5px solid #b38a3c;background:#fffaf0}.gate strong{color:#644b20}
+    .table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:640px;font-size:14px}th{text-align:left;background:#eef2ed}td,th{padding:10px;border:1px solid #dfe3dc;vertical-align:top}td:first-child{width:23%}table textarea{min-height:70px}
+    progress{width:160px;accent-color:#254b38}footer{font-size:13px;color:#68756a;margin-top:22px}
+    @media(max-width:600px){main{padding:24px 16px 40px}.fields{grid-template-columns:1fr}h1{font-size:27px}.card{padding:18px}}
+    @media print{ :root{background:white;font-size:11px}main{padding:0;max-width:none}.toolbar{display:none}.card{border-radius:0;margin:10px 0;padding:12px}h1{font-size:24px}h2{font-size:16px}.table-wrap{overflow:visible}table{min-width:0;font-size:11px}td,th{padding:6px}input,select,textarea{font-size:11px!important}textarea{min-height:56px}.check{padding:6px 0}footer{font-size:10px} }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Curv · Puerta de salida a Beta · Punto 2</div>
+    <h1>Validación de sincronización</h1>
+    <p>Comprueba la conservación de datos entre dos sesiones, los conflictos, el trabajo sin conexión y la recuperación después de eliminar un proyecto.</p>
+    <div class="toolbar">
+      <button class="primary" type="button" id="print">Imprimir / guardar PDF</button>
+      <button type="button" id="download">Descargar registro JSON</button>
+      <progress id="progress" value="0" max="26" aria-label="Tareas marcadas"></progress>
+      <span id="count" role="status" aria-live="polite"></span>
+    </div>
+  </header>
+  <section class="card" aria-labelledby="run-title">
+    <h2 id="run-title">Datos de la prueba</h2>
+    <div class="fields">
+      <label class="field">Responsable<input id="responsable" autocomplete="name"></label>
+      <label class="field">Fecha<input id="fecha" type="date"></label>
+      <label class="field">URL / entorno<input id="entorno" type="url" placeholder="https://…"></label>
+      <label class="field">Versión / commit<input id="version" placeholder="SHA o versión del despliegue"></label>
+      <label class="field">Proyecto QA<input id="proyecto" placeholder="Nombre o ID del proyecto desechable"></label>
+      <label class="field">Sesiones utilizadas<input id="sesiones" placeholder="Edge normal + Edge InPrivate"></label>
+    </div>
+    <p class="hint" id="storage-note">El avance se guarda en este navegador cuando el almacenamiento local está disponible. Descarga el registro para conservar una copia. No anotes contraseñas ni credenciales.</p>
+  </section>
+  <section class="card" aria-labelledby="preparacion">
+    <h2 id="preparacion">Preparación</h2>
+    <label class="check"><input type="checkbox" id="c01"><span>Crear un proyecto QA desechable, sin datos de clientes.</span></label>
+    <label class="check"><input type="checkbox" id="c02"><span>Abrir dos sesiones independientes: Edge normal e InPrivate, con la misma cuenta y estudio.</span></label>
+    <label class="check"><input type="checkbox" id="c03"><span>Confirmar que ambas ejecutan la misma versión.</span></label>
+    <label class="check"><input type="checkbox" id="c04"><span>Registrar URL, versión y fecha de prueba.</span></label>
+  </section>
+  <section class="card" aria-labelledby="guardado">
+    <h2 id="guardado">1. Guardado y sincronización</h2>
+    <label class="check"><input type="checkbox" id="c05"><span>En sesión A, introducir datos reconocibles en las nueve herramientas.</span></label>
+    <p class="hint">Honorarios, entregables, exclusiones, cronograma por etapas, cotización de obra, cronograma de obra, programa arquitectónico, valorización y orden de cambio.</p>
+    <label class="check"><input type="checkbox" id="c06"><span>Esperar «Guardado en la nube».</span></label>
+    <label class="check"><input type="checkbox" id="c07"><span>Abrir el proyecto en B y comprobar que aparecen los mismos datos.</span></label>
+    <label class="check"><input type="checkbox" id="c08"><span>Editar desde B y volver a A: comprobar que recibe los cambios.</span></label>
+    <label class="check"><input type="checkbox" id="c09"><span>Recargar ambas sesiones y verificar que los datos permanecen.</span></label>
+  </section>
+  <section class="card" aria-labelledby="simultaneas">
+    <h2 id="simultaneas">2. Ediciones simultáneas</h2>
+    <label class="check"><input type="checkbox" id="c10"><span>Editar el mismo proyecto desde ambas sesiones antes de sincronizar.</span></label>
+    <label class="check"><input type="checkbox" id="c11"><span>Comprobar que se muestra un conflicto y ninguna copia se pierde silenciosamente.</span></label>
+    <label class="check"><input type="checkbox" id="c12"><span>Probar <strong>Usar nube</strong>: debe cargar la versión remota.</span></label>
+    <label class="check"><input type="checkbox" id="c13"><span>Repetir el conflicto y probar <strong>Conservar ambas</strong>: deben quedar dos proyectos con sus datos correspondientes.</span></label>
+  </section>
+  <section class="card" aria-labelledby="offline">
+    <h2 id="offline">3. Trabajo sin conexión</h2>
+    <label class="check"><input type="checkbox" id="c14"><span>Desconectar una sesión y editar el proyecto.</span></label>
+    <label class="check"><input type="checkbox" id="c15"><span>Recargar mientras sigue desconectada: comprobar que conserva lo editado.</span></label>
+    <label class="check"><input type="checkbox" id="c16"><span>Reconectar y esperar la sincronización.</span></label>
+    <label class="check"><input type="checkbox" id="c17"><span>Verificar desde la otra sesión que aparecen los cambios.</span></label>
+  </section>
+  <section class="card" aria-labelledby="eliminacion">
+    <h2 id="eliminacion">4. Eliminación y recuperación</h2>
+    <label class="check"><input type="checkbox" id="c18"><span>Eliminar el proyecto QA desde A.</span></label>
+    <label class="check"><input type="checkbox" id="c19"><span>Comprobar que desaparece de B y no reaparece tras recargar.</span></label>
+    <label class="check"><input type="checkbox" id="c20"><span>Repetir con otro proyecto: B edita sin conexión y A lo elimina.</span></label>
+    <label class="check"><input type="checkbox" id="c21"><span>Reconectar B: debe ofrecer recuperación del trabajo pendiente.</span></label>
+    <label class="check"><input type="checkbox" id="c22"><span>Recuperarlo como un proyecto nuevo, conservando los datos y sin resucitar el original.</span></label>
+  </section>
+  <section class="card" aria-labelledby="resultados">
+    <h2 id="resultados">Registro de resultados</h2>
+    <p class="hint">Una casilla marcada indica una tarea realizada. El resultado de cada prueba y la decisión de cierre se registran por separado.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">Prueba</th><th scope="col">Versión</th><th scope="col">Resultado</th><th scope="col">Evidencia / incidencia</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Guardado y sincronización</th><td><input id="v1" aria-label="Versión de guardado y sincronización"></td><td><select id="r1" aria-label="Resultado de guardado y sincronización"><option value="">Pendiente</option><option>Pasa</option><option>Falla</option></select></td><td><textarea id="e1" aria-label="Evidencia de guardado y sincronización"></textarea></td></tr>
+        <tr><th scope="row">Conflictos: ambas opciones</th><td><input id="v2" aria-label="Versión de conflictos"></td><td><select id="r2" aria-label="Resultado de conflictos"><option value="">Pendiente</option><option>Pasa</option><option>Falla</option></select></td><td><textarea id="e2" aria-label="Evidencia de conflictos"></textarea></td></tr>
+        <tr><th scope="row">Desconexión y reconexión</th><td><input id="v3" aria-label="Versión de desconexión y reconexión"></td><td><select id="r3" aria-label="Resultado de desconexión y reconexión"><option value="">Pendiente</option><option>Pasa</option><option>Falla</option></select></td><td><textarea id="e3" aria-label="Evidencia de desconexión y reconexión"></textarea></td></tr>
+        <tr><th scope="row">Eliminación y recuperación</th><td><input id="v4" aria-label="Versión de eliminación y recuperación"></td><td><select id="r4" aria-label="Resultado de eliminación y recuperación"><option value="">Pendiente</option><option>Pasa</option><option>Falla</option></select></td><td><textarea id="e4" aria-label="Evidencia de eliminación y recuperación"></textarea></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+  <section class="card gate" aria-labelledby="cierre">
+    <h2 id="cierre">Cierre del punto dos</h2>
+    <label class="check"><input type="checkbox" id="c23"><span>Registrar cada resultado como <strong>pasa / falla</strong>, con captura o descripción.</span></label>
+    <label class="check"><input type="checkbox" id="c24"><span>Corregir los fallos y repetir los escenarios afectados.</span></label>
+    <label class="check"><input type="checkbox" id="c25"><span>Confirmar <strong>cero pérdidas de datos, sobrescrituras silenciosas o proyectos que reaparezcan</strong>.</span></label>
+    <label class="check"><input type="checkbox" id="c26"><span>Registrar la decisión de cierre con responsable, versión y evidencia.</span></label>
+    <div class="fields" style="margin-top:16px">
+      <label class="field">Decisión<select id="decision"><option value="">Pendiente</option><option>Mantener abierto</option><option>Validado</option></select></label>
+      <label class="field">Responsable del cierre<input id="responsable-cierre"></label>
+    </div>
+    <label class="field" style="margin-top:14px">Observaciones finales<textarea id="observaciones"></textarea></label>
+    <p id="gate-message" role="status" aria-live="polite"></p>
+  </section>
+  <footer>Lista de validación · Curv App · El cierre requiere resultados y evidencia. Completar la lista no certifica automáticamente la sincronización.</footer>
+</main>
+<script>
+  (() => {
+    const key = 'curv.qa.sync-beta.checklist.v1';
+    const controls = [...document.querySelectorAll('input,select,textarea')];
+    const checks = controls.filter(el => el.type === 'checkbox');
+    const capture = () => Object.fromEntries(controls.map(el => [el.id, el.type === 'checkbox' ? el.checked : el.value]));
+    function update() {
+      const done = checks.filter(el => el.checked).length;
+      document.getElementById('progress').max = checks.length;
+      document.getElementById('progress').value = done;
+      document.getElementById('count').textContent = `${done}/${checks.length} tareas marcadas`;
+      const passed = ['r1','r2','r3','r4'].every(id => document.getElementById(id).value === 'Pasa');
+      const evidence = ['e1','e2','e3','e4','version','responsable-cierre'].every(id => document.getElementById(id).value.trim());
+      const ready = done === checks.length && passed && evidence;
+      document.getElementById('gate-message').textContent = ready
+        ? 'Registro completo para revisión del cierre. La decisión corresponde al responsable.'
+        : 'Mantén el punto abierto hasta completar tareas, resultados satisfactorios y evidencia de las cuatro pruebas.';
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      controls.forEach(el => {
+        if (!(el.id in saved)) return;
+        if (el.type === 'checkbox') el.checked = saved[el.id] === true;
+        else if (typeof saved[el.id] === 'string') el.value = saved[el.id];
+      });
+    } catch { document.getElementById('storage-note').textContent = 'El guardado local no está disponible. Descarga el registro JSON antes de cerrar esta página.'; }
+    document.addEventListener('input', () => {
+      update();
+      try { localStorage.setItem(key, JSON.stringify(capture())); }
+      catch { document.getElementById('storage-note').textContent = 'No se pudo guardar en este navegador. Descarga el registro JSON antes de cerrar esta página.'; }
+    });
+    document.getElementById('print').addEventListener('click', () => window.print());
+    document.getElementById('download').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify({ checklist: 'Sincronización Beta', exportedAt: new Date().toISOString(), fields: capture() }, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url; anchor.download = 'curv-registro-sincronizacion-beta.json'; anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    update();
+  })();
+</script>
+</body>
+</html>
