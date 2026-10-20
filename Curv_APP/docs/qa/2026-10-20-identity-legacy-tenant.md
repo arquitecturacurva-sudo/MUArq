@@ -22,3 +22,11 @@ No se guardan contactos o identificadores de la cuenta afectada en este informe.
 - Pruebas de auditoría: 10 correctas, incluidas cuatro variantes del campo ausente/inválido.
 - Prueba de reglas añadida: reproduce el rechazo en un estudio sin `id`, comprueba que no se crea un perfil parcial, rechaza la reparación desde navegador, completa solo `id` con acceso administrativo y verifica que el mismo guardado funciona. Usuarios ajenos siguen sin poder editar.
 - Esta prueba se ejecuta exclusivamente contra emuladores de demo; no escribe datos de clientes. Su resultado se registra en CI antes de aplicar la reparación operativa.
+
+## Resultado operativo
+
+La prueba de reglas del run [39458651461](https://github.com/arquitecturacurva-sudo/MUArq/actions/runs/39458651461), revisión `6df1df4`, pasó antes de la reparación. El primer intento de CI detectó una importación ausente en la prueba nueva; se corrigió y se repitió la validación.
+
+Después se completó únicamente `id` en el estudio afectado mediante una transacción administrativa. Se volvieron a leer usuario, propietario y membresía dentro de la transacción y se exigió la versión vigente del documento. La verificación posterior confirmó que el identificador coincide con la ruta y que todos los otros campos del estudio son idénticos a los anteriores. No se cambiaron reglas, roles, proyectos ni facturación.
+
+Una segunda ejecución de comprobación devolvió `alreadyCanonical: true`, sin escrituras. No se creó un perfil de marca en nombre del usuario ni se subió un logo: el product owner debe reintentar Guardar cambios y la subida desde su sesión para cerrar la aceptación funcional.
