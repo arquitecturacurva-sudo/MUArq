@@ -22,6 +22,9 @@ export const auditClient = (clientId, data, memberDocs) => {
     findings.push(`legacy ownerId "${legacyOwnerId}" with no ownerUid -- owner will lose access`);
   }
   if (!ownerUid && !legacyOwnerId) findings.push("no ownerUid at all");
+  if (typeof data?.id !== "string" || !data.id.trim()) {
+    findings.push("missing canonical id -- owner cannot save identity or tenant name");
+  }
   if (typeof data?.id === "string" && data.id !== clientId) {
     findings.push(`doc.id "${clientId}" != data.id "${data.id}"`);
   }

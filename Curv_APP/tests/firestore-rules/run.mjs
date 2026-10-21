@@ -1,4 +1,5 @@
 import { after, before, test } from "node:test";
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import { doc, getDoc, getDocs, collection, query, where, documentId, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from "firebase/firestore";
@@ -131,6 +132,34 @@ test("only owner can save identity and tenant name together", async () => {
   }
   await assertFails(updateDoc(doc(db, "clients/a"), { ownerUid: "admin" }));
   await assertFails(updateDoc(doc(db, "clients/a"), { limits: { editorsLimit: 999 } }));
+});
+
+test("legacy tenant without canonical id blocks identity until an id-only server repair", async () => {
+  const clientId = "legacy-brand-id";
+  const before = { ownerUid: "owner", name: "Estudio legacy", plan: "BASE", billing: { status: "active" }, limits: { editorsLimit: 3 } };
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "clients", clientId), before);
+    await setDoc(doc(context.firestore(), "clients", clientId, "members", "owner"), { uid: "owner", role: "admin" });
+  });
+  const db = dbFor("owner");
+  const save = () => {
+    const batch = writeBatch(db);
+    batch.update(doc(db, "clients", clientId), { name: "Mi estudio" });
+    batch.set(doc(db, "clients", clientId, "settings", "brand"), { id: "brand", ownerUid: "owner", companyName: "Mi estudio", backgroundColor: "#FFFFFF", accentColor: "#123456", primaryTextColor: "#111111", fontPresetId: "technical", headingFont: "Inter", bodyFont: "Inter", logoPosition: "left", showGeneratedWithCurv: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), profileRevision: 1, schemaVersion: 1 });
+    return batch.commit();
+  };
+  await assertFails(save());
+  assert.equal((await getDoc(doc(db, "clients", clientId, "settings", "brand"))).exists(), false);
+  await assertFails(updateDoc(doc(db, "clients", clientId), { id: clientId }));
+  await env.withSecurityRulesDisabled(async context => {
+    const ref = doc(context.firestore(), "clients", clientId);
+    await updateDoc(ref, { id: clientId });
+    assert.deepEqual((await getDoc(ref)).data(), { ...before, id: clientId });
+  });
+  await assertSucceeds(save());
+  for (const uid of ["admin", "editor", "viewer", "outsider"]) {
+    await assertFails(updateDoc(doc(dbFor(uid), "clients", clientId), { name: "Impostor" }));
+  }
 });
 
 test("invitation secrets and rate counters are server-only for every client role", async () => {

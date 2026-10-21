@@ -12,6 +12,11 @@ const healthy = {
 const ownerMember = [{ id: "uid-1", uid: "uid-1", role: "admin" }];
 
 describe("auditClient", () => {
+  it.each([undefined, "", null, 123])("flags an absent or invalid canonical id (%s)", (id) => {
+    const report = auditClient("cli_abc", { ...healthy, id }, ownerMember);
+    expect(report.findings.join(" ")).toMatch(/missing canonical id/);
+  });
+
   it("passes a healthy generated tenant", () => {
     const report = auditClient("cli_abc", healthy, ownerMember);
     expect(report.findings).toEqual([]);
