@@ -12,3 +12,5 @@ export { createTeamInvitation, listTeamInvitations, cancelTeamInvitation, renewT
 
 export { getTeamSeatUsage } from "./tenant/invitationHandlers.js";
 export { previewTeamInvitation } from "./tenant/invitationHandlers.js";
+
+export { adminListClients, adminGrantSupportAccess, adminRevokeSupportAccess } from "./admin/supportAccess.js";

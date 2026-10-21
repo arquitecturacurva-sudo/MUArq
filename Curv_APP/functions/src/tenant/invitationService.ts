@@ -34,7 +34,8 @@ export function validateScope(role: unknown, projects: unknown): { role: Role; p
 export function seatUsage(members: admin.firestore.DocumentData[], invitations: admin.firestore.DocumentData[], now: number) {
   if (members.some(data => (data.status === undefined || data.status === "active") && !roleOf(data.role))) fail("failed-precondition", "Hay una membresia con rol no reconocido.");
   const used = { editors: 0, viewers: 0 };
-  for (const data of [...members.filter(activeMember), ...invitations.filter(item => pending(item, now))]) {
+  // Super-admin support access (functions/src/admin/supportAccess.ts) never consumes a studio seat.
+  for (const data of [...members.filter(data => activeMember(data) && data.support !== true),...invitations.filter(item => pending(item, now))]) {
     const role = roleOf(data.role); if (!role) fail("failed-precondition", "Hay una membresia con rol no reconocido.");
     used[role === "viewer" ? "viewers" : "editors"]++;
   }

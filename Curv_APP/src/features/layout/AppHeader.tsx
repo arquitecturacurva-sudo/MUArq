@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, LayoutDashboard, LogOut, Palette, PlayCircle, Users } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, LogOut, Palette, PlayCircle, ShieldCheck, Users } from "lucide-react";
 import { Button } from "../ui/kit";
 import Brand from "../ui/Brand";
 
-export type AppSection = "dashboard" | "workspace" | "demos" | "branding" | "team-access";
+export type AppSection = "dashboard" | "workspace" | "demos" | "branding" | "team-access" | "admin";
 
 export type AppHeaderProps = {
   /** What the user is looking at right now — "Dashboard", or the project name. */
@@ -19,6 +19,8 @@ export type AppHeaderProps = {
   onOpenDemos: () => void;
   onOpenTeamAccess?: () => void;
   onOpenBranding?: () => void;
+  /** Super-admin only; omitted for everyone else. */
+  onOpenAdmin?: () => void;
   onLogout?: () => void;
   /** Primary action for this surface, rendered last so it lands in the top-right corner. */
   children?: ReactNode;
@@ -38,6 +40,7 @@ export default function AppHeader({
   onOpenDemos,
   onOpenTeamAccess,
   onOpenBranding,
+  onOpenAdmin,
   onLogout,
   children,
 }: AppHeaderProps) {
@@ -81,6 +84,12 @@ export default function AppHeader({
           <Button variant="ghost" className={navItemClass("branding")} aria-current={active === "branding" ? "page" : undefined} onClick={onOpenBranding}>
             <Palette aria-hidden />
             Identidad
+          </Button>
+        )}
+        {onOpenAdmin && (
+          <Button variant="ghost" className={navItemClass("admin")} aria-current={active === "admin" ? "page" : undefined} onClick={onOpenAdmin}>
+            <ShieldCheck aria-hidden />
+            Admin
           </Button>
         )}
         {onLogout && (

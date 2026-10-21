@@ -176,6 +176,12 @@ service cloud.firestore {
     match /invitationRateLimits/{limitId} {
       allow read, write: if false;
     }
+    // Super-admin support access is granted as a real `support: true` admin membership by the
+    // adminGrantSupportAccess callable, so no rule here bypasses membership. Its audit trail is
+    // server-only.
+    match /adminAudit/{entryId} {
+      allow read, write: if false;
+    }
 
     match /clients/{clientId}/members/{memberId} {
       allow read: if isEditor(clientId) || (isMember(clientId) && memberId == request.auth.uid);
