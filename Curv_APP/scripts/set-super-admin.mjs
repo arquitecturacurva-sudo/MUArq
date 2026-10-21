@@ -1,7 +1,9 @@
 // Grants or revokes the `superAdmin` custom claim that unlocks the in-app Admin panel.
 // Usage: node scripts/set-super-admin.mjs <email> [--revoke]
-// Requires FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_B64.
-import { cert, getApps, initializeApp } from "firebase-admin/app";
+// Uses FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_B64 when
+// set; otherwise falls back to gcloud application-default credentials for the .firebaserc project.
+import { readFileSync } from "node:fs";
+import { applicationDefault, cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
 const parseServiceAccount = () => {
@@ -10,11 +12,7 @@ const parseServiceAccount = () => {
     process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
   const rawB64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64?.trim();
 
-  if (!rawJson && !rawB64) {
-    throw new Error(
-      "Missing Firebase Admin credentials. Define FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_SERVICE_ACCOUNT, or FIREBASE_SERVICE_ACCOUNT_B64."
-    );
-  }
+  if (!rawJson && !rawB64) return null;
 
   const decoded = rawB64
     ? Buffer.from(rawB64, "base64").toString("utf8")
@@ -34,7 +32,13 @@ if (!email || (flag && flag !== "--revoke")) {
 }
 const revoke = flag === "--revoke";
 
-if (!getApps().length) initializeApp({ credential: cert(parseServiceAccount()) });
+if (!getApps().length) {
+  const serviceAccount = parseServiceAccount();
+  const projectId = JSON.parse(readFileSync(new URL("../.firebaserc", import.meta.url), "utf8")).projects.default;
+  initializeApp(serviceAccount
+    ? { credential: cert(serviceAccount) }
+    : { credential: applicationDefault(), projectId });
+}
 
 const auth = getAuth();
 const user = await auth.getUserByEmail(email.trim().toLowerCase());
