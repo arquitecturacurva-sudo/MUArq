@@ -14,6 +14,8 @@ export function fail(code: functions.https.FunctionsErrorCode, message: string):
 export const id = (value: unknown): string => typeof value === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(value) ? value : fail("invalid-argument", "Referencia no valida.");
 export const roleOf = (value: unknown): Role | null => value === "owner" ? "admin" : value === "observer" ? "viewer" : value === "admin" || value === "editor" || value === "viewer" ? value : null;
 export const activeMember = (data: Data | undefined): boolean => Boolean(data && roleOf(data.role) && (data.status === undefined || data.status === "active"));
+/** Deleted projects keep a `deletedAt` tombstone (purged after 30 days, never removed). */
+export const isTombstoned = (data: Data | undefined): boolean => typeof data?.deletedAt === "string" && data.deletedAt.trim().length > 0;
 const digest = (token: string) => createHash("sha256").update(token).digest("hex");
 const expires = (data: admin.firestore.DocumentData): number => data.expiresAt instanceof Timestamp ? data.expiresAt.toMillis() : 0;
 const pending = (data: admin.firestore.DocumentData, now: number) => data.status === "pending" && expires(data) > now;
@@ -58,7 +60,7 @@ export function createInvitationBackend(db: admin.firestore.Firestore, now = () 
   }
   async function projectScope(tx: admin.firestore.Transaction, tenant: admin.firestore.DocumentReference, projectIds: string[]) {
     const docs = await Promise.all(projectIds.map(project => tx.get(tenant.collection("projects").doc(project))));
-    if (docs.some(doc => !doc.exists)) fail("invalid-argument", "Uno de los proyectos ya no pertenece al estudio.");
+    if (docs.some(doc => !doc.exists || isTombstoned(doc.data()))) fail("invalid-argument", "Uno de los proyectos ya no pertenece al estudio.");
   }
   async function usage(tx: admin.firestore.Transaction, tenant: admin.firestore.DocumentReference) {
     const [members, invites] = await Promise.all([tx.get(tenant.collection("members")), tx.get(tenant.collection("invitations").where("status", "==", "pending"))]);
@@ -188,7 +190,11 @@ export function createInvitationBackend(db: admin.firestore.Firestore, now = () 
       const tenants = (await Promise.all(memberships.docs.filter(doc => activeMember(doc.data()) && /^clients\/[^/]+\/members\/[^/]+$/.test(doc.ref.path)).map(async member => {
         const study = await member.ref.parent.parent!.get(); const data = study.data();
         if (!data || data.status && data.status !== "active") return null;
-        return { id: study.id, name: String(data.name || "Estudio"), ownerUid: String(data.ownerUid || ""), role: roleOf(member.data().role)!, projectIds: member.data().accessScope?.kind === "projects" && Array.isArray(member.data().accessScope.projectIds) ? member.data().accessScope.projectIds.filter((id: unknown) => typeof id === "string") as string[] : [] };
+        const scoped = member.data().accessScope?.kind === "projects" && Array.isArray(member.data().accessScope.projectIds) ? member.data().accessScope.projectIds.filter((id: unknown) => typeof id === "string") as string[] : [];
+        // A viewer's assignment outlives a project deletion; never offer the deleted project.
+        const projects = scoped.length ? await db.getAll(...scoped.map(projectId => study.ref.collection("projects").doc(projectId))) : [];
+        const projectIds = projects.filter(doc => doc.exists && !isTombstoned(doc.data())).map(doc => doc.id);
+        return { id: study.id, name: String(data.name || "Estudio"), ownerUid: String(data.ownerUid || ""), role: roleOf(member.data().role)!, projectIds };
       }))).filter((value): value is NonNullable<typeof value> => value !== null);
       const activeTenantId = tenants.find(tenant => tenant.id === user.data()?.activeClientId)?.id || tenants[0]?.id || null;
       return { tenants, activeTenantId };

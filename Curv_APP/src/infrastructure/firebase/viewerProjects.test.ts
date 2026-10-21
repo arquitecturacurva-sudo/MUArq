@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { assembleViewerProject } from "./viewerProjects";
+import { assembleViewerProject, toTeamProjectOptions } from "./viewerProjects";
+
+describe("Team project options", () => {
+  it("excludes tombstoned (deleted) projects from the viewer assignment list", () => {
+    expect(toTeamProjectOptions("t1", [
+      { id: "live", data: { name: "Casa Miguel" } },
+      { id: "gone", data: { name: "ASDasd", deletedAt: "2026-10-20T10:00:00.000Z", deletedByUid: "u1" } },
+      { id: "purged", data: { id: "purged", deletedAt: "2026-09-01T10:00:00.000Z", purgedAt: "2026-10-01T03:00:00.000Z" } },
+      { id: "blank", data: { name: "Sin borrar", deletedAt: "  " } },
+    ])).toEqual([
+      { id: "live", tenantId: "t1", name: "Casa Miguel" },
+      { id: "blank", tenantId: "t1", name: "Sin borrar" },
+    ]);
+  });
+});
 
 describe("Viewer project document assembly", () => {
   it("groups legacy snapshot keys into their nine tool documents", () => {
