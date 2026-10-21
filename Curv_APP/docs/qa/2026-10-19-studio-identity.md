@@ -1,5 +1,7 @@
 # Identidad del estudio — 19 de octubre de 2026
 
+Estado posterior: el product owner aprobo la pantalla y la correccion de logo/nombre; PR #37 integrada en master `c1596135a0dbe92a375e72e3235c4e3ae622a570`. El CI final de la revision `c27cb57` aprobo 482 pruebas frontend en 72 archivos, ademas de las suites backend y emulador. Falta comprobar persistencia tras recarga y propuesta/PDF real en produccion; los resultados locales siguientes conservan su alcance original.
+
 ## Alcance
 
 La pantalla autenticada conserva sus servicios de carga, guardado y gestión del logo. La presentación se comparte con la revisión local de identidad: datos del estudio, información fiscal opcional, colores, tipografía, posición del logo, firma de Curv y vista previa del documento.
