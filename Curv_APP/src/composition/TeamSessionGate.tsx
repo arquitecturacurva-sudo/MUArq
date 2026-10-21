@@ -7,6 +7,7 @@ import { Button } from "../components/ui/button";
 import { ViewerWorkspace } from "../features/invitations/ViewerWorkspace";
 import { readViewerProject } from "../infrastructure/firebase/viewerProjects";
 import { THEME_VARS } from "../features/ui/theme";
+import AppLoadingView from "../features/layout/AppLoadingView";
 const InvitationEntry = lazy(() => import("./InvitationEntry"));
 // Invitation entry never mounts App, whose legacy auth listener provisions tenants.
 export default function TeamSessionGate({ children }: { children: ReactNode }) {
@@ -21,11 +22,11 @@ export default function TeamSessionGate({ children }: { children: ReactNode }) {
     if (user && !isInvitation) void firebaseInvitations.session().then(result => { if (active) { if (result.ok) { setLoaded({ uid: user.uid, session: result.value }); setError(""); } else setError(result.error.message); } });
     return () => { active = false; };
   }, [user, retry, isInvitation]);
-  if (user === undefined) return <p role="status">Cargando sesion...</p>;
+  if (user === undefined) return <div style={THEME_VARS}><AppLoadingView stage="session" /></div>;
   if (isInvitation) return <Suspense fallback={<p role="status">Cargando invitacion...</p>}><InvitationEntry key={user?.uid || "signed-out"} link={parseInvitationHash(hash)} user={user} /></Suspense>;
   if (!user) return <>{children}</>;
   if (error) return <main style={{ padding: 24 }}><p role="alert">{error}</p><Button onClick={() => { setError(""); setLoaded(null); setRetry(value => value + 1); }}>Reintentar</Button><Button onClick={() => void logout()}>Cerrar sesion</Button></main>;
-  if (loaded?.uid !== user.uid) return <p role="status">Cargando tus estudios...</p>;
+  if (loaded?.uid !== user.uid) return <div style={THEME_VARS}><AppLoadingView stage="workspace" /></div>;
   const session = loaded.session; const tenant = session.tenants.find(item => item.id === session.activeTenantId);
   const viewer = tenant?.role === "viewer";
   return <div style={viewer ? { ...THEME_VARS, minHeight: "100vh" } : undefined}>
