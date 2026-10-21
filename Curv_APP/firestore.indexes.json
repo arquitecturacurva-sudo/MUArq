@@ -27,6 +27,20 @@
       "indexes": []
     },
     {
+      "collectionGroup": "projects",
+      "fieldPath": "deletedAt",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        }
+      ]
+    },
+    {
       "collectionGroup": "invitations",
       "fieldPath": "email",
       "indexes": [

@@ -4,6 +4,7 @@ import { ensureDb } from "../../lib/firebase";
 import type { TenantAccessResult } from "../../domain/tenant/teamAccess";
 import { isProjectCurrency, type ProjectBaseMetadata } from "../../domain/project/project";
 import { PROJECT_TOOL_IDS, resolveToolIdForStorageKey, type ProjectToolId } from "../../domain/project/toolPartition";
+import { isProjectTombstoned } from "./projectRepository";
 
 export interface ViewerProject {
   id: string;
@@ -62,7 +63,7 @@ export async function readViewerProject(tenantId: string, projectId: string): Pr
       getDoc(doc(db, "clients", tenantId, "projects", projectId)),
       getDocs(collection(db, "clients", tenantId, "projects", projectId, "toolData")),
     ]);
-    if (!project.exists()) return { ok: false, error: { code: "not-found", message: "El proyecto ya no esta disponible." } };
+    if (!project.exists() || isProjectTombstoned(project.data())) return { ok: false, error: { code: "not-found", message: "El proyecto ya no esta disponible." } };
     return { ok: true, value: assembleViewerProject(project.id, project.data(), tools.docs.map(item => ({ id: item.id, data: item.data().data }))) };
   } catch (error) {
     if (!(error instanceof FirebaseError)) throw error;
@@ -70,10 +71,17 @@ export async function readViewerProject(tenantId: string, projectId: string): Pr
   }
 }
 
+/** Deleted projects stay as tombstones (deletedAt) until the 30-day purge; never offer them. */
+export function toTeamProjectOptions(tenantId: string, docs: { id: string; data: Record<string, unknown> }[]) {
+  return docs
+    .filter(project => !isProjectTombstoned(project.data))
+    .map(project => ({ id: project.id, tenantId, name: typeof project.data.name === "string" ? project.data.name : "Proyecto" }));
+}
+
 export async function readTeamProjectOptions(tenantId: string): Promise<TenantAccessResult<{ id: string; name: string; tenantId: string }[]>> {
   try {
     const projects = await getDocs(collection(ensureDb(), "clients", tenantId, "projects"));
-    return { ok: true, value: projects.docs.map(project => ({ id: project.id, tenantId, name: typeof project.data().name === "string" ? project.data().name : "Proyecto" })) };
+    return { ok: true, value: toTeamProjectOptions(tenantId, projects.docs.map(project => ({ id: project.id, data: project.data() }))) };
   } catch (error) {
     if (!(error instanceof FirebaseError)) throw error;
     return { ok: false, error: { code: "unavailable", message: "No pudimos cargar los proyectos del estudio. Recarga antes de invitar a un Viewer." } };

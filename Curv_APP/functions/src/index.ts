@@ -14,3 +14,5 @@ export { getTeamSeatUsage } from "./tenant/invitationHandlers.js";
 export { previewTeamInvitation } from "./tenant/invitationHandlers.js";
 
 export { adminListClients, adminGrantSupportAccess, adminRevokeSupportAccess } from "./admin/supportAccess.js";
+
+export { purgeDeletedProjectsDaily } from "./projects/purgeDeletedProjects.js";
