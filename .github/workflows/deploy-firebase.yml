@@ -1,0 +1,50 @@
+name: Deploy Firebase
+on:
+  push:
+    branches: [master]
+    paths:
+      - Curv_APP/firebase.json
+      - Curv_APP/.firebaserc
+      - Curv_APP/firestore.rules
+      - Curv_APP/firestore.indexes.json
+      - Curv_APP/storage.rules
+      - Curv_APP/functions/**
+  workflow_dispatch:
+# Never run two deploys against production at once; a newer merge waits for the running one.
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: Curv_APP
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            Curv_APP/package-lock.json
+            Curv_APP/functions/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm ci
+        working-directory: Curv_APP/functions
+      # Re-validate what is about to ship: a direct push to master skips the PR checks.
+      - run: npm test
+        working-directory: Curv_APP/functions
+      - run: npm run test:rules
+      - run: npm run test:invitations
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
+      # Project comes from .firebaserc. No --force: a deploy that would delete a live function fails
+      # instead of removing it silently.
+      - run: npx firebase deploy --only firestore,storage,functions --non-interactive
