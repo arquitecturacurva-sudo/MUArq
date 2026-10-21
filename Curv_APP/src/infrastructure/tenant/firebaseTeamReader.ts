@@ -37,6 +37,8 @@ export function createFirebaseTeamReader(db: Firestore, uid: string, activeTenan
     const members: TenantMembership[] = [];
     for (const item of documents.docs) {
       const raw = item.data();
+      // Super-admin support access is internal to CURV and holds no seat; keep it off the team list.
+      if (raw.support === true) continue;
       const member = mapTenantMembership(id, item.id, tenant.value.ownerUid, {
         ...raw, status: raw.status === undefined ? "active" : raw.status,
         // Match server rules: only canonical nested project assignments grant access.

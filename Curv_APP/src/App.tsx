@@ -25,6 +25,9 @@ import {
 } from "./features/demos/demoService";
 import type { DemoProjectDefinition, DemoProjectId, DemoTourStep } from "./features/demos/types";
 import AppHeader from "./features/layout/AppHeader";
+import AppLoadingView from "./features/layout/AppLoadingView";
+import AdminPanelView from "./features/admin/AdminPanelView";
+import { isSuperAdmin } from "./infrastructure/admin/firebaseSupportAccess";
 import AuthView from "./features/layout/AuthView";
 import TenantUnavailable from "./features/layout/TenantUnavailable";
 import LandingView from "./features/layout/LandingView";
@@ -131,7 +134,7 @@ import { ensureUserHasClient, getClientById, type ClientPlan } from "./lib/tenan
 const DELETED_PROJECT_IDS_KEY = "app.deletedProjectIds.v1";
 const ConnectedTeamAccess = lazy(() => import("./composition/ConnectedTeamAccess"));
 
-type AppRoute = "landing" | "auth" | "home" | "workspace" | "team-access" | "branding" | "demos" | "demo";
+type AppRoute = "landing" | "auth" | "home" | "workspace" | "team-access" | "branding" | "demos" | "demo" | "admin";
 const LANDING_DEMO_IDS: Record<string, DemoProjectId> = {
   residencial: "casa-ladera",
   "interiorismo-comercial": "cafe-nerea",
@@ -153,6 +156,7 @@ export default function App() {
   const [tenantState,setTenantState]=useState<"idle"|"provisioning"|"ready"|"error">("idle");
   const [tenantError,setTenantError]=useState("");
   const [authIntent,setAuthIntent]=useState(false);
+  const [superAdmin,setSuperAdmin]=useState(false);
   const [activeClientId,setActiveClientId]=useState("");
   const [tenantRetryTick,setTenantRetryTick]=useState(0);
   const [documentTheme,setDocumentTheme]=useState<DocumentTheme | null>(null);
@@ -165,7 +169,7 @@ export default function App() {
   const [route,setRoute]=usePersistentState<AppRoute>(
     "app.route",
     "landing",
-    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "team-access" || value === "branding" || value === "demos" || value === "demo"
+    (value): value is AppRoute => value === "landing" || value === "auth" || value === "home" || value === "workspace" || value === "team-access" || value === "branding" || value === "demos" || value === "demo" || value === "admin"
   );
   const [,setLandingSeen]=usePersistentState("app.landingSeen", false, (value): value is boolean => typeof value === "boolean");
   const [onboardingSeen,setOnboardingSeen]=usePersistentState("app.onboardingSeen",false);
@@ -493,6 +497,17 @@ export default function App() {
     }
     if (route === "auth") setRoute("home");
   }, [authIntent, authReady, authUser, route, setRoute]);
+
+  useEffect(() => {
+    let active = true;
+    if (!authUser) { setSuperAdmin(false); return; }
+    void isSuperAdmin(authUser).then((value) => { if (active) setSuperAdmin(value); });
+    return () => { active = false; };
+  }, [authUser]);
+
+  useEffect(() => {
+    if (route === "admin" && authReady && authUser && !superAdmin) setRoute("home");
+  }, [authReady, authUser, route, setRoute, superAdmin]);
 
   useEffect(() => {
     if (!enabledTrackOrder.includes(workspaceTrack)) setWorkspaceTrack(enabledTrackOrder[0] || "diseno");
@@ -2156,18 +2171,12 @@ export default function App() {
   const current=activeTrackTools.find(t=>t.id===active) || activeTrackTools[0];
   const nChecked=tools.filter(t=>t.checked).length;
 
-  if (!authReady) {
+  // authReady only flips after provisioning settles, so a signed-in user is already past the
+  // session check while it is still false.
+  if (!authReady || (authUser && tenantState === "provisioning")) {
     return (
-      <div style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
-        <div style={{fontSize: 13, color: UI.textMuted}}>Cargando sesión...</div>
-      </div>
-    );
-  }
-
-  if (authUser && tenantState === "provisioning") {
-    return (
-      <div style={{...themeVars, minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Inter','Helvetica Neue',sans-serif"}}>
-        <div style={{fontSize: 13, color: UI.textMuted}}>Preparando tu espacio de trabajo...</div>
+      <div style={themeVars}>
+        <AppLoadingView stage={authUser && tenantState === "provisioning" ? "workspace" : "session"} />
       </div>
     );
   }
@@ -2241,6 +2250,16 @@ export default function App() {
         }}
       />
     );
+  }
+
+  if (route === "admin" && superAdmin) {
+    return <div style={{...themeVars, minHeight: "100vh", background: UI.bg, color: DK}}>
+      <AppHeader title="Administración" active="admin"
+        onBack={() => setRoute("home")} backLabel="Dashboard" onOpenDashboard={() => setRoute("home")}
+        onOpenDemos={() => setRoute("demos")} onOpenTeamAccess={() => setRoute("team-access")}
+        onOpenBranding={() => setRoute("branding")} onOpenAdmin={() => setRoute("admin")} onLogout={handleLogout} />
+      <AdminPanelView activeClientId={activeClientId} />
+    </div>;
   }
 
   if (route === "team-access") {
@@ -2352,6 +2371,7 @@ export default function App() {
         }}
         openDemo={openDemo}
         openTeamAccess={() => setRoute("team-access")}
+        openAdminPanel={superAdmin ? () => setRoute("admin") : undefined}
         openBrandSettings={() => {
           trackLocalProductEvent({name: "brand_settings_opened", payload: {source: "dashboard"}});
           setRoute("branding");

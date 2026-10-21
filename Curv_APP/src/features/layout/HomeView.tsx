@@ -84,6 +84,8 @@ type HomeViewProps = {
   openDemo: (definition: DemoProjectDefinition) => void;
   openTeamAccess: () => void;
   openBrandSettings: () => void;
+  /** Only passed for the super-admin account. */
+  openAdminPanel?: () => void;
   openProject: (projectId: string) => void;
   handleEditProject: (project: ProjectRecord) => void;
   toggleArchiveProject: (project: ProjectRecord) => void;
@@ -154,6 +156,7 @@ export default function HomeView({
   openDemo,
   openTeamAccess,
   openBrandSettings,
+  openAdminPanel,
   openProject,
   handleEditProject,
   toggleArchiveProject,
@@ -193,6 +196,7 @@ export default function HomeView({
         onOpenDemos={openDemoHub}
         onOpenTeamAccess={openTeamAccess}
         onOpenBranding={openBrandSettings}
+        onOpenAdmin={openAdminPanel}
         onLogout={onLogout}
       >
         <NewProjectDialog
