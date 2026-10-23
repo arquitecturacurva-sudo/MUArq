@@ -139,8 +139,9 @@ export function ConstructionScheduleView({toolId, onPrint, state, services}: {to
         <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:7}}>Ruta crítica estimada</div>
         <div style={{fontSize:9,color:"#5E6873",lineHeight:1.6,marginBottom:12,whiteSpace:"pre-line"}}>{plan.criticalIds.length ? plan.criticalIds.map((id) => { const row = plan.rowsById.get(id); return row ? `• ${row.codPartida || `#${row.id}`} · ${row.descripcion || "Partida"} (${fDateShort(row.inicioPlan)} → ${fDateShort(row.finPlan)})` : ""; }).filter(Boolean).join("\n") : "No hay ruta crítica calculable todavía."}</div>
         {obs && <div style={{borderTop:"1px solid #E5DDD0",paddingTop:8,fontSize:9,color:"#7A7A7A",marginBottom:8}}><b>Observaciones:</b> {obs}</div>}
-        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}><span style={{fontSize:9,color:"#8A93A0"}}>Responsable: {resp || "—"}</span><Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn></div>
+        <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:10}}><span style={{fontSize:9,color:"#8A93A0"}}>Responsable: {resp || "—"}</span></div>
       </div>
+      <div className="workspace-actions" style={{display:"flex",justifyContent:"flex-end",marginTop:10}}><Btn onClick={onPrint}>🖨 Imprimir / Guardar PDF</Btn></div>
     </div>
   );
 }

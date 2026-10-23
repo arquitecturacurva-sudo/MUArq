@@ -3,6 +3,7 @@ import { Btn } from "./features/ui/form-primitives";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import { clonePrintableDocument, getProposalPageSize } from "./features/printing/documents";
 import type { User } from "firebase/auth";
 import type { CommercialStatus, PersistedToolState, ProjectBaseMetadata, ProjectCurrency, ProjectRecord, TrackId, TrackState } from "./features/runtime/runtime";
 import { BrandSettingsView } from "./features/branding/BrandSettingsView";
@@ -2060,10 +2061,10 @@ export default function App() {
       return;
     }
     if (!(el instanceof HTMLElement) || !exportTheme) {
-      openPrint(el.outerHTML);
+      openPrint(el instanceof HTMLElement ? clonePrintableDocument(el).outerHTML : el.outerHTML);
       return;
     }
-    const branded = cloneDocumentWithBranding(el, exportTheme);
+    const branded = cloneDocumentWithBranding(clonePrintableDocument(el), exportTheme);
     openPrint(`<style>${getDocumentBrandingCss(exportTheme)}</style>${branded.outerHTML}`);
   };
 
@@ -2124,7 +2125,8 @@ export default function App() {
     docNodes.forEach((node) => {
       const section = document.createElement("section");
       section.className = "__export_section__";
-      section.appendChild(exportTheme ? cloneDocumentWithBranding(node, exportTheme) : node.cloneNode(true));
+      const printable = clonePrintableDocument(node);
+      section.appendChild(exportTheme ? cloneDocumentWithBranding(printable, exportTheme) : printable);
       exportRoot.appendChild(section);
     });
     document.body.appendChild(exportRoot);
@@ -2141,9 +2143,9 @@ export default function App() {
         windowWidth: exportRoot.scrollWidth,
         windowHeight: exportRoot.scrollHeight,
       });
-      const pageWidthMm = 210;
-      const pageHeightMm = Math.max(10, (canvas.height * pageWidthMm) / canvas.width);
+      const { pageWidth: pageWidthMm, pageHeight: pageHeightMm, orientation } = getProposalPageSize(canvas.width, canvas.height);
       const pdf = new jsPDF({
+        orientation,
         unit: "mm",
         format: [pageWidthMm, pageHeightMm],
       });
