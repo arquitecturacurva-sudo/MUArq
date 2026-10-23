@@ -114,6 +114,15 @@ export const getDocumentBrandingCss = (theme: DocumentTheme) => `
       color: ${theme.mutedText} !important;
     }
   ` : ""}
+  /* Explicit document bands survive DOM style serialization (hex becomes rgb,
+     and spaces are inserted). Keep their labels readable for every studio accent. */
+  [data-doc-id] [data-document-band="dark"] {
+    background: #1A1A1A !important;
+    color: #FFFFFF !important;
+  }
+  [data-doc-id] [data-document-band="dark"] * {
+    color: #FFFFFF !important;
+  }
 `;
 
 export const DocumentBrandThemeProvider = ({
