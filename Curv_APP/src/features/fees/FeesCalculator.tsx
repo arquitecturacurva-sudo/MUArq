@@ -136,7 +136,7 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
                   <td style={{padding:"7px 8px",fontSize:9,color:"#AAA"}}>{n}</td>
                 </tr>
               ))}
-              <tr style={{background:DK,color:"#fff"}}>
+              <tr data-document-band="dark" style={{background:DK,color:"#fff"}}>
                 <td style={{padding:"9px 8px",fontWeight:700,fontSize:11}}>TOTAL</td>
                 <td style={{padding:"9px 8px",fontWeight:800,fontSize:15,textAlign:"right",color:G}}>{fmt(c.tot)}</td>
                 <td style={{padding:"9px 8px",fontSize:9,color:"#666"}}>Redond. a S/ {rd}</td>

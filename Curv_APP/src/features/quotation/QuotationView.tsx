@@ -549,7 +549,7 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
             <div style={{fontSize:9,fontWeight:700,color:G,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:7}}>Detalle por partidas</div>
             <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",marginBottom:14}}>
               <thead>
-                <tr style={{background:"#1A1A1A"}}>
+                <tr data-document-band="dark" style={{background:"#1A1A1A"}}>
                   {["COD. PARTIDA","DESCRIPCIÓN","UND","CANT","PRECIO UNITARIO","PARCIAL","SUB-TOTAL"].map((h, i) => (
                     <th key={h} style={{padding:"6px 8px",fontSize:9,color:G,textAlign:i>=3?"right":"left",borderBottom:"1px solid #222"}}>{h}</th>
                   ))}

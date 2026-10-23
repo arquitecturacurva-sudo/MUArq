@@ -11,7 +11,7 @@ import { Btn, Fld, Inp, Sel, InlineEmptyStateCard } from "../ui/form-primitives"
 function Sec({n,title,children}: {n: string; title: string; children?: React.ReactNode}) {
   return (
     <div style={{marginBottom:18}}>
-      <div style={{background:"var(--ui-text, #1A1A1A)",borderRadius:"4px 4px 0 0",padding:"6px 14px",display:"flex",alignItems:"center",gap:10}}>
+      <div data-document-band="dark" style={{background:"var(--ui-text, #1A1A1A)",borderRadius:"4px 4px 0 0",padding:"6px 14px",display:"flex",alignItems:"center",gap:10}}>
         <span style={{color:"var(--ui-accent, #C9A96E)",fontWeight:800,fontSize:10}}>{n}.</span>
         <span style={{color:"#fff",fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:"1px"}}>{title}</span>
       </div>
