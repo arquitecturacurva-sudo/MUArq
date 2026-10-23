@@ -23,10 +23,18 @@ export function openPrint(html: string) {
   portal.innerHTML = `
     <style>
       @media print {
+        @page { size: A4; margin: 10mm; }
+        html, body { height: auto !important; overflow: visible !important; margin: 0 !important; }
         body > *:not(#__print_portal__) { display: none !important; }
+        #__print_portal__, #__print_portal__ * { visibility: visible !important; }
         #__print_portal__ { position: static !important; overflow: visible !important;
-          height: auto !important; padding: 0 !important; background: white !important; }
-        #__print_portal__ .__pbar__ { display: none !important; }
+          width: 100% !important; height: auto !important; padding: 0 !important; background: white !important; }
+        #__print_portal__ .__pbar__, #__print_portal__ button,
+        #__print_portal__ [role="button"], #__print_portal__ [data-no-print] { display: none !important; }
+        #__print_portal__ [data-doc-id] { width: 100% !important; min-width: 0 !important;
+          max-width: none !important; overflow: visible !important; box-shadow: none !important; }
+        #__print_portal__ table { width: 100%; }
+        #__print_portal__ tr, #__print_portal__ img { break-inside: avoid; }
         .pgbrk { page-break-after: always; break-after: page; height: 0; overflow: hidden; }
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         svg { overflow: visible; }
