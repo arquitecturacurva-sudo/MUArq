@@ -1,201 +1,219 @@
-# Curv App — Project Status
+# CURV APP — Project Status
 
-**Actualizado:** 12 de octubre de 2026 (America/Lima).
-**Master verificado en GitHub:** `94444a0398a51c1459f4fd79f83276533a42c77c`.
-**Producto:** Curv App, workspace comercial y tecnico para estudios de arquitectura, interiorismo y construccion.
-**Estado:** pre-Beta avanzada; Fase 4 pendiente de cierre de aceptacion y publicacion.
-**Preparacion estimada vigente:** **7,2/10**. **Captacion:** **5/10 estudios fundadores (50%)**.
+**Actualizado:** 19 de octubre de 2026 (America/Lima).
 
-## 1. Resumen vigente
+**Base técnica verificada:** `master` en `c1596135a0dbe92a375e72e3235c4e3ae622a570` (PR #37, integrado a las 19:15 de Lima).
 
-Curv dispone de nueve herramientas, ficha compartida, documentos con identidad del estudio, demos, autenticacion, sincronizacion de proyectos y un flujo de invitaciones con acceso Viewer. Las herramientas ya estan separadas del antiguo monolito. CI, pruebas unitarias, reglas y pruebas de invitaciones existen en master.
+**Producto:** workspace comercial y técnico para estudios de arquitectura, interiorismo y construcción.
 
-El product owner confirmo el 10 de octubre la validacion de los recorridos de las nueve herramientas y del aislamiento de permisos. La sincronizacion con dos sesiones sigue pendiente, con cierre previsto para esta semana, del 12 al 18 de octubre. Tambien quedan la preparacion comercial del cobro y los ajustes de marca/personalizacion antes de publicar la version validada.
+**Estado:** pre-Beta avanzada; sincronización aceptada e identidad integrada. Beta cerrada pendiente de cobro y aceptación final del release.
 
-Este documento sustituye las conclusiones antiguas que describian ausencia de pruebas, CI, invitaciones o separacion de herramientas. Fusionar codigo no acredita por si solo una version probada en produccion.
+**Preparación estimada:** **7,8/10** (antes: 7,2/10). **Captación:** **5/10 estudios fundadores, 50%; faltan 5**.
 
-## 2. Master y procedencia
+## 1. Resumen ejecutivo
 
-| Referencia | Estado comprobado |
+CURV APP dispone de nueve herramientas, ficha compartida, documentos con identidad del estudio, demos, autenticación, sincronización de datos y equipo con invitaciones y acceso Viewer. Las herramientas están separadas del antiguo monolito y existe validación automatizada de frontend, Functions, reglas e invitaciones.
+
+Desde el corte del 12 de octubre se integraron el centrado de las herramientas, la resolución de conflictos con la versión local, la recuperación del guardado después de Usar nube y la identidad CURV APP en interfaz y homepage. La pantalla Identidad del estudio ya permite configurar logo, nombre comercial, datos, colores y tipografías con vista previa. Logo y nombre se muestran juntos en las cabeceras.
+
+El product owner aceptó los recorridos de herramientas y los permisos el 10 de octubre; confirmó el funcionamiento normal de la checklist HTML de sincronización el 19 de octubre y aprobó la pantalla Identidad y la corrección de logo/nombre antes de integrar el PR #37.
+
+**Cierre de las cinco puertas:** tres validadas por el product owner, una parcial (preparación/publicación; marca e identidad terminadas) y una pendiente (cobro). La cuenta de puertas no equivale a un porcentaje de producto completado. La captación de cinco estudios adicionales es una meta comercial, no un requisito técnico para comenzar el piloto con los cinco actuales.
+
+**Siguiente trabajo:** documento real hasta PDF, recorrido pago → estudio → acceso, comprobación de producción y seguimiento del piloto. No queda pendiente diseñar otra vez la marca ni repetir toda la aceptación de sincronización sin una incidencia nueva.
+
+## 2. Fuente técnica e integraciones
+
+| Referencia | Estado verificado |
 |---|---|
-| Master remoto | `94444a0398a51c1459f4fd79f83276533a42c77c`, consultado el 12 de octubre |
-| Ultimo cambio | PR #32: actualizacion documental del estado de Fase 4 |
-| Fecha de ese commit en Lima | 11 de octubre de 2026, 19:21 |
-| Master anterior | `0b229ff0e769e0406aa6a611c0655defa9b88357` |
-| Diferencia respecto al anterior | Un commit; solo cambia `Curv_APP/docs/PROJECT_STATUS.md` |
-| Integracion funcional previa | PR #29: integracion Fase 4; PR #30: sistema visual; PR #31: dashboard centrado |
-| Produccion | No se verifico en este pase que el despliegue live ejecute este SHA |
-| Ejecucion de pruebas en este pase | Revision documental y lectura de fuentes de master; no nueva ejecucion de suites ni QA autenticada |
+| Master revisado | `c1596135a0dbe92a375e72e3235c4e3ae622a570` |
+| PR #34 | Centrado de herramientas dentro del espacio disponible; sidebar conserva su funcionamiento |
+| PR #35 · `82ccf8b` | Usar mi versión, carga completa de herramientas al resolver conflictos y continuidad de guardado tras Usar nube |
+| PR #36 · `234bc4e` | Marca CURV APP, paleta, componentes, homepage e iconos; retirada de placeholders de Curva Arquitectura |
+| PR #37 · `c159613` | Pantalla Identidad del estudio y logo junto al nombre comercial |
+| CI del último PR | `validate` aprobado en la revisión `c27cb57eeda9236feb0f29ef737d270e06a95c54`; run `39344290499` |
+| Preview del último PR | Despliegue Vercel aprobado; no equivale a comprobación funcional de producción |
+| Producción | Falta documentar que el live ejecuta la revisión integrada y supera la comprobación final |
 
-La copia local tiene codigo anterior a master y sus comandos Git no pueden resolver el directorio del repositorio en esta sesion. Por eso la fuente tecnica de esta revision es el SHA remoto fijo, no los archivos locales de aplicacion. Solo se actualiza documentacion; no se resetea ni reemplaza codigo local.
+Esta revisión parte de un checkout limpio del master remoto en el clon de trabajo existente. Se actualiza documentación; no se altera código de aplicación ni datos de usuarios. La copia principal local se mantiene como espejo documental, sin sustituir su código antiguo.
 
-Fuentes: [master verificado](https://github.com/arquitecturacurva-sudo/MUArq/commit/94444a0398a51c1459f4fd79f83276533a42c77c), [comparacion con el master anterior](https://github.com/arquitecturacurva-sudo/MUArq/compare/0b229ff0e769e0406aa6a611c0655defa9b88357...94444a0398a51c1459f4fd79f83276533a42c77c).
+Fuentes: [master revisado](https://github.com/arquitecturacurva-sudo/MUArq/commit/c1596135a0dbe92a375e72e3235c4e3ae622a570), [PR #35](https://github.com/arquitecturacurva-sudo/MUArq/pull/35), [PR #36](https://github.com/arquitecturacurva-sudo/MUArq/pull/36), [PR #37](https://github.com/arquitecturacurva-sudo/MUArq/pull/37), [CI aprobado](https://github.com/arquitecturacurva-sudo/MUArq/actions/runs/39344290499).
 
-## 3. Evaluacion de preparacion
+## 3. Evaluación de preparación
 
-Se mantiene la evaluacion solicitada para la primera semana de octubre, elaborada el 10 de octubre con avances documentados hasta el dia 9 y confirmaciones del product owner del dia 10. La revision del 12 confirma que el nuevo master solo incorpora documentacion: no justifica subir las notas.
+Las notas son estimaciones de preparación apoyadas en código, pruebas y aceptación comunicada; no porcentajes de funcionalidades terminadas. Se conserva la media simple de seis dimensiones: **(8 + 9 + 8 + 7 + 7 + 8) / 6 = 7,83**, redondeada a **7,8/10**. No representa el cierre automático de Beta.
 
-Son estimaciones razonadas de preparacion, no porcentajes de funcionalidades completadas. Media simple de seis dimensiones: 43/6, redondeada a **7,2/10**. El indicador no sustituye las puertas criticas de salida. El 5,3/10 de agosto es historico y no documentaba una formula de agregacion comparable.
-
-| Dimension | Agosto, historico | Octubre, vigente | Fundamento / limite |
+| Dimensión | Corte del 10 de octubre | Vigente al 19 de octubre | Fundamento y límite |
 |---|---:|---:|---|
-| Cobertura funcional | 8/10 | **8/10** | Nueve herramientas y recorridos validados por el product owner. Tramitologia sigue siendo futura. |
-| Coherencia de experiencia | 6/10 | **8/10** | Sistema visual alineado y dashboard centrado. Branding e Identidad pendientes. |
-| Continuidad de datos | 5/10 | **6/10** | Snapshots, revisiones, conflictos, reintentos y listener de proyectos implementados. Matriz de dos sesiones pendiente. |
-| Seguridad y permisos | 6/10 | **7/10** | Permisos validados por el product owner y cobertura de reglas/invitaciones. Asociacion del pago al estudio pendiente de confirmacion. |
-| Publicacion y calidad | 3/10 | **6/10** | CI y suites documentadas; falta cierre del artefacto, tiempos de navegador y comprobacion final en produccion. |
-| Capacidad de evolucion | 4/10 | **8/10** | Nueve herramientas separadas; runtime es una fachada. App sigue concentrando orquestacion y subsiste compatibilidad legacy. |
-| **Preparacion global** | **5,3/10** | **7,2/10** | **Pre-Beta avanzada, condicionada al cierre de pendientes.** |
+| Cobertura funcional | 8/10 | **8/10** | Nueve herramientas y recorridos aceptados. Falta comprobar el documento real con la identidad final; Tramitología es futura. |
+| Coherencia de experiencia | 8/10 | **9/10** | Marca propia, homepage, iconos, controles, herramientas centradas e Identidad integradas y aprobadas. Validación final del PDF pendiente. |
+| Continuidad de datos | 6/10 | **8/10** | Checklist aceptada por el product owner; tres opciones de conflicto y reanudación del guardado implementadas. Falta adjuntar el detalle del entorno probado; no se afirma reparación individual de todos los proyectos antiguos. |
+| Seguridad y permisos | 7/10 | **7/10** | Aceptación de permisos y suites de reglas/invitaciones aprobadas. La asociación efectiva del cobro al estudio sigue pendiente de evidencia. |
+| Publicación y calidad | 6/10 | **7/10** | CI del último PR aprobado, 482 pruebas frontend y suites backend/emulador; preview disponible. Producción, PDF final, tiempos y rollback aún por registrar. |
+| Capacidad de evolución | 8/10 | **8/10** | Herramientas separadas y componentes compartidos; App conserva mucha orquestación y compatibilidad legacy. |
+| **Preparación global** | **7,2/10** | **7,8/10** | **Mejora sustentada en sincronización, identidad y evidencia de calidad.** |
+
+La evaluación de agosto (5,3/10) y el corte de la primera semana de octubre se conservan como históricos. Se sustituye la nota vigente porque hay avances funcionales y aceptación posteriores, no por el mero paso del tiempo.
 
 ## 4. Puertas de salida a Beta cerrada
 
-| Puerta | Estado al 12 de octubre | Trabajo restante |
+| Puerta | Estado vigente | Qué falta para cerrar o conservar evidencia |
 |---|---|---|
-| 1. Recorridos de nueve herramientas | **Validada por el product owner el 10 de octubre** | Adjuntar version y evidencia al registro de aceptacion. |
-| 2. Sincronizacion, conflictos y recuperacion | **Pendiente; prevista del 12 al 18 de octubre** | Probar dos sesiones, recarga, cambios concurrentes, ambas resoluciones de conflicto, offline y eliminacion/recuperacion. |
-| 3. Permisos y aislamiento | **Validada por el product owner el 10 de octubre** | Adjuntar version, perfiles y evidencia de backend al cierre. |
-| 4. Oferta y cobro | **Precios mensuales definidos; recorrido comercial sin confirmacion de cierre** | Alinear oferta y planes del proveedor; verificar pago → estudio → acceso, webhook, cancelacion y reintentos. |
-| 5. Preparacion y publicacion | **Pendiente** | Retirar branding de Curva Arquitectura del Dashboard, retocar Identidad, medir rendimiento, publicar el artefacto probado y comprobar produccion/recuperacion. |
+| 1. Recorridos de nueve herramientas | **Validada por el product owner · 10/10** | Asociar la aceptación a versión/entorno y conservar evidencia. No reabrir sin una regresión. |
+| 2. Sincronización, conflictos y recuperación | **Validada por el product owner · 19/10** | Adjuntar URL/ID del despliegue y resultados exportados de la checklist. La aceptación comunicada ya está registrada. |
+| 3. Permisos y aislamiento | **Validada por el product owner · 10/10** | Completar trazabilidad de perfiles/versión. CI de reglas e invitaciones aprobado el 19/10. |
+| 4. Oferta y cobro | **Pendiente de validación integral** | Precios mensuales aprobados. Cotejar planes del proveedor y probar pago → estudio correcto → acceso, webhook, cancelación y reintentos. |
+| 5. Preparación y publicación | **Parcial; marca e Identidad completadas e integradas** | Verificar identidad guardada tras recarga, propuesta real/PDF, revisión final en producción, tiempos, versión de release y referencia de rollback. |
 
-Las matrices versionadas aun contienen casillas de aceptacion desplegada pendientes. Se conserva la distincion entre validacion comunicada por el product owner y evidencia incorporada al repositorio; no se atribuye una nueva ejecucion de QA a esta actualizacion. Cualquier fallo critico de perdida de datos, acceso indebido o cobro incorrecto impide el cierre.
+Un fallo crítico de pérdida de datos, acceso indebido o cobro incorrecto impide declarar Beta. Las casillas antiguas de las matrices son registros históricos; la aceptación más reciente del product owner prevalece como declaración funcional, sin inventar resultados individuales ni nueva ejecución independiente.
 
-Fuentes de aceptacion:
-- [Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md).
-- [Curv_APP/docs/qa/2026-07-26-firestore-snapshot-sync.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-07-26-firestore-snapshot-sync.md).
-- [Curv_APP/docs/qa/2026-10-07-phase-4-access-evidence.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-access-evidence.md).
+Referencias: [aceptación de sincronización](qa/2026-10-19-sync-acceptance.md), [checklist original de sincronización](qa/sincronizacion-beta-checklist.html), [aceptación de integración y herramientas](qa/2026-10-07-phase-4-integration-preview.md), [evidencia de acceso](qa/2026-10-07-phase-4-access-evidence.md).
 
-## 5. Producto disponible y limites
+## 5. Producto disponible y alcance de Beta
 
 | Familia | Herramientas actuales |
 |---|---|
-| Diseño | Honorarios, matriz de entregables, exclusiones y supuestos, cronograma por etapas |
-| Construccion | Cotizacion de obra, cronograma de obra, programa arquitectonico |
-| Seguimiento | Valorizacion de avance, orden de cambio |
-| PRO futuro | Tramitologia: notificaciones a partir de un calendario; no implementada ni exigida para la Beta BASE |
+| Diseño | Calculadora de honorarios, matriz de entregables, exclusiones y supuestos, cronograma por etapas |
+| Construcción | Cotización de obra, cronograma de obra, programa arquitectónico |
+| Seguimiento | Valorización de avance, orden de cambio |
+| PRO futuro | Tramitología: notificaciones a partir de un calendario; no implementada ni necesaria para la Beta BASE |
 
-Capacidades transversales: proyectos con ficha compartida, monedas y documentos, importacion PDF/OCR con revision, demos, identidad del estudio y vistas de lectura para Viewer. El programa arquitectonico distingue resumen para cliente y detalle interno. La valorizacion muestra advertencias y distingue datos declarados de certificacion.
+Capacidades transversales: ficha de proyecto compartida, monedas, documentos, importación PDF/OCR con revisión, demos, identidad del estudio y vistas de lectura para Viewer. El programa arquitectónico distingue resumen para cliente y detalle interno. La valorización distingue datos declarados de certificación.
 
-La ficha compartida no implica propagacion automatica de todos los calculos. Exportar una valorizacion no acredita cobro. Facturacion SUNAT, ERP, BIM, firma contractual y nuevos informes/actas no se presentan como capacidades probadas.
+Límites: la ficha compartida no propaga automáticamente todos los cálculos; exportar una valorización no acredita cobro. No se presentan SUNAT, ERP, BIM, firma contractual, nuevos informes o actas como capacidades probadas. No ampliar estas familias antes de cerrar las puertas actuales.
 
-## 6. Arquitectura y deuda actual
+## 6. Arquitectura y deuda técnica
 
 | Capa | Responsabilidad vigente |
 |---|---|
-| `src/domain/` | Reglas, tipos y calculos puros de proyecto, herramientas y acceso |
-| `src/application/` | Contratos y casos de uso; estado y operaciones de herramientas |
+| `src/domain/` | Reglas, tipos y cálculos puros de proyecto, herramientas y acceso |
+| `src/application/` | Contratos, casos de uso y operaciones de herramientas |
 | `src/infrastructure/` | Adaptadores de persistencia y servicios externos |
-| `src/composition/` | Conexion de vistas, contratos y adaptadores; registro de herramientas |
-| `src/features/` | Experiencia, herramientas, UI compartida, documentos, branding y equipo |
-| `src/features/runtime/runtime.tsx` | Fachada temporal de compatibilidad; **112 lineas fisicas** en el SHA revisado |
-| `src/App.tsx` | Orquestacion de sesion, proyectos, sincronizacion, rutas y exportacion; **2.380 lineas fisicas** |
+| `src/composition/` | Conexión de vistas, contratos y adaptadores; registro de herramientas |
+| `src/features/` | Herramientas, UI, documentos, branding y equipo |
+| `src/features/runtime/runtime.tsx` | Fachada temporal de compatibilidad: **112 líneas físicas** |
+| `src/App.tsx` | Sesión, proyectos, sincronización, rutas y exportación: **2.487 líneas físicas** |
 | `api/billing/` | Checkout y webhook con Firebase Admin y Mercado Pago |
-| `functions/` | Aprovisionamiento canonico, invitaciones, sesion, plazas e identidad |
-| `.github/workflows/` | Validacion de Team Access y publicacion desktop |
+| `functions/` | Aprovisionamiento, invitaciones, sesión, plazas e identidad |
+| `.github/workflows/` | Validación de PR y distribución desktop |
 
-Las cifras de lineas se obtienen del texto del SHA verificado. Sustituyen el recuento anterior de 99 lineas para runtime; no indican por si solas un cambio funcional.
+Recuentos del SHA de master indicado arriba. App sigue siendo el principal foco de orquestación; no se atribuye a la reducción de líneas una mejora funcional por sí sola. Se preservan claves legacy y ProjectSnapshot, con conflictos por revisión y snapshots completos, sin fusión automática de campos.
 
-Se preservan claves legacy de localStorage y el contrato ProjectSnapshot. Persisten snapshots de documento completo y conflictos por revision, sin fusion de campos. El arranque hacia landing sigue presente en App. Mantener la fachada y reducir gradualmente la orquestacion de App son deuda posterior al cierre de Beta.
+Stack de las dependencias revisadas: React 19, TypeScript 5.9, Vite 8, Tailwind 4, Firebase Auth/Firestore/Storage/Functions, Mercado Pago, Electron 37, jsPDF/html2canvas y pdfjs/Tesseract. Functions declara Node 20 y CI Node 24: queda revisar compatibilidad y actualización del runtime antes del cierre operativo correspondiente. No se revalidó desktop ni standalone en esta revisión.
 
-Stack revisado: React 19, TypeScript 5.9, Vite 8, Tailwind 4, Firebase Auth/Firestore/Storage/Functions, Mercado Pago, Electron 37, jsPDF/html2canvas y pdfjs/Tesseract. Functions declara Node 20, mientras CI usa Node 24: revisar la actualizacion y compatibilidad del runtime de Functions. No se ha revalidado en este pase la distribucion desktop ni standalone.
-
-Fuentes: [Curv_APP/src/features/runtime/runtime.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/features/runtime/runtime.tsx), [Curv_APP/src/App.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/App.tsx), [Curv_APP/package.json](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/package.json), [Curv_APP/functions/package.json](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/functions/package.json).
+Fuentes del código: rutas anteriores dentro del [master fijado](https://github.com/arquitecturacurva-sudo/MUArq/tree/c1596135a0dbe92a375e72e3235c4e3ae622a570/Curv_APP).
 
 ## 7. Datos, proyectos y equipos
 
-La sincronizacion incluye contenido de herramientas, revisiones, tombstones, reintentos y exclusion de escritores. La correccion de consistencia Live/Preview ya incorpora lectura confirmada por servidor y listener de cambios comprometidos; la afirmacion antigua de que no existe listener queda retirada. Los proyectos limpios ausentes en nube no deben recrearse; las copias con trabajo pendiente deben conservarse como conflicto recuperable.
+La sincronización incluye contenido de herramientas, revisiones, listener de cambios confirmados, reintentos y tombstones. Los proyectos limpios ausentes en nube no deben recrearse; las copias con trabajo pendiente deben conservarse como conflictos recuperables.
 
-Equipo y acceso ya incluye invitacion por enlace, renovacion/cancelacion, aceptacion con correo verificado, comprobacion de plazas y Viewer limitado a proyectos asignados. Los enlaces vencen en siete dias y se almacenan como hash. No hay envio automatico de correo. Cambio de rol, revocacion de membresias y transferencia de propietario siguen fuera del flujo operativo documentado; no confundirlos con cancelar una invitacion.
+Opciones vigentes:
 
-Hay evidencia historica del 23 de septiembre de Functions presentes, rechazo anonimo y reglas/indices comprobados. No se convierte esa comprobacion historica en una nueva verificacion del 12 de octubre.
+- **Usar nube:** carga el contenido completo, actualiza revisión y estado de guardado y permite continuar editando el mismo proyecto.
+- **Usar mi versión:** sustituye la versión remota en el ID original previa confirmación y comprobación transaccional de la revisión. Una nueva revisión remota requiere revisar el conflicto otra vez.
+- **Conservar ambas:** preserva el trabajo local como copia recuperada. Sigue siendo la vía para recuperar contenido cuando el proyecto remoto está eliminado.
 
-Fuentes: [Curv_APP/docs/qa/2026-10-05-project-sync-consistency.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-05-project-sync-consistency.md), [Curv_APP/docs/architecture/team-invitations-release.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/architecture/team-invitations-release.md).
+La carga reconstruye datos migrados a `toolData`; si falla, conserva el trabajo local y aborta la resolución. La confirmación del product owner cierra el punto 2 como aceptación funcional. No demuestra que todos los proyectos antiguos del video hayan sido recuperados individualmente.
 
-## 8. Branding e Identidad
+Equipo incluye invitación por enlace, renovación/cancelación, correo verificado, control de plazas y Viewer limitado a proyectos asignados. Los enlaces vencen en siete días y se almacenan como hash. No hay envío automático de correo. Cambio de rol, revocación de membresías y transferencia de propietario siguen fuera del flujo operativo documentado; cancelar una invitación no sustituye esas acciones.
 
-El encabezado compartido aun renderiza `Brand` en master. La retirada del branding de Curva Arquitectura del Dashboard solicitada por el product owner permanece pendiente.
+Fuentes: [consistencia de proyectos](qa/2026-10-05-project-sync-consistency.md), [resolución de conflictos](qa/2026-10-15-conflict-local-wins.md), [aceptación posterior del punto 2](qa/2026-10-19-sync-acceptance.md), [release de invitaciones](architecture/team-invitations-release.md).
 
-Identidad ya dispone de nombre/datos de contacto, logo, colores, presets de tipografia, vista previa, guardado y controles de contraste. Los retoques concretos de personalizacion aun deben definirse. Validar que su aplicacion a documentos conserva legibilidad y no altera calculos ni contenido.
+## 8. Marca, interfaz e Identidad del estudio
 
-Fuentes: [Curv_APP/src/features/layout/AppHeader.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/features/layout/AppHeader.tsx), [Curv_APP/src/features/branding/BrandSettingsView.tsx](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/features/branding/BrandSettingsView.tsx).
+**Completado e integrado:** sistema CURV APP aprobado en Figma; símbolo y wordmark propios, paleta tinta/marfil/oro, controles, tarjetas y estados compartidos; homepage e iconos de herramientas actualizados, incluida la interfaz simulada del portátil. Retirados placeholders de Curva Arquitectura en marca y documentos afectados.
 
-## 9. Oferta, estudios fundadores y validacion comercial
+La pantalla Identidad organiza datos del estudio, logo y datos fiscales opcionales; permite colores, presets tipográficos, posición del logo, firma Curv y vista previa. El documento muestra **logo y nombre comercial juntos**. Los perfiles guardados se conservan. Se respetan acceso de solo lectura y bloqueo durante operaciones pendientes; la interfaz mantiene la marca de producto independientemente del estudio.
 
-| Oferta aprobada por el product owner | Precio mensual |
+El product owner aprobó la pantalla y la corrección final de la cabecera. La captura compartida muestra el estado Guardado; no constituye por sí sola una prueba de persistencia tras recarga ni de exportación final. **Pendiente acotado:** recargar una sesión real y exportar una propuesta para revisar logo, nombre, colores, contactos y pie de página en el PDF.
+
+El desfase de centrado observado en Edge se resolvió con recarga forzada según el product owner; no se registra como defecto activo de layout. La QA local de identidad usa datos en memoria, no acredita guardado en Firebase.
+
+Fuentes: [Figma aprobado](https://www.figma.com/design/ENuEPed1EBUqR2RclnQoab), [QA de identidad visual](qa/2026-10-19-curv-ui-identity.md), [QA de Identidad del estudio](qa/2026-10-19-studio-identity.md).
+
+## 9. Oferta y estudios fundadores
+
+| Oferta aprobada | Precio mensual |
 |---|---:|
 | Primeros diez estudios fundadores | **S/ 29,00** |
 | BASE regular posterior | **S/ 59,90** |
 | PRO | **S/ 89,90** |
 
-**Captacion vigente:** cinco estudios de diez; faltan cinco. No se comunicaron nuevas altas desde el reporte del 10 de octubre. Duracion del beneficio fundador, plan incluido, impuestos y limites comerciales definitivos no estan especificados.
+**Cinco estudios fundadores conseguidos de diez; faltan cinco.** Se mantiene el último total comunicado, sin asumir nuevas altas, cuentas activas ni pagos confirmados. Duración del beneficio fundador, plan incluido, impuestos y límites comerciales definitivos no están especificados.
 
-Estos precios sustituyen las alternativas anuales antiguas. El LandingView actual se divide en Hero, Problems, Solution y About; ya no corresponde atribuirle la antigua tabla de precios en ese mismo archivo. Falta cotejar el importe y frecuencia realmente configurados en Mercado Pago y alinear toda la oferta.
+PRO incorporará Tramitología, una familia de herramientas de notificaciones a partir de calendario. No se promete como disponible. Confirmar alcance, canal y preferencias antes de construirla. No se cambia la oferta mensual aprobada ni se recuperan los antiguos precios anuales.
 
-Posicionamiento vigente: ayudar al estudio a preparar propuestas, ordenar alcances y documentar valorizaciones y cambios desde una ficha de proyecto. Prioridad comercial: estudios pequenos de arquitectura/interiorismo con propuestas u obra activas. Lima sigue siendo el foco operativo propuesto del piloto.
+El piloto puede comenzar con los cinco estudios actuales: acompañar un proyecto y documento reales por estudio, registrar segundo uso, incidencias, tiempo de soporte y pago cuando se confirme. El objetivo 10/10 mide captación; la recurrencia y conversión requieren datos distintos.
 
-No hay resultados nuevos documentados de pagos, retencion o rentabilidad. Medir por estudio primer documento real, segundo uso, ahorro de tiempo comparable, incidencias, minutos de soporte y pago confirmado. El analisis de mercado del 1 de octubre se conserva en el archivo historico local; sus fuentes externas y periodos no se actualizaron en este pase.
+Posicionamiento: preparar propuestas, ordenar alcances y documentar valorizaciones y cambios desde una ficha de proyecto. Foco inicial: estudios pequeños de arquitectura/interiorismo con propuestas u obra activas; Lima es el foco operativo propuesto. No se reevalúan mercado ni fuentes externas en esta actualización.
 
-## 10. Cobro y escenarios economicos
+## 10. Cobro y escenarios económicos
 
-El checkout exige token y membresia. El proveedor tiene firmas de webhook y controles de eventos duplicados, tardios y de suscripcion incorrecta. En el codigo revisado, la rama sin `cardTokenId` retorna un enlace al plan; la rama con token escribe `external_reference = clientId`. El input frontend no declara ese token. Por tanto sigue pendiente demostrar la asociacion efectiva del recorrido normal pago → estudio, sin afirmar que ya este resuelta.
+**Pendiente principal para la Beta comercial.** El checkout exige token y membresía y el webhook dispone de firma y controles de duplicados, eventos tardíos y suscripción incorrecta. Eso no cierra el recorrido de pago real.
 
-Escenarios aritmeticos de ingreso mensual, suponiendo cuentas activas que pagan el precio indicado; no son ventas observadas ni beneficio:
+En el código revisado, sin `cardTokenId` se devuelve un enlace al plan; con token se escribe `external_reference = clientId`. El input frontend no declara ese token. Sigue pendiente demostrar que el recorrido normal asocia el pago con el estudio correcto y habilita su acceso. No se afirma que exista un fallo reproducido de cobro ni que la asociación esté validada.
 
-| Escenario | Ingreso mensual bruto |
+Cierre requerido: cotejar frecuencia/precios de planes del proveedor; pagar con la modalidad QA apropiada; confirmar estudio, estado y acceso; comprobar webhook duplicado/tardío, cancelación, reintento y ausencia de habilitación para otro estudio. Registrar entorno y evidencias sin secretos.
+
+| Escenario hipotético | Ingreso mensual bruto |
 |---|---:|
 | Cinco fundadores pagados | S/ 145 |
 | Diez fundadores pagados | S/ 290 |
 | Diez cuentas BASE regulares | S/ 599 |
 | Diez cuentas PRO | S/ 899 |
 
-No extrapolar los antiguos TAM/SAM/SOM, punto de equilibrio o ingresos anuales calculados a otros precios. Recalcularlos con mezcla de planes, impuestos, comisiones, soporte y costos reales antes de usarlos para una decision financiera. No hay datos suficientes para estimar CAC, LTV o renovacion.
+Son cálculos de precio por cuentas activas supuestas, no ventas observadas, beneficio ni pronóstico. No hay datos suficientes de CAC, LTV, retención, renovación o costes reales para afirmar rentabilidad. No reutilizar estimaciones antiguas basadas en otros precios.
 
-Fuentes: [Curv_APP/api/_lib/billing/mercado-pago-provider.js](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/api/_lib/billing/mercado-pago-provider.js), [Curv_APP/src/lib/billing/billingService.ts](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/src/lib/billing/billingService.ts).
+Fuente técnica: `api/_lib/billing/mercado-pago-provider.js` y `src/lib/billing/billingService.ts` del master revisado.
 
 ## 11. Calidad, rendimiento y release
 
-Ultima evidencia combinada registrada en la integracion del 7 de octubre:
+Última evidencia automatizada completa: **CI aprobado del PR #37**, revisión `c27cb57`, 19 de octubre, antes de la integración en `c159613`. No se presenta como una ejecución independiente sobre el SHA del merge.
 
-| Comprobacion | Resultado documentado |
+| Comprobación | Resultado del CI consultado |
 |---|---:|
-| Frontend unitario/integracion | 433 pruebas en 65 archivos |
-| Functions | 14 pruebas |
-| Reglas Firestore/Storage en emulador | 20 pruebas |
-| Invitaciones en emuladores | 12 pruebas |
-| Lint, TypeScript y build | Correctos |
-| Navegador local | Landing renderiza; CTA de demo llega a login |
+| Frontend unitario/integración | **482 pruebas en 72 archivos** |
+| Functions | **14 pruebas** |
+| Reglas Firestore/Storage en emulador | **20 pruebas** |
+| Invitaciones en emuladores | **12 pruebas** |
+| Lint, TypeScript y build | **Correctos** |
+| Vercel preview del PR | **Despliegue completado** |
 
-Estos resultados pertenecen a su ejecucion documentada, no a una suite ejecutada hoy. El workflow Team Access ejecuta frontend, Functions y ambas suites de emulador en PR hacia master. El workflow desktop existe; queda por comprobar un release desktop actual. La consulta de Actions por el SHA de master no devolvio ejecuciones asociadas; no se declara CI verde de ese SHA a partir de ello. La evidencia previa de PR #32 es de su revision, no automaticamente de master.
+Las 479 pruebas de la primera revisión de Identidad preceden a las tres pruebas añadidas de logo/nombre; la cifra final completa es 482. La corrección final también pasó 30 pruebas focalizadas y revisión visual local. No se ejecutan suites nuevas solo para modificar este documento.
 
-La medicion limpia de la integracion registra **1.782.465 bytes brutos / 518.316 gzip** de JS/CSS inicial enlazado desde HTML. El script de entrada sigue siendo grande. El baseline anterior era 518.618 gzip: no se atribuye una mejora perceptible a 302 bytes. Los tiempos de arranque, apertura e impresion/exportacion siguen pendientes de medicion con navegador y condiciones fijas.
+Persiste la advertencia de paquete grande. El baseline limpio de rendimiento del 7 de octubre sigue siendo histórico; no se reutiliza como tamaño actual tras cambios de marca/fuentes. Su tabla registra **1.782.465 bytes brutos / 518.618 gzip** de JS/CSS inicial. Se corrige el resumen anterior que citaba 518.316 gzip para ese baseline. Los tiempos de arranque, apertura de proyecto e impresión/exportación siguen sin medirse con condiciones fijas.
 
-No hay evidencia de una suite E2E completa de navegador ejecutada en CI para autenticacion, proyecto, recuperacion y retorno de checkout. Las pruebas de servicios/emulador no la sustituyen.
+No hay evidencia de una suite E2E completa de navegador en CI para autenticación, proyecto, recuperación y retorno del checkout. Servicios y emuladores no la sustituyen. Desktop y standalone requieren aceptación propia si van a incluirse en el lanzamiento; no bloquean una decisión limitada explícitamente a Beta web.
 
-Orden de cierre: identificar Preview/SHA/Firebase/reglas, adjuntar aceptacion, completar sync y tiempos, revisar cobro, promover el mismo artefacto, comprobar produccion con proyecto QA desechable y dejar referencia de rollback. No usar proyectos de clientes para pruebas destructivas.
+Registro de release pendiente: SHA/URL de producción, Firebase/reglas correspondientes, comprobación con proyecto QA, documento/PDF real, medidas de tiempos, incidencias y referencia de rollback. Una integración o un despliegue verde no acredita ese recorrido.
 
-Fuentes: [Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-integration-preview.md), [Curv_APP/docs/qa/2026-10-07-phase-4-performance-baseline.md](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/qa/2026-10-07-phase-4-performance-baseline.md), [.github/workflows/team-access.yml](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/.github/workflows/team-access.yml), [.github/workflows/release-desktop.yml](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/.github/workflows/release-desktop.yml).
+Fuentes: [run aprobado](https://github.com/arquitecturacurva-sudo/MUArq/actions/runs/39344290499), [baseline y protocolo de tiempos](qa/2026-10-07-phase-4-performance-baseline.md), [integración anterior](qa/2026-10-07-phase-4-integration-preview.md), workflows de Team Access y desktop en la raíz del repositorio.
 
-## 12. Prioridades y responsables funcionales
+## 12. Prioridades, responsables y criterios de cierre
 
-| Prioridad | Responsable funcional | Resultado de cierre |
-|---|---|---|
-| Sincronizacion esta semana | Ingenieria + QA | Matriz de dos sesiones sin perdida de datos y con recuperacion comprobada |
-| Marca e Identidad | Producto + frontend | Dashboard con marca acordada y personalizacion definida/probada |
-| Oferta y cobro | Producto + comercial + backend | Precios coherentes y pago asociado al estudio correcto |
-| Evidencia de release | Lider tecnico + QA | Version identificada, aceptacion adjunta, rendimiento, promocion y rollback |
-| Piloto fundador | Comercial + soporte | Seguimiento de los cinco estudios actuales y captacion de cinco adicionales |
+| Orden | Trabajo | Responsable funcional | Evidencia de cierre |
+|---|---|---|---|
+| 1 | Identidad guardada y documento real hasta PDF | Producto + QA | Cambios persisten al recargar; PDF legible con logo, nombre, contactos y pie correctos |
+| 2 | Oferta y cobro de extremo a extremo | Producto + backend + comercial | Plan/precio/frecuencia coherentes, pago asociado al estudio correcto y acceso actualizado; cancelación/reintentos comprobados |
+| 3 | Aceptación de producción y release web | Ingeniería + QA | SHA y entorno registrados, comprobación final sin incidencias críticas, tiempos y rollback documentados |
+| 4 | Piloto con cinco estudios actuales | Producto + soporte | Un proyecto/documento real por estudio; incidencias, segundo uso y soporte registrados |
+| 5 | Completar la captación 10/10 | Comercial | Cinco nuevos estudios confirmados; separar alta, activación y pago en el seguimiento |
 
-Tras estos cierres: decidir Beta cerrada, actualizar la nota con evidencia, medir uso recurrente y construir Tramitologia PRO con alcance definido (calendario, eventos, canales y preferencias de notificacion). No se fija una fecha de lanzamiento solo por la prevision de cierre de sync.
+Continuidad de datos y marca pasan a seguimiento de regresiones. Adjuntar el registro de aceptación de sync y las referencias de versiones es trabajo de trazabilidad; no invalida la aceptación ya comunicada. Los pasos comerciales y técnicos pueden avanzar en paralelo, sin ampliar el alcance a nuevas herramientas.
 
-## 13. Variables y operacion
+Cuando cierren cobro y release, decidir explícitamente la Beta cerrada web y su alcance. No se fija fecha de lanzamiento ni se declara Beta por la puntuación 7,8. Después: recurrencia, soporte, reducción gradual de App y alcance de Tramitología PRO.
 
-Cliente: configuracion Firebase `VITE_FIREBASE_*` y portal de billing `VITE_BILLING_PORTAL_URL`. Servidor: proveedor, token/secreto de Mercado Pago, IDs de planes BASE/PRO, credencial Firebase Admin y `APP_BASE_URL`. No copiar valores de secretos a documentacion ni asumir que Preview/produccion usan identica configuracion.
+## 13. Variables y operación
 
-Web y API: Vercel. Identidad/datos/acceso: Firebase. Desktop: Electron/NSIS/portable. Standalone: artefacto HTML. Verificar cada superficie antes de declararla lista para Beta; esta revision no prueba todas las distribuciones.
+Cliente: configuración Firebase `VITE_FIREBASE_*` y portal `VITE_BILLING_PORTAL_URL`. Servidor: proveedor, token/secreto de Mercado Pago, IDs BASE/PRO, credenciales Firebase Admin y `APP_BASE_URL`. No copiar valores de secretos ni asumir configuración idéntica entre Preview y producción.
 
-## 14. Historial conservado
+Web/API en Vercel; datos, acceso e identidad en Firebase; desktop en Electron/NSIS/portable; standalone como HTML. No se cambiaron variables, permisos ni servicios durante esta actualización documental.
 
-- [Copia local anterior a esta revision](history/PROJECT_STATUS_LOCAL_BEFORE_2026-10-12.md): conserva el analisis peruano, decisiones y evaluaciones anteriores de esta conversacion.
-- [Project Status de master al SHA revisado](history/PROJECT_STATUS_MASTER_94444a0.md): conserva la secuencia de extracciones y notas de julio a octubre.
-- Los archivos historicos conservan su contenido original; sus rutas relativas se interpretaban desde docs/ antes de archivarlos. Para navegar el master historico usar [la version inmutable original](https://github.com/arquitecturacurva-sudo/MUArq/blob/94444a0398a51c1459f4fd79f83276533a42c77c/Curv_APP/docs/PROJECT_STATUS.md).
+## 14. Historial y lectura de evidencia
 
-Las conclusiones vigentes son las de este documento. Las cifras de mercado, fechas, resultados de pruebas y pendientes antiguos en los archivos historicos no se consideran revalidados ni automaticamente activos.
+- [Estado remoto anterior al corte actual](history/PROJECT_STATUS_BEFORE_2026-10-19.md): fotografía del documento del 12 de octubre.
+- [Aceptación local anterior de sincronización](history/PROJECT_STATUS_LOCAL_ACCEPTANCE_2026-10-19.md): conserva la actualización local del 19 de octubre que aún no figuraba en master.
+- [Historia local previa al 12 de octubre](history/PROJECT_STATUS_LOCAL_BEFORE_2026-10-12.md): análisis, decisiones y evaluaciones anteriores.
+- [Historia de master `94444a0`](history/PROJECT_STATUS_MASTER_94444a0.md): secuencia de extracciones y notas anteriores.
+
+Las rutas de los archivos históricos se interpretaban desde su ubicación original; no convierten sus cifras o pendientes en vigentes. Los informes QA anteriores preservan lo comprobado en su fecha. Para el estado actual prevalece este documento y sus registros de aceptación posteriores. No se modifican matrices históricas para simular pruebas que no se ejecutaron.
