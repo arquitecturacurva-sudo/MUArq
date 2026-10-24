@@ -109,4 +109,3 @@ export async function extractQuoteWithMistral(input, apiKey, fetcher = fetch) {
     model: MODEL, schemaVersion: SCHEMA_VERSION,
   };
 }
-

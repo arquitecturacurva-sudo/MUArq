@@ -16,4 +16,3 @@
 .quote-import-dialog .quote-import-primary{background:var(--ui-text,#172331);color:var(--ui-card,#fff)}
 @media(max-width:760px){.quote-import-overlay{padding:4px}.quote-import-dialog{max-height:99dvh}.quote-import-workspace{grid-template-columns:1fr}.quote-import-source{position:static}.quote-import-source object{height:230px}.quote-import-settings{grid-template-columns:1fr 1fr}.quote-import-header,.quote-import-content,.quote-import-footer{padding:12px}.quote-import-footer>div{width:100%;justify-content:space-between}}
 @media print{.quote-import-overlay{display:none!important}}
-

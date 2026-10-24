@@ -34,4 +34,3 @@ describe("Spanish construction quotation import",()=>{
    expect(part.precioUnitarioFijo).toBeUndefined();expect(calculateQuotationPart(part).precioUnitario).toBe(11);
  });
 });
-

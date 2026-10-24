@@ -40,4 +40,3 @@ Las pruebas cubren estructura del proveedor, cobertura multipágina, errores y a
 - Compilación de producción: aprobada. Conserva el aviso de tamaño del bundle existente.
 - Navegador local, herramienta real montada sin sesión de cliente: ejemplo de dos páginas, revisión por partida, importación de precios ofertados, subtotal S/ 3.000, IGV S/ 540, total S/ 3.540, documento final y recarga persistente. Se comprobó el bloqueo de una segunda importación del mismo archivo.
 - Mistral: contrato HTTP y respuesta simulada probados. No se ejecutó una llamada real: MISTRAL_API_KEY no figura en el inventario de variables de Preview consultado. No se atribuye precisión OCR al ejemplo.
-

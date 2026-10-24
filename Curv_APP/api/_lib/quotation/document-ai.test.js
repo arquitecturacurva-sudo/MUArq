@@ -29,4 +29,3 @@ describe("specialized construction document reader",()=>{
    await expect(extractQuoteWithMistral(input,"key",async()=>({ok:false,status:429}))).rejects.toMatchObject({status:429});
  });
 });
-

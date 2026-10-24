@@ -174,4 +174,3 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
     </div>
   </div>;
 }
-

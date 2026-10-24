@@ -50,4 +50,3 @@ export default createQuoteHandler({
   getAdmin: () => import("../_lib/firebase-admin.js"),
   getApiKey: () => process.env.MISTRAL_API_KEY,
 });
-

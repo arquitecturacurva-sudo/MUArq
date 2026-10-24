@@ -127,4 +127,3 @@ export const SPANISH_QUOTE_EXAMPLE: QuoteExtraction = {
   },
   pages:[{page:1,text:"Trabajos preliminares\n01.01 Limpieza y trazo del terreno | m² | 100,00 | 10,00 | 1.000,00"},{page:2,text:"Estructuras\n02.01 Concreto en cimentación | m³ | 5,00 | 400,00 | 2.000,00\nSubtotal 3.000,00\nIGV 18% 540,00\nTotal 3.540,00"}],
 };
-

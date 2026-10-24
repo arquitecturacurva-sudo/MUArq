@@ -31,4 +31,3 @@ export async function extractConstructionQuote(file: File, signal: AbortSignal):
       payload.pages.length !== pageCount || typeof payload.model !== "string" || payload.schemaVersion !== "obra-es-v1") throw new Error("Respuesta documental incompleta.");
   return { ...payload, fileName: file.name, fileHash };
 }
-
