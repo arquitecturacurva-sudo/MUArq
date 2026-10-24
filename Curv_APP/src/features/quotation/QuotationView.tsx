@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { assertQuotationImportSize } from "../../domain/quotation/documentImport";
+import { ConstructionQuoteImport } from "./ConstructionQuoteImport";
 import { StepNav } from "../ui/kit/stepNav";
 import { cardS, lb, si, UI, G, DK } from "../ui/tokens";
 import { InlineEmptyStateCard, Fld, Inp, Btn } from "../ui/form-primitives";
@@ -16,6 +18,7 @@ import type { QuotationViewServices } from "../../application/quotation/quotatio
 export function QuotationView({toolId, onPrint, state, services}: {toolId: string; onPrint: () => void; state: QuotationState; services: QuotationViewServices}) {
   const {step:[step,setStep],cl:[cl,scl],pr:[pr,spr],cod:[cod,scod],ub:[ub,sub],fe:[fe,sfe],categorias:[categorias,setCategorias],newCategoria:[newCategoria,setNewCategoria],nextId:[nextId,setNextId],partidas:[partidas,setPartidas],nCuenta:[nCuenta,sNCuenta],banco:[banco,sBanco],cci:[cci,sCci],ggPct:[ggPct,sGgPct],supPct:[supPct,sSupPct],igvPct:[igvPct,sIgvPct],condPago:[condPago,sCondPago],obs:[obs,sObs],showPendingOcrOnly:[showPendingOcrOnly,setShowPendingOcrOnly]} = state;
   const pdfImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [specializedImportOpen, setSpecializedImportOpen] = useState(false);
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrStatus, setOcrStatus] = useState("");
@@ -33,7 +36,7 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
     partidas.filter((item) => !!item.importSource && item.reviewStatus === "pending").length
   ), [partidas]);
   const flaggedPartidaCount = useMemo(() => (
-    partidas.filter((item) => (Number(item.cant) || 0) <= 0 || ((Number(item.manoObra) || 0) + (Number(item.materiales) || 0)) <= 0).length
+    partidas.filter((item) => (Number(item.cant) || 0) <= 0 || calculateQuotationPart(item).precioUnitario <= 0).length
   ), [partidas]);
   const visiblePartidas = useMemo(() => (
     showPendingOcrOnly
@@ -380,7 +383,7 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 <div style={{...lb,color:G,margin:0}}>Partidas</div>
                 <span style={{fontSize:9,color:UI.textMuted}}>
-                  Precio cliente = (MO + Materiales) × (1 + Utilidad%) × (1 + Riesgo%)
+                  Precio ofertado directo o costos desglosados con utilidad y riesgo
                 </span>
                 <span style={{fontSize:9,color:pendingOcrCount ? "#A15C10" : UI.textMuted,fontWeight:700}}>
                   OCR pendientes: {pendingOcrCount}
@@ -406,7 +409,8 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
                     Marcar revisadas
                   </Btn>
                 )}
-                <Btn v="ol" sm onClick={importPartidasFromPdf}>Importar PDF (OCR)</Btn>
+                {services.extractDocument && <Btn v="dk" sm onClick={() => setSpecializedImportOpen(true)}>Importar cotización</Btn>}
+                <Btn v="ol" sm onClick={importPartidasFromPdf}>Lectura local de PDF</Btn>
                 <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
               </div>
             </div>
@@ -433,7 +437,7 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
                   {visiblePartidas.map((item, index) => {
                     const calc = calcPartida(item);
                     const isPendingOcr = !!item.importSource && item.reviewStatus === "pending";
-                    const needsReview = (Number(item.cant) || 0) <= 0 || ((Number(item.manoObra) || 0) + (Number(item.materiales) || 0)) <= 0;
+                    const needsReview = (Number(item.cant) || 0) <= 0 || calculateQuotationPart(item).precioUnitario <= 0;
                     const rowBackground = isPendingOcr ? "#FFF7ED" : needsReview ? "#FEF2F2" : index%2 ? "#fff" : "#FAFAF7";
                     return (
                       <tr key={item.id} style={{background:rowBackground,borderBottom:"1px solid #F0EBE0"}}>
@@ -446,20 +450,30 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
                         <td style={{padding:"6px 7px"}}>
                           <div style={{display:"grid",gap:3,minWidth:170}}>
                             <input value={item.descripcion} onChange={(e) => upPartString(item.id, "descripcion", e.target.value)} placeholder="Descripción de partida" style={{...si,padding:"5px 6px",fontSize:10,minWidth:170}}/>
+                            {item.documentImport && <details style={{fontSize:10,color:UI.textMuted}}>
+                              <summary>Origen: {item.documentImport.fileName}, página {item.documentImport.page}</summary>
+                              <p style={{whiteSpace:"pre-wrap"}}>{item.documentImport.evidence}</p>
+                            </details>}
                             {item.importSource && (
                               <span style={{fontSize:8,fontWeight:800,color:isPendingOcr?"#A15C10":"#3E8B5D",textTransform:"uppercase",letterSpacing:"0.3px"}}>
-                                {isPendingOcr ? "Pendiente OCR" : "OCR revisado"} · {item.importSource === "pdf-embedded" ? "texto PDF" : "OCR imagen"}
+                                {isPendingOcr ? "Pendiente de revisión" : "Importación revisada"} · {item.importSource === "document-ai" ? "lector de obra en español" : item.importSource === "pdf-embedded" ? "texto PDF" : "OCR imagen"}
                               </span>
                             )}
                           </div>
                         </td>
                         <td style={{padding:"6px 7px"}}><select value={item.und} onChange={(e) => upPartString(item.id, "und", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:72}}>{COT_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</select></td>
                         <td style={{padding:"6px 7px"}}><input type="number" value={item.cant} onChange={(e) => upPartNumber(item.id, "cant", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:78}}/></td>
-                        <td style={{padding:"6px 7px"}}><input type="number" value={item.manoObra} onChange={(e) => upPartNumber(item.id, "manoObra", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:94}}/></td>
-                        <td style={{padding:"6px 7px"}}><input type="number" value={item.materiales} onChange={(e) => upPartNumber(item.id, "materiales", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:94}}/></td>
-                        <td style={{padding:"6px 7px"}}><input type="number" value={item.utilidadPct} onChange={(e) => upPartNumber(item.id, "utilidadPct", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:74}}/></td>
-                        <td style={{padding:"6px 7px"}}><input type="number" value={item.riesgoPct} onChange={(e) => upPartNumber(item.id, "riesgoPct", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:74}}/></td>
-                        <td style={{padding:"6px 7px",fontSize:10,fontWeight:700,color:G,textAlign:"right",whiteSpace:"nowrap"}}>{services.formatMoney(calc.precioUnitario)}</td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.manoObra} disabled={item.precioUnitarioFijo !== undefined} title={item.precioUnitarioFijo !== undefined ? "Usa precio ofertado" : undefined} onChange={(e) => upPartNumber(item.id, "manoObra", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:94}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.materiales} disabled={item.precioUnitarioFijo !== undefined} onChange={(e) => upPartNumber(item.id, "materiales", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:94}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.utilidadPct} disabled={item.precioUnitarioFijo !== undefined} onChange={(e) => upPartNumber(item.id, "utilidadPct", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:74}}/></td>
+                        <td style={{padding:"6px 7px"}}><input type="number" value={item.riesgoPct} disabled={item.precioUnitarioFijo !== undefined} onChange={(e) => upPartNumber(item.id, "riesgoPct", e.target.value)} style={{...si,padding:"5px 6px",fontSize:10,textAlign:"right",width:74}}/></td>
+                        <td style={{padding:"6px 7px",fontSize:10,fontWeight:700,color:G,textAlign:"right",whiteSpace:"nowrap"}}>
+                          {item.precioUnitarioFijo !== undefined ? <div>
+                            <input aria-label={`Precio ofertado de ${item.descripcion}`} type="number" min="0" step="any" value={item.precioUnitarioFijo} onChange={e=>setPartidas(prev=>prev.map(p=>p.id===item.id?{...p,precioUnitarioFijo:Number(e.target.value)||0}:p))} style={{...si,width:110,padding:"5px 6px"}}/>
+                            <div style={{fontSize:10,color:UI.textMuted}}>Precio ofertado</div>
+                            <button type="button" onClick={()=>setPartidas(prev=>prev.map(p=>p.id===item.id?{...p,precioUnitarioFijo:undefined,reviewStatus:"pending"}:p))} style={{fontSize:10,textDecoration:"underline",border:0,background:"none",color:UI.textMuted}}>Usar costos desglosados</button>
+                          </div> : services.formatMoney(calc.precioUnitario)}
+                        </td>
                         <td style={{padding:"6px 7px",textAlign:"center"}}>
                           <div style={{display:"flex",gap:5,alignItems:"center",justifyContent:"center"}}>
                             {isPendingOcr && (
@@ -629,6 +643,21 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
           </div>
         </div>
       )}
+      {specializedImportOpen && services.extractDocument && <ConstructionQuoteImport
+        extract={services.extractDocument} currency={services.getCurrency?.() || "PEN"}
+        rates={{ggPct, supPct, igvPct}} existing={partidas}
+        startId={Math.max(nextId, ...partidas.map(p=>p.id+1))}
+        onClose={()=>setSpecializedImportOpen(false)}
+        onImport={(imported, rates)=>{
+          assertQuotationImportSize([...partidas,...imported]);
+          setPartidas(prev=>[...prev,...imported]);
+          setNextId(Math.max(...imported.map(p=>p.id))+1);
+          setCategorias(prev=>[...new Set([...prev,...imported.map(p=>p.categoria)])]);
+          sGgPct(rates.ggPct); sSupPct(rates.supPct); sIgvPct(rates.igvPct);
+          services.trackEvent({name:"cot.document_imported",payload:{rowCount:imported.length}});
+          setSpecializedImportOpen(false);
+        }}
+      />}
       {ocrModalOpen && (
         <div style={{position:"fixed",inset:0,zIndex:140,background:"rgba(15,23,42,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
           <div className="workspace-dialog" style={{width:"min(1220px,96vw)",maxHeight:"92vh",background:UI.card,border:`1px solid ${UI.border}`,borderRadius:10,display:"flex",flexDirection:"column",overflow:"hidden"}}>

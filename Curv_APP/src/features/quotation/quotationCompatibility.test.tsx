@@ -70,6 +70,19 @@ describe("Cotizacion storage and export compatibility", () => {
     expect(partitionProjectSnapshotTools(data.collectProjectSnapshot("cot-a", "tenant").tools).tools.cot).toEqual(partition);
   });
 
+  it("preserves offered prices and page evidence through snapshots and the final document", () => {
+    const part = {...newCotPartida(8,"Estructuras"),descripcion:"Precio importado QA",cant:2,precioUnitarioFijo:500,
+      importSource:"document-ai" as const,reviewStatus:"reviewed" as const,documentImport:{fileName:"Obra.pdf",fileHash:"hash",page:2,evidence:"m3 2 500 1000",model:"mistral-ocr-4-1",schemaVersion:"obra-es-v1",originalUnitPrice:500,pricesIncludedIgv:false}};
+    fields().partidas[1]([part]);
+    const snapshot=data.collectProjectSnapshot("cot-a","tenant");
+    device();data.hydrateProjectSnapshot("cot-a",snapshot);
+    expect(fields().partidas[0][0]).toMatchObject(part);
+    storage.writeStorage("cot.step",2);
+    const html=renderToStaticMarkup(<ToolCotizacionObra toolId="cot" onPrint={()=>undefined}/>);
+    expect(html).toContain("Precio importado QA");
+    expect(html).toContain("S/ 1,180");
+  });
+
   it("keeps the branded final document and calculated amounts", () => {
     storage.writeStorage("cot.step", 2);
     storage.writeStorage("cot.partidas", [{ ...newCotPartida(1, "Estructuras"), descripcion: "Muro QA", cant: 2, manoObra: 100, materiales: 200 }]);
