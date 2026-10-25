@@ -7,6 +7,9 @@
   "type": "module",
   "main": "electron/main.mjs",
   "scripts": {
+    "predev": "node scripts/prepare-quotation-ocr.mjs",
+    "prebuild": "node scripts/prepare-quotation-ocr.mjs",
+    "ocr:fixtures": "node scripts/generate-quotation-ocr-fixtures.mjs",
     "dev": "vite --configLoader native",
     "build": "tsc -b && vite build",
     "measure:build": "node scripts/measure-build.mjs --preflight && npm run build -- --outDir node_modules/.cache/phase4-measure-dist --emptyOutDir && node scripts/measure-build.mjs node_modules/.cache/phase4-measure-dist",

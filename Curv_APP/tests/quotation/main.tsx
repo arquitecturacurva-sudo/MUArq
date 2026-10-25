@@ -9,7 +9,7 @@ import "../../src/index.css";
 import "../../src/styles/kit.css";
 import "../../src/features/layout/workspace-layout.css";
 
-// Local-only QA entry, absent from Vite's production entry points. Never connects to Firebase.
+// QA entry for local development and Vercel previews only. Never connects to Firebase.
 const scopes = ["qa-phase3-cot-a", "qa-phase3-cot-b"];
 for (const [index, id] of scopes.entries()) {
   if (!readStorage("cot.pr", "", undefined, id)) {
