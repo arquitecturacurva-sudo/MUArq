@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { assertQuotationImportSize } from "../../domain/quotation/documentImport";
 import { ConstructionQuoteImport } from "./ConstructionQuoteImport";
 import { StepNav } from "../ui/kit/stepNav";
@@ -6,32 +6,18 @@ import { cardS, lb, si, UI, G, DK } from "../ui/tokens";
 import { InlineEmptyStateCard, Fld, Inp, Btn } from "../ui/form-primitives";
 import { DocHeader } from "../ui/documentHeader";
 import { COT_CATEGORIES_BASE, COT_UNITS } from "../../domain/project/toolDefaults";
-import type { CotPartida, CotImportSource } from "../../domain/project/construction";
+import type { CotPartida } from "../../domain/project/construction";
 import { newCotPartida } from "../../domain/project/construction";
-import type { CotOcrDraftRow, CotOcrImportMode, CotOcrEditableKey, CotOcrNumericKey } from "../../domain/project/quotationImport";
-import { countCotOcrIncompleteRows, COT_OCR_NUMERIC_KEYS, ocrNumber, newCotOcrDraftRow, hasUsefulEmbeddedPdfText, parseCotRowsFromOcrText, getCotOcrDraftIssue } from "../../domain/project/quotationImport";
-import { extractEmbeddedPdfText } from "../../infrastructure/quotation/extractEmbeddedPdfText";
-import { calculateQuotationPart, calculateQuotationTotals, groupQuotationParts, normalizeQuotationDraftRows, createImportedQuotationParts } from "../../domain/quotation/quotationRules";
+import { calculateQuotationPart, calculateQuotationTotals, groupQuotationParts } from "../../domain/quotation/quotationRules";
 import type { QuotationState } from "../../application/quotation/quotationState";
 import type { QuotationViewServices } from "../../application/quotation/quotationPorts";
 
 export function QuotationView({toolId, onPrint, state, services}: {toolId: string; onPrint: () => void; state: QuotationState; services: QuotationViewServices}) {
   const {step:[step,setStep],cl:[cl,scl],pr:[pr,spr],cod:[cod,scod],ub:[ub,sub],fe:[fe,sfe],categorias:[categorias,setCategorias],newCategoria:[newCategoria,setNewCategoria],nextId:[nextId,setNextId],partidas:[partidas,setPartidas],nCuenta:[nCuenta,sNCuenta],banco:[banco,sBanco],cci:[cci,sCci],ggPct:[ggPct,sGgPct],supPct:[supPct,sSupPct],igvPct:[igvPct,sIgvPct],condPago:[condPago,sCondPago],obs:[obs,sObs],showPendingOcrOnly:[showPendingOcrOnly,setShowPendingOcrOnly]} = state;
-  const pdfImportInputRef = useRef<HTMLInputElement | null>(null);
   const [specializedImportOpen, setSpecializedImportOpen] = useState(false);
-  const [ocrModalOpen, setOcrModalOpen] = useState(false);
-  const [ocrBusy, setOcrBusy] = useState(false);
-  const [ocrStatus, setOcrStatus] = useState("");
-  const [ocrFileName, setOcrFileName] = useState("");
-  const [ocrRawText, setOcrRawText] = useState("");
-  const [ocrDraftRows, setOcrDraftRows] = useState<CotOcrDraftRow[]>([]);
-  const [ocrError, setOcrError] = useState("");
-  const [ocrImportMode, setOcrImportMode] = useState<CotOcrImportMode>("idle");
-
   const categoriasSafe = useMemo(() => (
     categorias.length ? categorias : COT_CATEGORIES_BASE
   ), [categorias]);
-  const ocrIncompleteRows = useMemo(() => countCotOcrIncompleteRows(ocrDraftRows), [ocrDraftRows]);
   const pendingOcrCount = useMemo(() => (
     partidas.filter((item) => !!item.importSource && item.reviewStatus === "pending").length
   ), [partidas]);
@@ -92,237 +78,6 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
       name: "cot.ocr_row_reviewed",
       payload: {count: reviewedCount},
     });
-  };
-
-  const clearOcrDraft = () => {
-    setOcrStatus("");
-    setOcrError("");
-    setOcrFileName("");
-    setOcrRawText("");
-    setOcrDraftRows([]);
-    setOcrImportMode("idle");
-  };
-
-  const closeOcrModal = () => {
-    if (ocrBusy) return;
-    setOcrModalOpen(false);
-    clearOcrDraft();
-  };
-
-  const updateOcrDraftValue = (draftId: string, key: CotOcrEditableKey, value: string) => {
-    setOcrDraftRows((prev) => (
-      prev.map((row) => {
-        if (row.draftId !== draftId) return row;
-        if (COT_OCR_NUMERIC_KEYS.has(key as CotOcrNumericKey)) {
-          return {...row, [key]: ocrNumber(value)};
-        }
-        if (key === "und") {
-          const unit = String(value || "").toUpperCase().trim();
-          return {...row, und: unit || "UND"};
-        }
-        return {...row, [key]: value};
-      })
-    ));
-  };
-
-  const addOcrDraftRow = () => {
-    const categoriaDefault = categoriasSafe[0] || "General";
-    setOcrDraftRows((prev) => [
-      ...prev,
-      newCotOcrDraftRow(`ocr-manual-${Date.now()}-${prev.length + 1}`, categoriaDefault),
-    ]);
-  };
-
-  const removeOcrDraftRow = (draftId: string) => {
-    setOcrDraftRows((prev) => prev.filter((row) => row.draftId !== draftId));
-  };
-
-  const openPdfImportPicker = () => {
-    if (ocrBusy) return;
-    pdfImportInputRef.current?.click();
-  };
-
-  const runPdfOcrImport = async (file: File) => {
-    let ocrWorker: Awaited<ReturnType<typeof import("tesseract.js").createWorker>> | null = null;
-    try {
-      const categoriaDefault = categoriasSafe[0] || "General";
-      services.trackEvent({
-        name: "cot.ocr_started",
-        payload: {fileSizeKb: Math.round(file.size / 1024)},
-      });
-      setOcrModalOpen(true);
-      setOcrBusy(true);
-      setOcrError("");
-      setOcrImportMode("idle");
-      setOcrFileName(file.name);
-      setOcrRawText("");
-      setOcrDraftRows([]);
-      setOcrStatus("Abriendo PDF...");
-
-      const [pdfjsModule, workerUrlModule] = await Promise.all([
-        import("pdfjs-dist/legacy/build/pdf.mjs"),
-        import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"),
-      ]);
-
-      const pdfjs = pdfjsModule as unknown as {
-        GlobalWorkerOptions: { workerSrc: string };
-        getDocument: (src: { data: Uint8Array }) => { promise: Promise<{
-          numPages: number;
-          getPage: (pageNumber: number) => Promise<{
-            getTextContent: () => Promise<{ items: unknown[] }>;
-            getViewport: (options: { scale: number }) => { width: number; height: number };
-            render: (options: { canvasContext: CanvasRenderingContext2D; viewport: { width: number; height: number } }) => { promise: Promise<unknown> };
-          }>;
-        }> };
-      };
-      const workerUrl = String((workerUrlModule as { default?: string }).default || workerUrlModule);
-      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-
-      const logProgress = (message: { status?: string; progress?: number }) => {
-        if (!message || typeof message !== "object") return;
-        if (message.status === "recognizing text" && typeof message.progress === "number") {
-          const pct = Math.max(0, Math.min(100, Math.round(message.progress * 100)));
-          setOcrStatus(`OCR en progreso: ${pct}%`);
-        }
-      };
-
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const doc = await pdfjs.getDocument({data: bytes}).promise;
-      setOcrStatus(`Buscando texto embebido en ${doc.numPages} pagina(s)...`);
-      const embedded = await extractEmbeddedPdfText(doc, (pageIndex, totalPages) => {
-        setOcrStatus(`Extrayendo texto embebido ${pageIndex}/${totalPages}...`);
-      });
-      const embeddedRows = hasUsefulEmbeddedPdfText(embedded.rawText)
-        ? parseCotRowsFromOcrText(embedded.rawText, categoriaDefault)
-        : [];
-
-      if (embeddedRows.length) {
-        setOcrImportMode("embedded-text");
-        setOcrRawText(embedded.rawText);
-        setOcrDraftRows(embeddedRows);
-        const incomplete = countCotOcrIncompleteRows(embeddedRows);
-        setOcrStatus(`Texto embebido usado. ${embeddedRows.length} fila(s) detectada(s), ${incomplete} incompleta(s).`);
-        services.trackEvent({
-          name: "cot.ocr_completed",
-          payload: {source: "pdf-embedded", pageCount: doc.numPages, textPages: embedded.textPages, rowCount: embeddedRows.length, incompleteRows: incomplete},
-        });
-        return;
-      }
-
-      if (hasUsefulEmbeddedPdfText(embedded.rawText)) {
-        setOcrRawText(embedded.rawText);
-        setOcrStatus("Texto embebido encontrado, pero sin filas importables. Ejecutando OCR...");
-      } else {
-        setOcrStatus("PDF sin texto embebido util. Ejecutando OCR...");
-      }
-
-      const {createWorker} = await import("tesseract.js");
-      ocrWorker = await createWorker("spa+eng", 1, { logger: logProgress });
-      const chunks: string[] = [];
-      for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
-        setOcrStatus(`Renderizando página ${pageIndex} de ${doc.numPages}...`);
-        const page = await doc.getPage(pageIndex);
-        const viewport = page.getViewport({scale: 2});
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.floor(viewport.width));
-        canvas.height = Math.max(1, Math.floor(viewport.height));
-        const ctx = canvas.getContext("2d");
-        if (!ctx) continue;
-        await page.render({canvasContext: ctx, viewport}).promise;
-        setOcrStatus(`Leyendo texto (OCR) ${pageIndex}/${doc.numPages}...`);
-        const recognized = await ocrWorker.recognize(canvas);
-        const text = String(recognized?.data?.text || "").trim();
-        if (text) chunks.push(text);
-        canvas.width = 0;
-        canvas.height = 0;
-      }
-
-      const rawText = chunks.join("\n").trim();
-      setOcrImportMode("ocr");
-      setOcrRawText(rawText);
-      const parsedRows = parseCotRowsFromOcrText(rawText, categoriaDefault);
-      setOcrDraftRows(parsedRows);
-      if (!parsedRows.length) {
-        setOcrError("No se detectaron filas válidas. Puedes agregar o editar filas manualmente antes de importar.");
-      }
-      const incomplete = countCotOcrIncompleteRows(parsedRows);
-      setOcrStatus(`OCR completado. ${parsedRows.length} fila(s) detectada(s), ${incomplete} incompleta(s).`);
-      services.trackEvent({
-        name: "cot.ocr_completed",
-        payload: {source: "pdf-ocr", pageCount: doc.numPages, rowCount: parsedRows.length, incompleteRows: incomplete},
-      });
-    } catch (error) {
-      services.trackEvent({
-        name: "cot.ocr_failed",
-        payload: {failed: true},
-      });
-      setOcrError("No se pudo procesar el PDF con OCR. Verifica que el archivo sea legible e inténtalo nuevamente.");
-      setOcrStatus("");
-      setOcrRawText("");
-      setOcrDraftRows([]);
-      setOcrImportMode("idle");
-      if (error instanceof Error && error.message) {
-        console.error(error.message);
-      }
-    } finally {
-      if (ocrWorker?.terminate) {
-        try {
-          await ocrWorker.terminate();
-        } catch {
-          // ignore worker shutdown errors
-        }
-      }
-      setOcrBusy(false);
-    }
-  };
-
-  const onPdfImportFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-    if (!isPdf) {
-      window.alert("Selecciona un archivo PDF válido.");
-      return;
-    }
-    await runPdfOcrImport(file);
-  };
-
-  const confirmOcrImport = () => {
-    const categoriaDefault = categoriasSafe[0] || "General";
-    const importSource: CotImportSource = ocrImportMode === "embedded-text" ? "pdf-embedded" : "pdf-ocr";
-    const importBatchId = `cot-import-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-    const normalizedRows = normalizeQuotationDraftRows(ocrDraftRows, categoriaDefault);
-
-    if (!normalizedRows.length) {
-      window.alert("No hay filas válidas para importar.");
-      return;
-    }
-
-    const maxExistingId = partidas.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
-    const startId = Math.max(nextId, maxExistingId + 1);
-    const importedPartidas = createImportedQuotationParts(normalizedRows, startId, importSource, importBatchId);
-
-    setPartidas((prev: CotPartida[]) => [...prev, ...importedPartidas]);
-    setNextId(startId + importedPartidas.length);
-    setCategorias((prev) => {
-      const merged = new Set(prev.length ? prev : COT_CATEGORIES_BASE);
-      importedPartidas.forEach((item) => {
-        if (item.categoria.trim()) merged.add(item.categoria.trim());
-      });
-      return [...merged];
-    });
-    setOcrModalOpen(false);
-    services.trackEvent({
-      name: "cot.ocr_rows_imported",
-      payload: {source: importSource, rowCount: importedPartidas.length, pendingCount: importedPartidas.length},
-    });
-    clearOcrDraft();
-    window.alert(`Importación completada: ${importedPartidas.length} partida(s) agregada(s) desde ${ocrFileName || "PDF"}.`);
-  };
-
-  const importPartidasFromPdf = () => {
-    openPdfImportPicker();
   };
 
   const calcPartida = calculateQuotationPart;
@@ -410,17 +165,9 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
                   </Btn>
                 )}
                 {services.extractDocument && <Btn v="dk" sm onClick={() => setSpecializedImportOpen(true)}>Importar cotización</Btn>}
-                <Btn v="ol" sm onClick={importPartidasFromPdf}>Lectura local de PDF</Btn>
                 <Btn v="ol" sm onClick={addPartida}>+ Partida</Btn>
               </div>
             </div>
-            <input
-              ref={pdfImportInputRef}
-              type="file"
-              accept="application/pdf,.pdf"
-              style={{display:"none"}}
-              onChange={onPdfImportFileSelected}
-            />
             <div style={{overflowX:"auto"}}>
               <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead>
@@ -456,7 +203,7 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
                             </details>}
                             {item.importSource && (
                               <span style={{fontSize:8,fontWeight:800,color:isPendingOcr?"#A15C10":"#3E8B5D",textTransform:"uppercase",letterSpacing:"0.3px"}}>
-                                {isPendingOcr ? "Pendiente de revisión" : "Importación revisada"} · {item.importSource === "document-ai" ? "lector de obra en español" : item.importSource === "pdf-embedded" ? "texto PDF" : "OCR imagen"}
+                                {isPendingOcr ? "Pendiente de revisión" : "Importación revisada"} · {item.importSource === "pdf-local" ? "Curv OCR" : item.importSource === "document-ai" ? "lector de obra en español" : item.importSource === "pdf-embedded" ? "texto PDF" : "OCR imagen"}
                               </span>
                             )}
                           </div>
@@ -658,104 +405,6 @@ export function QuotationView({toolId, onPrint, state, services}: {toolId: strin
           setSpecializedImportOpen(false);
         }}
       />}
-      {ocrModalOpen && (
-        <div style={{position:"fixed",inset:0,zIndex:140,background:"rgba(15,23,42,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
-          <div className="workspace-dialog" style={{width:"min(1220px,96vw)",maxHeight:"92vh",background:UI.card,border:`1px solid ${UI.border}`,borderRadius:10,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${UI.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-              <div>
-                <div style={{fontSize:11,fontWeight:800,color:DK}}>Importar PDF (OCR)</div>
-                <div style={{fontSize:10,color:UI.textMuted}}>{ocrFileName || "Sin archivo seleccionado"}</div>
-              </div>
-              <button
-                type="button"
-                onClick={closeOcrModal}
-                disabled={ocrBusy}
-                style={{border:`1px solid ${UI.border}`,background:"#fff",color:DK,borderRadius:6,padding:"6px 10px",fontSize:10,fontWeight:700,cursor:ocrBusy?"not-allowed":"pointer",opacity:ocrBusy?0.6:1}}
-              >
-                Cerrar
-              </button>
-            </div>
-            <div style={{padding:"10px 14px",borderBottom:`1px solid ${UI.border}`,display:"flex",flexDirection:"column",gap:6}}>
-              {ocrStatus && <div style={{fontSize:10,color:"#6B7280"}}>{ocrStatus}</div>}
-              {ocrError && <div style={{fontSize:10,color:"#A63B2A"}}>{ocrError}</div>}
-              {ocrImportMode !== "idle" && (
-                <div style={{fontSize:10,color:"#4B5563"}}>
-                  Fuente: {ocrImportMode === "embedded-text" ? "texto embebido del PDF" : "OCR por imagen"} · Filas detectadas: {ocrDraftRows.length} · Incompletas: {ocrIncompleteRows}
-                </div>
-              )}
-              {!ocrBusy && !ocrError && !ocrStatus && <div style={{fontSize:10,color:"#6B7280"}}>Carga un PDF para detectar partidas y revisarlas antes de importar.</div>}
-            </div>
-            <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1.5fr",gap:12,padding:14,minHeight:280,overflow:"hidden"}}>
-              <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:0}}>
-                <div style={{fontSize:10,fontWeight:700,color:DK}}>Texto OCR (referencia)</div>
-                <textarea
-                  value={ocrRawText}
-                  readOnly
-                  style={{width:"100%",minHeight:220,flex:1,border:`1px solid ${UI.border}`,borderRadius:6,padding:10,fontSize:10,lineHeight:1.5,resize:"vertical",background:"#fff",color:"#4B5563"}}
-                />
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:0}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                  <div style={{fontSize:10,fontWeight:700,color:DK}}>Preview editable de partidas detectadas</div>
-                  <Btn v="ol" sm onClick={addOcrDraftRow}>+ Fila</Btn>
-                </div>
-                <div style={{overflow:"auto",border:`1px solid ${UI.border}`,borderRadius:6}}>
-                  <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse"}}>
-                    <thead>
-                      <tr style={{background:"#F8F6F1"}}>
-                        {["Categoría","Código","Descripción","UND","Cant","MO","Mat","Util%","Riesgo%",""].map((header) => (
-                          <th key={header} style={{padding:"6px 7px",fontSize:9,color:"#808A94",borderBottom:`1px solid ${UI.border}`,textAlign:header==="Descripción"?"left":"right",whiteSpace:"nowrap"}}>{header}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {!ocrDraftRows.length && (
-                        <tr>
-                          <td colSpan={10} style={{padding:"16px 10px",textAlign:"center",fontSize:10,color:"#9CA3AF"}}>
-                            No hay filas detectadas. Puedes agregar filas manualmente.
-                          </td>
-                        </tr>
-                      )}
-                      {ocrDraftRows.map((row, index) => (
-                        <tr key={row.draftId} title={getCotOcrDraftIssue(row) || undefined} style={{background:getCotOcrDraftIssue(row)?"#FFF7ED":index%2?"#fff":"#FAFAF7",borderBottom:`1px solid ${UI.borderSoft}`}}>
-                          <td style={{padding:"5px 6px"}}><input value={row.categoria} onChange={(event) => updateOcrDraftValue(row.draftId, "categoria", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:110}}/></td>
-                          <td style={{padding:"5px 6px"}}><input value={row.codPartida} onChange={(event) => updateOcrDraftValue(row.draftId, "codPartida", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:82,textAlign:"right"}}/></td>
-                          <td style={{padding:"5px 6px"}}><input value={row.descripcion} onChange={(event) => updateOcrDraftValue(row.draftId, "descripcion", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,minWidth:170}}/></td>
-                          <td style={{padding:"5px 6px"}}><input value={row.und} onChange={(event) => updateOcrDraftValue(row.draftId, "und", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:64,textTransform:"uppercase"}}/></td>
-                          <td style={{padding:"5px 6px"}}><input type="number" value={row.cant} onChange={(event) => updateOcrDraftValue(row.draftId, "cant", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:72,textAlign:"right"}}/></td>
-                          <td style={{padding:"5px 6px"}}><input type="number" value={row.manoObra} onChange={(event) => updateOcrDraftValue(row.draftId, "manoObra", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:82,textAlign:"right"}}/></td>
-                          <td style={{padding:"5px 6px"}}><input type="number" value={row.materiales} onChange={(event) => updateOcrDraftValue(row.draftId, "materiales", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:82,textAlign:"right"}}/></td>
-                          <td style={{padding:"5px 6px"}}><input type="number" value={row.utilidadPct} onChange={(event) => updateOcrDraftValue(row.draftId, "utilidadPct", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:70,textAlign:"right"}}/></td>
-                          <td style={{padding:"5px 6px"}}><input type="number" value={row.riesgoPct} onChange={(event) => updateOcrDraftValue(row.draftId, "riesgoPct", event.target.value)} style={{...si,padding:"5px 6px",fontSize:10,width:70,textAlign:"right"}}/></td>
-                          <td style={{padding:"5px 6px",textAlign:"center"}}>
-                            <button type="button" onClick={() => removeOcrDraftRow(row.draftId)} style={{border:"none",background:"none",fontSize:13,color:"#9CA3AF",cursor:"pointer",padding:0}}>
-                              ×
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table></div>
-                </div>
-              </div>
-            </div>
-            <div style={{padding:"10px 14px",borderTop:`1px solid ${UI.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-              <div style={{fontSize:10,color:UI.textMuted}}>Modo de importación: agregar al final.</div>
-              <div className="workspace-actions" style={{display:"flex",gap:8}}>
-                <Btn v="ol" sm onClick={closeOcrModal}>Cancelar</Btn>
-                <button
-                  type="button"
-                  onClick={confirmOcrImport}
-                  disabled={ocrBusy}
-                  style={{background:DK,color:"#fff",border:`1px solid ${DK}`,borderRadius:6,padding:"6px 12px",fontSize:10,fontWeight:700,cursor:ocrBusy?"not-allowed":"pointer",opacity:ocrBusy?0.7:1}}
-                >
-                  Importar al formulario
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

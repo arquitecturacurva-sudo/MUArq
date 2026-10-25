@@ -6,9 +6,10 @@ import { calculateQuotationTotals } from "../../domain/quotation/quotationRules"
 import { COT_UNITS } from "../../domain/project/toolDefaults";
 import { si } from "../ui/tokens";
 import "./constructionQuoteImport.css";
+import testPdfUrl from "../../../public/examples/cotizacion-obra-prueba.pdf?url";
 
 type Props = {
-  extract: (file: File, signal: AbortSignal) => Promise<QuoteExtraction>;
+  extract: (file: File, signal: AbortSignal, onProgress?: (message: string) => void) => Promise<QuoteExtraction>;
   currency: "PEN" | "USD" | "MXN"; rates: {igvPct: number; ggPct: number; supPct: number};
   existing: CotPartida[]; startId: number;
   onClose: () => void;
@@ -22,6 +23,7 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
   const [result, setResult] = useState<QuoteExtraction | null>(null);
   const [rows, setRows] = useState<QuoteDraft[]>([]);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [prices, setPrices] = useState<"" | "net" | "gross">("");
   const [rates, setRates] = useState(initialRates);
@@ -48,11 +50,11 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
     setRates(initialRates);
   };
   const run = async (file: File) => {
-    setBusy(true); setError(""); setResult(null); setRows([]); setAccepted(false);
+    setBusy(true); setProgress("Abriendo PDF en tu dispositivo…"); setError(""); setResult(null); setRows([]); setAccepted(false);
     const current = new AbortController(); controller.current = current;
     if (url.current) URL.revokeObjectURL(url.current);
     url.current = URL.createObjectURL(file); setSourceUrl(url.current);
-    try { const data = await extract(file, current.signal); if (!current.signal.aborted) load(data); }
+    try { const data = await extract(file, current.signal, message => { if (!current.signal.aborted) setProgress(message); }); if (!current.signal.aborted) load(data); }
     catch (e) { if (!current.signal.aborted) setError(e instanceof Error ? e.message : "No se pudo leer el PDF."); }
     finally { if (!current.signal.aborted) setBusy(false); }
   };
@@ -92,26 +94,27 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
         }
       }}>
       <header className="quote-import-header">
-        <div><h2 id="quote-import-title">Leer cotización de obra</h2><p>Partidas en español, con metrado, precio y referencia al documento.</p></div>
+        <div><h2 id="quote-import-title">Curv OCR · Cotizaciones de obra</h2><p>Partidas en español, con metrado, precio y referencia al documento.</p></div>
         <button ref={firstButton} type="button" onClick={cancel} aria-label={busy ? "Cancelar lectura y cerrar" : "Cerrar lector"}>Cerrar</button>
       </header>
       <div className="quote-import-content">
         <div className="quote-import-upload">
-          <label>Seleccionar PDF (hasta 2,5 MB y 30 páginas)
+          <label>Seleccionar PDF (hasta 20 MB y 30 páginas)
             <input type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => {const file=e.target.files?.[0]; e.target.value=""; if(file) void run(file);}} />
           </label>
           <button type="button" disabled={busy} onClick={() => {
             if(url.current) URL.revokeObjectURL(url.current); url.current=""; setSourceUrl(""); load(SPANISH_QUOTE_EXAMPLE);
-          }}>Probar con ejemplo</button>
+          }}>Ver ejemplo de revisión</button>
+          <a href={testPdfUrl} download="cotizacion-obra-prueba.pdf">Descargar PDF de prueba</a>
         </div>
-        <p className="quote-import-muted">Al seleccionar tu PDF se envía a Mistral para extraer las partidas. Curv no guarda el archivo en este servicio. Revisa los resultados antes de incorporarlos.</p>
-        {busy && <p role="status">Leyendo todas las páginas y organizando las partidas… Puedes cancelar cerrando esta ventana.</p>}
+        <p className="quote-import-muted">Lectura gratuita en tu dispositivo, sin claves ni servicios de IA externos. El PDF permanece en tu navegador. La primera lectura escaneada carga el motor desde Curv y puede tardar más. Solo se guardan las partidas que revises y agregues.</p>
+        {busy && <p role="status">{progress} Puedes cancelar cerrando esta ventana.</p>}
         {error && <p role="alert" className="quote-import-warning">{error}</p>}
         {duplicates && <p role="alert" className="quote-import-warning">Este documento ya tiene partidas importadas en la cotización. Elimina esas partidas antes de volver a importarlo.</p>}
         {result && <>
-          <p><strong>{result.fileName}</strong> · {result.pages.length} páginas · {rows.length} partidas · {result.model === "ejemplo" ? "Ejemplo ficticio, sin lectura de API" : "Lectura especializada en español"}</p>
+          <p><strong>{result.fileName}</strong> · {result.pages.length} páginas · {rows.length} partidas · {result.model === "ejemplo" ? "Ejemplo ficticio de revisión, sin leer un archivo" : "Curv OCR · lectura local"}</p>
           {result.document.advertencias.map((warning,i) => <p className="quote-import-warning" key={i}>{warning}</p>)}
-          {!rows.length && <p role="status">No se identificaron partidas. Prueba otro archivo o utiliza la lectura local.</p>}
+          {!rows.length && <p role="status">No se identificaron partidas con suficiente estructura. Puedes agregarlas manualmente usando el original como referencia o probar otro PDF más legible.</p>}
           <div className="quote-import-settings">
             <label>Precios unitarios del documento
               <select style={si} value={prices} onChange={e=>{setPrices(e.target.value as typeof prices);setAccepted(false);}}>
@@ -134,6 +137,10 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
             </section>
             <section className="quote-import-rows" aria-label="Partidas extraídas">
               <h3>Revisar partidas</h3>
+              <button type="button" onClick={() => {
+                const manual = buildQuoteDrafts({...result.document, partidas:[{categoria:null,codigo:null,descripcion:"",unidad:null,cantidad:null,precioUnitario:null,manoObra:null,materiales:null,utilidadPct:null,riesgoPct:null,parcial:null,pagina:page,evidencia:"Partida agregada manualmente. Contrasta sus valores con el PDF original."} ]})[0];
+                setRows(prev => [...prev, {...manual,id:`manual-${Date.now()}-${prev.length}`}]); setAccepted(false);
+              }}>+ Partida manual</button>
               {rows.map((row,index) => {
                 const issues=quoteDraftIssues(row);
                 return <article key={row.id} className="quote-import-row">
@@ -142,6 +149,7 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
                     <button type="button" onClick={()=>setPage(row.pagina)}>Ver página {row.pagina}</button>
                   </div>
                   <blockquote>{row.evidencia}</blockquote>
+                  {row.ocrConfidence !== undefined && row.ocrConfidence < 70 && <p className="quote-import-warning">El reconocimiento de esta fila tiene baja confianza. Revisa especialmente los números y la unidad.</p>}
                   <div className="quote-import-fields">
                     <label>Capítulo<input style={si} value={row.categoria} onChange={e=>update(row.id,{categoria:e.target.value})}/></label>
                     <label>Código<input style={si} value={row.codigo} onChange={e=>update(row.id,{codigo:e.target.value})}/></label>

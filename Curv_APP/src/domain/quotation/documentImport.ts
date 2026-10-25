@@ -6,6 +6,8 @@ export type SourceQuoteRow = {
   cantidad: string | null; precioUnitario: string | null; manoObra: string | null; materiales: string | null;
   utilidadPct: string | null; riesgoPct: string | null; parcial: string | null;
   pagina: number; evidencia: string;
+  region?: {x: number; y: number; width: number; height: number};
+  ocrConfidence?: number;
 };
 export type SourceQuote = {
   moneda: "PEN" | "USD" | "MXN" | null; preciosIncluyenIgv: boolean | null;
@@ -13,7 +15,7 @@ export type SourceQuote = {
   total: string | null; advertencias: string[]; partidas: SourceQuoteRow[];
 };
 export type QuoteExtraction = {
-  document: SourceQuote; pages: {page: number; text: string}[];
+  document: SourceQuote; pages: {page: number; text: string; method?: "embedded" | "ocr" | "mixed"}[];
   model: string; schemaVersion: string; fileName: string; fileHash: string;
 };
 export type QuoteDraft = {
@@ -21,12 +23,13 @@ export type QuoteDraft = {
   unidad: string; cantidad: number | null; precioUnitario: number | null; manoObra: number | null;
   materiales: number | null; utilidadPct: number | null; riesgoPct: number | null; parcial: number | null;
   mode: "offered" | "costs"; pagina: number; evidencia: string; acceptPartialDifference: boolean;
+  region?: SourceQuoteRow["region"]; ocrConfidence?: number;
 };
 
 /** An isolated three-digit separator is ambiguous. Require review instead of silently changing a metrado by 1000. */
 export function parseConstructionNumber(value: string | null): number | null {
   if (value === null || !value.trim()) return null;
-  const raw = value.replace(/S\s*\/\.?|US\$|USD|PEN|soles|%|\$/gi, "").replace(/[\s\u00a0]/g, "");
+  const raw = value.replace(/S\s*\/\.?|US\$|USD|PEN|MXN|soles|%|\$/gi, "").replace(/[\s\u00a0]/g, "");
   if (!/^-?\d+(?:[.,]\d+)*$/.test(raw)) return null;
   const comma = raw.lastIndexOf(","), dot = raw.lastIndexOf(".");
   let normalized = raw;
@@ -59,6 +62,7 @@ export function buildQuoteDrafts(document: SourceQuote): QuoteDraft[] {
     utilidadPct: parseConstructionNumber(row.utilidadPct), riesgoPct: parseConstructionNumber(row.riesgoPct),
     parcial: parseConstructionNumber(row.parcial),
     mode: row.precioUnitario !== null ? "offered" : "costs", pagina: row.pagina, evidencia: row.evidencia, acceptPartialDifference: false,
+    region: row.region, ocrConfidence: row.ocrConfidence,
   }));
 }
 export function expectedQuotePartial(row: QuoteDraft): number | null {
@@ -106,10 +110,10 @@ export function createSpecializedQuoteParts(rows: QuoteDraft[], extraction: Quot
     utilidadPct: row.mode === "costs" ? row.utilidadPct ?? 0 : 0,
     riesgoPct: row.mode === "costs" ? row.riesgoPct ?? 0 : 0,
     ...(row.mode === "offered" ? { precioUnitarioFijo: row.precioUnitario! / (options.prices === "gross" ? 1 + options.igvPct / 100 : 1) } : {}),
-    importSource: "document-ai", reviewStatus: "reviewed", importBatchId: options.batchId,
+    importSource: extraction.schemaVersion === "obra-local-v1" ? "pdf-local" : "document-ai", reviewStatus: "reviewed", importBatchId: options.batchId,
     documentImport: { fileName: extraction.fileName, fileHash: extraction.fileHash, page: row.pagina,
       evidence: row.evidencia, model: extraction.model, schemaVersion: extraction.schemaVersion,
-      originalUnitPrice: row.precioUnitario, pricesIncludedIgv: options.prices === "gross" },
+      originalUnitPrice: row.precioUnitario, pricesIncludedIgv: options.prices === "gross", region: row.region },
   }));
   assertQuotationImportSize(parts);
   return parts;

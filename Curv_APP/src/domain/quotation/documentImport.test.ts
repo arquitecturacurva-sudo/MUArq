@@ -4,6 +4,12 @@ import { calculateQuotationPart, calculateQuotationTotals } from "./quotationRul
 const options={startId:7,batchId:"test",currency:"PEN" as const,prices:"net" as const,igvPct:18,acknowledgeCurrency:false};
 const reviewed=()=>buildQuoteDrafts(SPANISH_QUOTE_EXAMPLE.document).map(r=>({...r,reviewed:true}));
 describe("Spanish construction quotation import",()=>{
+ it("accepts explicit MXN amounts and tags new local imports without changing historical provenance",()=>{
+   expect(parseConstructionNumber("MXN 1,234.56")).toBe(1234.56);
+   const local={...SPANISH_QUOTE_EXAMPLE,schemaVersion:"obra-local-v1"};
+   expect(createSpecializedQuoteParts(reviewed(),local,options)[0].importSource).toBe("pdf-local");
+   expect(createSpecializedQuoteParts(reviewed(),SPANISH_QUOTE_EXAMPLE,options)[0].importSource).toBe("document-ai");
+ });
  it.each([["1.234,56",1234.56],["1,234.56",1234.56],["12,50",12.5],["0",0],["1 234,50",1234.5],["S/ 2.000,00",2000],["1,234",null],["1.234",null],["ilegible",null],[null,null]])("parses %s without guessing", (raw,expected)=>expect(parseConstructionNumber(raw)).toBe(expected));
  it("preserves chapter, code, superscript units and missing cost breakdown",()=>{
    const rows=buildQuoteDrafts(SPANISH_QUOTE_EXAMPLE.document);

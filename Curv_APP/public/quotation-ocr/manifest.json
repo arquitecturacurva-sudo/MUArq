@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "engine": "curv-obra-local-v1",
+  "packages": {
+    "tesseract.js": "5.1.1",
+    "tesseract.js-core": "5.1.1"
+  },
+  "files": [
+    {
+      "path": "core/tesseract-core-lstm.js",
+      "bytes": 124391,
+      "sha256": "fc54a973687325599214294ec90ea9665309cbdf6ca727c43a64651f24e923f7",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-lstm.js"
+    },
+    {
+      "path": "core/tesseract-core-lstm.wasm",
+      "bytes": 2859424,
+      "sha256": "5db58ea4d1bd4256be81e8ae3b4fa226c4625dfba1850b1b3308dbf3700e9929",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-lstm.wasm"
+    },
+    {
+      "path": "core/tesseract-core-lstm.wasm.js",
+      "bytes": 3938277,
+      "sha256": "8f04aa0cc81e7bde33f80e92fa01a7a665f0b4884d098acf5de9c7104a11dfaa",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-lstm.wasm.js"
+    },
+    {
+      "path": "core/tesseract-core-simd-lstm.js",
+      "bytes": 124396,
+      "sha256": "4135a3f6f1cccf3bc92058c1273c49bb4cff6356e1ba15d1b8b4e76e9890526b",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-simd-lstm.js"
+    },
+    {
+      "path": "core/tesseract-core-simd-lstm.wasm",
+      "bytes": 2859709,
+      "sha256": "66b601224a0c4a8977bc9d92dd39841189f9ca22cc4122fcd7208cdb0961eeef",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-simd-lstm.wasm"
+    },
+    {
+      "path": "core/tesseract-core-simd-lstm.wasm.js",
+      "bytes": 3938657,
+      "sha256": "ce20eda9533cbed1e6c2b4276fbae1e0adc61b6754b5513084be601787b457cf",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-simd-lstm.wasm.js"
+    },
+    {
+      "path": "core/tesseract-core-simd.js",
+      "bytes": 124079,
+      "sha256": "74f0f7bacae500794c9e61a54956f23c3b271bf15a9847776d98f93164ba9400",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-simd.js"
+    },
+    {
+      "path": "core/tesseract-core-simd.wasm",
+      "bytes": 3457317,
+      "sha256": "baa2f54ef5af43ada4605fd7ae999bde3c6ecc96bfe0d0410b0b4f4a5f9c8b91",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-simd.wasm"
+    },
+    {
+      "path": "core/tesseract-core-simd.wasm.js",
+      "bytes": 4735153,
+      "sha256": "63f232c4f7a97b04e52eb940202700b2c6239783a75d0ff0553274fac530cd5c",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core-simd.wasm.js"
+    },
+    {
+      "path": "core/tesseract-core.js",
+      "bytes": 124074,
+      "sha256": "c8ff737be3e8e12f6426773f13186965ea4455977ab12a759f051da7c6493100",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core.js"
+    },
+    {
+      "path": "core/tesseract-core.wasm",
+      "bytes": 3457035,
+      "sha256": "b47a852b19181ae0999f9d970c368cd351135a320ea978b35bd38602d8bcc0bc",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core.wasm"
+    },
+    {
+      "path": "core/tesseract-core.wasm.js",
+      "bytes": 4734777,
+      "sha256": "2b8c8c92b8788807061fb4bb16c5acdf000c149e100255f879f78d2c58ca9969",
+      "package": "tesseract.js-core",
+      "packagePath": "tesseract-core.wasm.js"
+    },
+    {
+      "path": "worker.min.js",
+      "bytes": 123724,
+      "sha256": "aca1229639fc9907d86f96e825955a2b7c5716d17f3bc3acd71f9c7ab66181fc",
+      "package": "tesseract.js",
+      "packagePath": "dist/worker.min.js"
+    },
+    {
+      "path": "worker.min.js.LICENSE.txt",
+      "bytes": 466,
+      "sha256": "45f54171aeaa1d10c0c1a66f374b7bba1f02472b1487fbe892eec04f840002ac",
+      "package": "tesseract.js",
+      "packagePath": "dist/worker.min.js.LICENSE.txt"
+    },
+    {
+      "path": "lang/spa.traineddata.gz",
+      "bytes": 2100190,
+      "sha256": "40be52f97b5d4eb7460073dc1f94cd546b27150333c0bf854ed7e7132db6bceb",
+      "sourceUrl": "https://registry.npmjs.org/@tesseract.js-data/spa/-/spa-1.0.0.tgz",
+      "archivePath": "package/4.0.0_best_int/spa.traineddata.gz",
+      "dataPackageVersion": "1.0.0",
+      "profile": "4.0.0_best_int"
+    },
+    {
+      "path": "lang/eng.traineddata.gz",
+      "bytes": 2952873,
+      "sha256": "45b4cb346724ac1774f1c36f42f182b887bcdb28ebe63e6fff90ac41f3fcff91",
+      "sourceUrl": "https://registry.npmjs.org/@tesseract.js-data/eng/-/eng-1.0.0.tgz",
+      "archivePath": "package/4.0.0_best_int/eng.traineddata.gz",
+      "dataPackageVersion": "1.0.0",
+      "profile": "4.0.0_best_int"
+    }
+  ]
+}
