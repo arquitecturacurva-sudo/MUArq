@@ -1,3 +1,5 @@
+import { defaultFeeSettings, isFeeSettings, type FeeSettings } from "../../domain/fees/personalization";
+import { readStorage, writeStorage } from "../project/browserStorage";
 import { usePersistentState, useSharedProjectTextField } from "../../features/runtime/storage/usePersistentState";
 import { SHARED_PROJECT_CLIENT_KEY, PROJECT_CLIENT_LEGACY_KEYS, SHARED_PROJECT_NAME_KEY, PROJECT_NAME_LEGACY_KEYS } from "../../domain/project/project";
 import type { FeesState } from "../../application/fees/feesState";
@@ -13,5 +15,13 @@ export function useFeesState(): FeesState {
   const [mg,smg]=usePersistentState<number | string>("calc.mg",0); const [dc,sdc]=usePersistentState<number | string>("calc.dc",0); const [rd,srd]=usePersistentState<number | string>("calc.rd",50);
   const [rx,srx]=usePersistentState<number | string>("calc.rx",0); const [vx,svx]=usePersistentState<number | string>("calc.vx",0); const [nx,snx]=usePersistentState<number | string>("calc.nx",0);
 
-  return { step: [step, ss], cl: [cl, scl], pr: [pr, spr], fe: [fe, sfe], ti: [ti, sti], et: [et, set_], ar: [ar, sar], mo: [mo, smo], ig: [ig, sig], co: [co, sco], ur: [ur, sur], tc: [tc, stc], mg: [mg, smg], dc: [dc, sdc], rd: [rd, srd], rx: [rx, srx], vx: [vx, svx], nx: [nx, snx] };
+  const personalization = usePersistentState("calc.personalizacion", defaultFeeSettings, isFeeSettings, true);
+  const savePersonalization = (value: FeeSettings) => {
+    if (!isFeeSettings(value)) return false;
+    writeStorage("calc.personalizacion", value);
+    if (JSON.stringify(readStorage("calc.personalizacion", null)) !== JSON.stringify(value)) return false;
+    personalization[1](value);
+    return true;
+  };
+  return { personalization, savePersonalization, step: [step, ss], cl: [cl, scl], pr: [pr, spr], fe: [fe, sfe], ti: [ti, sti], et: [et, set_], ar: [ar, sar], mo: [mo, smo], ig: [ig, sig], co: [co, sco], ur: [ur, sur], tc: [tc, stc], mg: [mg, smg], dc: [dc, sdc], rd: [rd, srd], rx: [rx, srx], vx: [vx, svx], nx: [nx, snx] };
 }

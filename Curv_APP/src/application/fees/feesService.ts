@@ -1,3 +1,4 @@
+import { isFeeSettings, type FeeSettings } from "../../domain/fees/personalization";
 import { calculateFees } from "../../domain/fees/calculateFees";
 import { isString } from "../../domain/project/values";
 import type { ProjectStorageRepository } from "../../domain/project/projectStorageRepository";
@@ -22,6 +23,7 @@ export function createFeesService(repository: Pick<ProjectStorageRepository, "re
     const vx = Number(readValue<number | string>(projectId, "calc.vx", 0)) || 0;
     const nx = Number(readValue<number | string>(projectId, "calc.nx", 0)) || 0;
 
-    return calculateFees({ ti, et, ar, co, ur, tc, mo, mg, dc, rd, ig, rx, vx, nx });
+    const settings = readValue<FeeSettings | undefined>(projectId, "calc.personalizacion", undefined, isFeeSettings);
+    return calculateFees({ ti, et, ar, co, ur, tc, mo, mg, dc, rd, ig, rx, vx, nx }, settings);
   } };
 }
