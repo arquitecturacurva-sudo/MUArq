@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { feeSettingsErrors, type FeeSettings } from "../../domain/fees/personalization";
+import { formatMoneyByCurrency } from "../../domain/project/currency";
 import { calculateFees } from "../../domain/fees/calculateFees";
 import type { FeesState } from "../../application/fees/feesState";
 import type { ProjectCurrency } from "../../domain/project/project";
@@ -31,12 +34,28 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
   const [vx, svx] = state.vx;
   const [nx, snx] = state.nx;
   const moneySym = currencySymbol(currency);
-  const c = calculateFees({ ti, et, ar, co, ur, tc, mo, mg, dc, rd, ig, rx, vx, nx });
+  const [savedSettings] = state.personalization;
+  const [draft, setDraft] = useState<FeeSettings | null>(null);
+  const [saveMessage, setSaveMessage] = useState("");
+  const settings = draft ?? savedSettings;
+  const errors = feeSettingsErrors(settings);
+  const valid = Object.keys(errors).length === 0;
+  const dirty = JSON.stringify(settings) !== JSON.stringify(savedSettings);
+  const percentTotal = settings.milestones.reduce((sum,h)=>sum+Math.round((Number(h.percent)||0)*100),0)/100;
+  const editSettings = (next: FeeSettings) => { setDraft(next); setSaveMessage(""); };
+  const saveSettings = () => {
+    if (!valid) { setSaveMessage("Revisa los campos indicados antes de guardar."); return false; }
+    if (!state.savePersonalization(settings)) { setSaveMessage("No se pudo guardar. Vuelve a intentarlo."); return false; }
+    setDraft(null); setSaveMessage("Personalización guardada en este proyecto."); return true;
+  };
+  const updateMilestone = (id: string, field: "name" | "percent", value: string) => editSettings({...settings,milestones:settings.milestones.map(h=>h.id===id?{...h,[field]:value}:h)});
+  const money = (value: number) => formatMoneyByCurrency(value,currency);
+  const c = calculateFees({ ti, et, ar, co, ur, tc, mo, mg, dc, rd, ig, rx, vx, nx }, settings);
   const ST=["Datos del proyecto","Factores y extras","Resultado"];
   const showCalcEmpty = step===1 && !String(cl).trim() && !String(pr).trim() && !String(ar).trim();
   return (
     <div>
-      <StepNav steps={ST} current={step} onSelect={ss} />
+      <StepNav steps={ST} current={step} onSelect={n=>{if(n!==3 || saveSettings())ss(n);}} />
 
       {step===1&&(
         <div style={cardS}>
@@ -64,7 +83,7 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
             </Fld>
           </div>
           {+ar>0&&<div style={{background:"#F8F6F1",border:"1px solid #E5DDD0",borderRadius:6,padding:"9px 12px",display:"flex",gap:24,marginTop:4}}>
-            <div><div style={lb}>Tarifa base</div><div style={{fontWeight:800,fontSize:17,color:G}}>S/ {c.t}/m²</div></div>
+            <div><div style={lb}>Tarifa base</div><div style={{fontWeight:800,fontSize:17,color:G}}>{moneySym} {c.t}/m²</div></div>
             <div><div style={lb}>Honorario base</div><div style={{fontWeight:700,fontSize:17}}>{fmt(c.b)}</div></div>
           </div>}
           <div style={{textAlign:"right",marginTop:14}}><Btn onClick={()=>ss(2)}>Siguiente →</Btn></div>
@@ -73,6 +92,17 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
 
       {step===2&&(
         <div style={cardS}>
+          <section aria-label="Tarifa base" style={{marginBottom:20}}>
+            <p style={{...lb,color:G}}>Tarifa base</p>
+            <p>Tarifa sugerida: {money((TAR[ti]||{})[et]||0)}/m² · {ti} · {et}</p>
+            <label>Modo de tarifa<select style={si} value={settings.mode} onChange={e=>editSettings({...settings,mode:e.target.value as FeeSettings["mode"]})}><option value="suggested">Sugerida</option><option value="custom">Personalizada</option></select></label>
+            {settings.mode==="custom" && <div style={{marginTop:10}}>
+              <label>Precio por m² ({moneySym})<input style={si} type="number" min="0.01" step="0.01" value={settings.manualRate} aria-invalid={!!errors.rate} onChange={e=>editSettings({...settings,manualRate:e.target.value})}/></label>
+              {errors.rate && <p role="alert">{errors.rate}</p>}
+              <p>La tarifa personalizada permanece activa al cambiar el tipo o servicio.</p>
+              <Btn v="ol" onClick={()=>editSettings({...settings,mode:"suggested"})}>Usar tarifa sugerida</Btn>
+            </div>}
+          </section>
           <p style={{...lb,color:G,margin:"0 0 10px"}}>Factores de ajuste</p>
           <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
             <Fld label="Complejidad"><Sel value={co} onChange={sco} options={Object.keys(CF)}/></Fld>
@@ -80,7 +110,7 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
             <Fld label="Tipo de cliente"><Sel value={tc} onChange={stc} options={Object.keys(KF)}/></Fld>
             <Fld label="Margen adicional (%)"><Inp type="number" value={mg} onChange={smg} min="0"/></Fld>
             <Fld label="Descuento (%)"><Inp type="number" value={dc} onChange={sdc} min="0"/></Fld>
-            <Fld label="Redondeo (S/)"><Inp type="number" value={rd} onChange={srd} min="0"/></Fld>
+            <Fld label={`Redondeo (${moneySym})`}><Inp type="number" value={rd} onChange={srd} min="0"/></Fld>
           </div>
           <p style={{...lb,color:G,margin:"10px 0"}}>Adicionales</p>
           <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 18px"}}>
@@ -94,9 +124,26 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
             {ig&&<div><div style={lb}>IGV</div><div style={{fontWeight:600,fontSize:12}}>{fmt(c.igv)}</div></div>}
             <div style={{marginLeft:"auto"}}><div style={lb}>Total estimado</div><div style={{fontWeight:800,fontSize:20,color:G}}>{fmt(c.tot)}</div></div>
           </div>
+          <section aria-label="Hitos de cobro" style={{marginTop:20}}>
+            <p style={{...lb,color:G}}>Hitos de cobro</p>
+            {settings.milestones.map((h,index)=><div key={h.id} style={{display:"flex",flexWrap:"wrap",gap:10,alignItems:"start",borderBottom:"1px solid #E5DDD0",padding:"12px 0"}}>
+              <label style={{flex:"2 1 160px"}}>Nombre del hito<input style={si} value={h.name} aria-invalid={!!errors[h.id+".name"]} onChange={e=>updateMilestone(h.id,"name",e.target.value)}/>{errors[h.id+".name"] && <span role="alert">{errors[h.id+".name"]}</span>}</label>
+              <label style={{flex:"1 1 110px"}}>Porcentaje (%)<input style={si} type="number" min="0.01" max="100" step="0.01" value={h.percent} aria-invalid={!!errors[h.id+".percent"]} onChange={e=>updateMilestone(h.id,"percent",e.target.value)}/>{errors[h.id+".percent"] && <span role="alert">{errors[h.id+".percent"]}</span>}</label>
+              <div style={{flex:"1 1 110px"}}>Importe<div>{money(c.hitos[index].m)}</div></div>
+              <button type="button" aria-label={"Eliminar hito "+(h.name||index+1)} style={{...si,width:"auto"}} onClick={()=>editSettings({...settings,milestones:settings.milestones.filter(item=>item.id!==h.id)})}>Eliminar</button>
+            </div>)}
+            <p role="status">Total: {percentTotal.toFixed(2)}% · {percentTotal===100?"Distribución completa":percentTotal<100?"Falta "+(100-percentTotal).toFixed(2)+"%":"Sobra "+(percentTotal-100).toFixed(2)+"%"}</p>
+            {errors.total && <p role="alert">{errors.total}</p>}
+            <Btn v="ol" onClick={()=>editSettings({...settings,milestones:[...settings.milestones,{id:crypto.randomUUID(),name:"",percent:"0"}]})}>Agregar hito</Btn>
+            <div style={{display:"flex",flexWrap:"wrap",gap:12,alignItems:"center",marginTop:16}}>
+              <Btn onClick={saveSettings}>Guardar personalización</Btn>
+              {dirty && <Btn v="ol" onClick={()=>{setDraft(null);setSaveMessage("");}}>Descartar cambios</Btn>}
+              <span role="status">{saveMessage||(dirty?"Cambios pendientes de guardar":"Sin cambios pendientes")}</span>
+            </div>
+          </section>
           <div className="workspace-actions" style={{display:"flex",justifyContent:"space-between",marginTop:14}}>
             <Btn v="ol" onClick={()=>ss(1)}>← Anterior</Btn>
-            <Btn onClick={()=>ss(3)}>Ver resultado →</Btn>
+            <Btn onClick={()=>{if(saveSettings())ss(3);}}>Ver resultado →</Btn>
           </div>
         </div>
       )}
@@ -125,7 +172,7 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
           <p style={{...lb,color:G,marginBottom:8}}>Desglose</p>
           <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
             <tbody>
-              {[["Honorario base",c.b,`${ar||0} m² × S/ ${c.t}/m²`],["Ajustes",c.adj-c.b,"Complejidad, urgencia, cliente, modelo"],
+              {[["Honorario base",c.b,`${ar||0} m² × ${moneySym} ${c.t}/m²`],["Ajustes",c.adj-c.b,"Complejidad, urgencia, cliente, modelo"],
                 ...(c.ext>0?[["Adicionales",c.ext,"Reuniones, visitas, renders"]]:[]),
                 ["Subtotal",c.sub,""],
                 ...(ig?[["IGV (18%)",c.igv,""]]:[])
@@ -139,17 +186,17 @@ export function FeesCalculator({ toolId, onPrint, state, currency, formatMoney: 
               <tr style={{background:DK,color:"#fff"}}>
                 <td style={{padding:"9px 8px",fontWeight:700,fontSize:11}}>TOTAL</td>
                 <td style={{padding:"9px 8px",fontWeight:800,fontSize:15,textAlign:"right",color:G}}>{fmt(c.tot)}</td>
-                <td style={{padding:"9px 8px",fontSize:9,color:"#666"}}>Redond. a S/ {rd}</td>
+                <td style={{padding:"9px 8px",fontSize:9,color:"#666"}}>Redond. a {moneySym} {rd}</td>
               </tr>
             </tbody>
           </table></div>
           <p style={{...lb,color:G,marginBottom:8}}>Hitos de cobro</p>
-          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+          <div data-tool-grid style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginBottom:14}}>
             {c.hitos.map(h=>(
-              <div key={h.n} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:10,textAlign:"center"}}>
+              <div key={settings.milestones[c.hitos.indexOf(h)]?.id || h.n} style={{border:"1px solid #E5DDD0",borderRadius:6,padding:10,textAlign:"center"}}>
                 <div style={{...lb,margin:"0 0 4px"}}>{h.n}</div>
-                <div style={{fontWeight:800,fontSize:14}}>{fmt(h.m)}</div>
-                <div style={{color:G,fontSize:9,marginTop:3,fontWeight:600}}>{(h.p*100).toFixed(0)}%</div>
+                <div style={{fontWeight:800,fontSize:14}}>{money(h.m)}</div>
+                <div style={{color:G,fontSize:9,marginTop:3,fontWeight:600}}>{(h.p*100).toLocaleString("es-PE",{maximumFractionDigits:2})}%</div>
               </div>
             ))}
           </div>
