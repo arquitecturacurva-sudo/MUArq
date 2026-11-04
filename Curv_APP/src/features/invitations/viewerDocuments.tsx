@@ -1,3 +1,4 @@
+import { defaultFeeSettings, isFeeSettings } from "../../domain/fees/personalization";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactElement } from "react";
 import type { ProjectBaseMetadata } from "../../domain/project/project";
@@ -71,7 +72,7 @@ function documentView(id: ProjectToolId, data: Record<string, unknown>, meta: Pr
         rx: field<number | string>(data, "calc.rx", 0), vx: field<number | string>(data, "calc.vx", 0),
         nx: field<number | string>(data, "calc.nx", 0),
       };
-      return <FeesCalculator toolId={id} onPrint={onPrint} state={readOnlyState(values)} currency={meta.currency} formatMoney={formatMoney} />;
+      return <FeesCalculator toolId={id} onPrint={onPrint} state={{...readOnlyState(values), personalization:[isFeeSettings(data["calc.personalizacion"]) ? data["calc.personalizacion"] : defaultFeeSettings, ignoreChange], savePersonalization:()=>false}} currency={meta.currency} formatMoney={formatMoney} />;
     }
     case "matrix": {
       const values: MatrixValues = {

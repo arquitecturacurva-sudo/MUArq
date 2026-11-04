@@ -1,3 +1,4 @@
+import { defaultFeeSettings } from "../../domain/fees/personalization";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useFeesState } from "../../infrastructure/fees/useFeesState";
@@ -37,6 +38,22 @@ beforeEach(() => { device(); storage.setActiveStorageProjectId("a"); });
 afterEach(() => { vi.unstubAllGlobals(); storage.setActiveStorageProjectId(""); });
 
 describe("Honorarios storage and export compatibility", () => {
+  it("saves custom fees, updates service totals and round-trips project snapshots", () => {
+    const state=fields();
+    state.ar[1]("100"); state.ig[1](false); state.rd[1](0);
+    const settings={...defaultFeeSettings, mode:"custom" as const, manualRate:"72.35"};
+    expect(state.savePersonalization(settings)).toBe(true);
+    expect(fields().personalization[0]).toEqual(settings);
+    expect(fees.calculateForProject("a").tot).toBe(7235);
+    const snapshot=data.collectProjectSnapshot("a","tenant");
+    expect(snapshot.tools["calc.personalizacion"]).toEqual(settings);
+    expect(data.collectProjectSnapshot("b","tenant").tools).not.toHaveProperty("calc.personalizacion");
+    data.hydrateProjectSnapshot("b",{...snapshot,projectId:"b"});
+    expect(fees.calculateForProject("b").tot).toBe(7235);
+    expect(state.savePersonalization({...settings,manualRate:"-1"})).toBe(false);
+    expect(fields().personalization[0]).toEqual(settings);
+  });
+
   it("keeps the historical exports and registry wired to the extracted component", () => {
     expect(LegacyExport).toBe(ToolCalc); expect(DEFAULT_TOOLS.find(tool => tool.id === "calc")?.component).toBe(ToolCalc);
     expect(LegacyHeader).toBe(DocHeader);
