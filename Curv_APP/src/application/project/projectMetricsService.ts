@@ -1,3 +1,4 @@
+import { calculateQuotationPart } from "../../domain/quotation/quotationRules";
 import { createFeesService } from "../fees/feesService";
 // Phase 2 extraction. Legacy behavior retained; do not import the runtime facade.
 import { isString } from "../../domain/project/values";
@@ -70,9 +71,7 @@ const calcConstruccionMetrics = (projectId: string) => {
   const igvPct = Number(readScopedValue<number | string>(projectId, "cot.igvPct", 18)) || 0;
   const partidas = readScopedValue<CotPartida[]>(projectId, "cot.partidas", [], Array.isArray).filter((item) => isPlainObject(item));
   const subtotalPartidas = partidas.reduce((acc, item) => {
-    const costoBase = (Number((item as CotPartida).manoObra) || 0) + (Number((item as CotPartida).materiales) || 0);
-    const precioUnitario = costoBase * (1 + (Number((item as CotPartida).utilidadPct) || 0) / 100) * (1 + (Number((item as CotPartida).riesgoPct) || 0) / 100);
-    return acc + precioUnitario * (Number((item as CotPartida).cant) || 0);
+    return acc + calculateQuotationPart(item as CotPartida).subTotal;
   }, 0);
   const ggMonto = subtotalPartidas * (ggPct / 100);
   const supMonto = subtotalPartidas * (supPct / 100);

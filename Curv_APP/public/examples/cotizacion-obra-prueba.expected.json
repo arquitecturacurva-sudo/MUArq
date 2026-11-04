@@ -1,0 +1,38 @@
+{
+  "fixture": "cotizacion-obra-prueba.pdf",
+  "fictitious": true,
+  "pages": [
+    "embedded",
+    "ocr"
+  ],
+  "currency": "PEN",
+  "pricesIncludeIgv": false,
+  "ggPct": 0,
+  "supPct": 0,
+  "igvPct": 18,
+  "subtotal": 3000,
+  "igv": 540,
+  "total": 3540,
+  "rows": [
+    {
+      "page": 1,
+      "chapter": "Trabajos preliminares",
+      "code": "01.01",
+      "description": "Limpieza y trazo del terreno",
+      "unit": "M2",
+      "quantity": 100,
+      "unitPrice": 10,
+      "partial": 1000
+    },
+    {
+      "page": 2,
+      "chapter": "Estructuras",
+      "code": "02.01",
+      "description": "Concreto en cimentación",
+      "unit": "M3",
+      "quantity": 5,
+      "unitPrice": 400,
+      "partial": 2000
+    }
+  ]
+}

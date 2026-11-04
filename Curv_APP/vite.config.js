@@ -7,9 +7,9 @@ export default defineConfig({
   // Required for Electron/file:// runtime: avoids absolute /assets URLs.
   base: "./",
   plugins: [react(), tailwindcss()],
-  // Include the clearly marked in-memory demo only in Vercel preview deployments.
+  // Include the fictitious team demo and local quotation QA only in Vercel previews.
   build: process.env.VERCEL_ENV === "preview" ? {
-    rollupOptions: { input: { app: "index.html", teamAccess: "prototype/index.html" } },
+    rollupOptions: { input: { app: "index.html", teamAccess: "prototype/index.html", quotationQa: "tests/quotation/index.html" } },
   } : undefined,
   resolve: {
     // `@/` is what the shadcn CLI writes into generated components.

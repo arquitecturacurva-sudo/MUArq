@@ -4,7 +4,9 @@ import { normalizeCotUnit, ocrNumber } from "../project/quotationImport";
 
 export function calculateQuotationPart(item: CotPartida) {
   const costoBase = (Number(item.manoObra) || 0) + (Number(item.materiales) || 0);
-  const precioUnitario = costoBase * (1 + (Number(item.utilidadPct) || 0) / 100) * (1 + (Number(item.riesgoPct) || 0) / 100);
+  const precioUnitario = typeof item.precioUnitarioFijo === "number" && Number.isFinite(item.precioUnitarioFijo) && item.precioUnitarioFijo >= 0
+    ? item.precioUnitarioFijo
+    : costoBase * (1 + (Number(item.utilidadPct) || 0) / 100) * (1 + (Number(item.riesgoPct) || 0) / 100);
   const parcial = precioUnitario * (Number(item.cant) || 0);
   const subTotal = parcial;
   return { costoBase, precioUnitario, parcial, subTotal };

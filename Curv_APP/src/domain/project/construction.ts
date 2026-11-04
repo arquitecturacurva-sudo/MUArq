@@ -1,6 +1,6 @@
 // Phase 2 extraction. Legacy behavior retained; do not import the runtime facade.
 
-export type CotImportSource = "pdf-embedded" | "pdf-ocr";
+export type CotImportSource = "pdf-embedded" | "pdf-ocr" | "document-ai" | "pdf-local";
 
 export type CotReviewStatus = "pending" | "reviewed";
 
@@ -18,6 +18,9 @@ export type CotPartida = {
   importSource?: CotImportSource;
   reviewStatus?: CotReviewStatus;
   importBatchId?: string;
+  /** Precio ofertado conservado. No recibe utilidad ni riesgo de nuevo. */
+  precioUnitarioFijo?: number;
+  documentImport?: { fileName: string; fileHash: string; page: number; evidence: string; model: string; schemaVersion: string; originalUnitPrice: number | null; pricesIncludedIgv: boolean; region?: {x: number; y: number; width: number; height: number} };
 };
 
 export const newCotPartida = (id: number, categoria: string): CotPartida => ({

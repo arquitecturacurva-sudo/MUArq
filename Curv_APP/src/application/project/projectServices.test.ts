@@ -53,6 +53,11 @@ describe("project application services without browser storage", () => {
     expect(metrics.calcSeguimientoMetrics("a")).toMatchObject({ pctAvance: 25, valorizadoAc: 50, ocPendiente: false });
     expect(metrics.calcDesignHonorario("b")).toBe(0);
   });
+  it("counts an imported offered price in the project summary without duplicating margins", () => {
+    const {repository,metrics}=memory();
+    repository.writeStorage("cot.partidas",[{cant:2,manoObra:0,materiales:0,precioUnitarioFijo:500,utilidadPct:30,riesgoPct:10}],"a");
+    expect(metrics.calcConstruccionMetrics("a").cotizado).toBe(1180);
+  });
   it("keeps telemetry bounded and strips unsupported payload values", () => {
     const { data } = memory();
     for (let n = 0; n < 255; n++) data.trackLocalProductEvent({ name: "change", payload: { n } });
