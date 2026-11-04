@@ -180,7 +180,7 @@ export function StageScheduleView({toolId, onPrint, state, currency, formatMoney
         </div>
         <p style={{...lb,color:G,marginBottom:8}}>Detalle por etapa</p>
         <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:20}}>
-          <thead><tr style={{background:DK}}>
+          <thead><tr data-document-band="dark" style={{background:DK}}>
             {["Etapa","Inicio","Entrega","Duración"].map(h=><th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:G,textAlign:"left"}}>{h}</th>)}
           </tr></thead>
           <tbody>

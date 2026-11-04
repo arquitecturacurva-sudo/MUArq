@@ -144,7 +144,7 @@ export function MatrixView({toolId, onPrint, state}: {toolId: string; onPrint: (
           if(!its.length) return null;
           return (
             <div key={etapa} style={{marginBottom:16}}>
-              <div style={{background:DK,borderRadius:"4px 4px 0 0",padding:"6px 12px"}}>
+              <div data-document-band="dark" style={{background:DK,borderRadius:"4px 4px 0 0",padding:"6px 12px"}}>
                 <span style={{fontWeight:800,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",color:G}}>{etapa}</span>
               </div>
               <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>

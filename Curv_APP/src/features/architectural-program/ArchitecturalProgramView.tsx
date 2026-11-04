@@ -372,7 +372,7 @@ export function ArchitecturalProgramView({toolId, onPrint, state}: {toolId: stri
             <p style={{...lb,color:G,marginBottom:8}}>Cuadro de áreas por zona</p>
             <div className="workspace-table" tabIndex={0} role="region" aria-label="Resumen de áreas por zona">
               <table style={{width:"100%",borderCollapse:"collapse",marginBottom:18}}>
-                <thead><tr style={{background:DK}}>
+                <thead><tr data-document-band="dark" style={{background:DK}}>
                   {["Zona","Área (m²)","%","Observaciones clave"].map(h=><th key={h} style={{padding:"7px 10px",fontSize:9,fontWeight:700,color:G,textAlign:"left"}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
@@ -425,7 +425,7 @@ export function ArchitecturalProgramView({toolId, onPrint, state}: {toolId: stri
             const zonaTotal = its.reduce((s,r)=>s+r.areaTotal,0);
             return (
               <div key={zona} style={{marginBottom:14}}>
-                <div style={{background:DK,borderRadius:"4px 4px 0 0",padding:"5px 12px",
+                <div data-document-band="dark" style={{background:DK,borderRadius:"4px 4px 0 0",padding:"5px 12px",
                   display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontWeight:700,fontSize:10,color:G,textTransform:"uppercase",letterSpacing:"1px"}}>{zona}</span>
                   <span style={{fontSize:9,color:"#AAA"}}>{zonaTotal.toFixed(1)} m²
@@ -470,7 +470,7 @@ export function ArchitecturalProgramView({toolId, onPrint, state}: {toolId: stri
             <>
               <p style={{...lb,color:G,marginBottom:8,marginTop:18}}>Cuadro de áreas</p>
               <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",marginBottom:18}}>
-                <thead><tr style={{background:DK}}>
+                <thead><tr data-document-band="dark" style={{background:DK}}>
                   {["Zona","Área (m²)","%"].map(h=>(
                     <th key={h} style={{padding:"6px 10px",fontSize:9,fontWeight:700,color:G,textAlign:"left"}}>{h}</th>
                   ))}

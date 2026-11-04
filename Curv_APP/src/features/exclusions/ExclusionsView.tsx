@@ -121,7 +121,7 @@ export function ExclusionsView({toolId, onPrint, state}: {toolId: string; onPrin
         <p style={{fontSize:10,color:"#555",marginBottom:18,lineHeight:1.6,fontStyle:"italic"}}>Este documento delimita las exclusiones y los supuestos base considerados para la oferta o propuesta económica del encargo.</p>
         {Object.entries(byEstado).map(([estado,its])=>(
           <div key={estado} style={{marginBottom:20}}>
-            <div style={{background:DK,borderRadius:"4px 4px 0 0",padding:"7px 14px"}}>
+            <div data-document-band="dark" style={{background:DK,borderRadius:"4px 4px 0 0",padding:"7px 14px"}}>
               <span style={{fontWeight:800,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",color:G}}>{SECCION_LABEL[estado]}</span>
             </div>
             <div className="workspace-table" tabIndex={0} role="region" aria-label="Tabla de datos"><table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #E5DDD0",borderTop:"none"}}>
