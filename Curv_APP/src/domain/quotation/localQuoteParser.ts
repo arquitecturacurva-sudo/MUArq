@@ -17,7 +17,7 @@ const aliases: Record<string, Column> = {
   pu:"precioUnitario", preciounitario:"precioUnitario", punitario:"precioUnitario", punit:"precioUnitario", costounitario:"precioUnitario",
   mo:"manoObra", manoobra:"manoObra", manodeobra:"manoObra", materiales:"materiales", material:"materiales", mat:"materiales",
   utilidad:"utilidadPct", utilidadpct:"utilidadPct", riesgo:"riesgoPct", riesgopct:"riesgoPct",
-  parcial:"parcial", importe:"parcial", total:"parcial", montoparcial:"parcial", precioparcial:"parcial",
+  parcial:"parcial", importe:"parcial", total:"parcial", ptotal:"parcial", montoparcial:"parcial", precioparcial:"parcial",
   capitulo:"categoria", categoria:"categoria", especialidad:"categoria", rubro:"categoria",
 };
 const numericKeys = ["cantidad", "precioUnitario", "manoObra", "materiales", "utilidadPct", "riesgoPct", "parcial"] as const;
@@ -64,6 +64,12 @@ function headerCells(line: QuoteLine): QuoteToken[] {
 /** Only combine adjacent, entirely header-like lines; never consume a numeric data row. */
 function detectStackedHeader(first: QuoteLine, second?: QuoteLine): Header[] | null {
   if (!second || second.y - first.y - first.height > Math.max(12, first.height * 1.2)) return null;
+  const upperHeaders = headerCandidates(first), lowerHeaders = headerCandidates(second);
+  if (upperHeaders.length >= 2 && lowerHeaders.length >= 2 &&
+      ![...first.tokens, ...second.tokens].some(token => isNumber(token.text))) {
+    const combined = completeHeader([...upperHeaders, ...lowerHeaders]);
+    if (combined) return combined;
+  }
   const top = headerCells(first), bottom = headerCells(second);
   const fragments = new Set(["precio", "unitario", "costo", "mano", "manode", "deobra", "obra", "de", "medida", "porcentaje"]);
   if (![...top, ...bottom].every(cell => aliases[compact(cell.text)] || fragments.has(compact(cell.text)) || /^[%/().\s]+$/.test(cell.text))) return null;
@@ -83,6 +89,7 @@ function mappedCells(tokens: QuoteToken[], header: Header[]): Partial<Record<Col
   const boundaries = sorted.map((column, index) => {
     if (!index) return -Infinity;
     const previous = sorted[index - 1];
+    if (previous.key === "codigo" && column.key === "descripcion") return previous.x + previous.width + previous.height * .5;
     // Descriptions may be far wider than their header. Keep their words up to the next actual column.
     if (previous.key === "descripcion") return column.x - column.height * .7;
     return (previous.x + previous.width + column.x) / 2;
@@ -214,17 +221,30 @@ export function parseConstructionQuote(pages: QuotePage[]): SourceQuote {
       if (/\b(?:pen|soles)\b|s\s*\//i.test(line.text)) currencies.add("PEN");
       if (/\b(?:usd|dolares|dólares)\b|us\$/i.test(line.text)) currencies.add("USD");
       if (/\bmxn\b/i.test(line.text)) currencies.add("MXN");
-      if (metadata(document, line.text)) { previous = null; incoming = null; continue; }
+      const labelStart = line.tokens.findLastIndex(token => /^(?:sub\s*total|total|[i1][.]?g[.]?v|gastos generales|supervision)/i.test(fold(token.text)));
+      const summaryStart = labelStart >= 0 ? labelStart : line.tokens.findLastIndex(token => /^\d+\s*%/.test(token.text));
+      const summaryText = summaryStart >= 0 ? line.tokens.slice(summaryStart).map(token => token.text).join(" ").replace(/[i1][.]g[.]v/ig,"IGV") : line.text;
+      if (metadata(document, summaryText)) { previous = null; incoming = null; continue; }
+      if (summaryStart >= 0 && /^\d+\s*%/.test(summaryText) && /utilidad|maq|g[.]?o/i.test(summaryText)) {
+        warnings.add(`Página ${page.page}: recargo del documento: ${summaryText}. Revisa su aplicación; no se añade automáticamente.`);
+        previous = null; incoming = null; continue;
+      }
       const title = chapter(line);
       if (title) { category = title; previous = null; incoming = null; continue; }
       const cells = header ? mappedCells(line.tokens, header) : standardCells(line);
       const hasUnit = !!cells?.unidad && !!normalizeCotUnit(cells.unidad.normalize("NFKC"));
       const hasAmount = cells && numericKeys.some(key => !!cells[key] && isNumber(cells[key]!));
       const hasCode = !!cells?.codigo && codePattern.test(cells.codigo.trim());
-      if (cells?.descripcion && (hasUnit || (hasCode && hasAmount))) {
-        const row = sourceRow(cells, line, page, category);
+      if (cells?.descripcion && !hasAmount && /^(?:bano|ambiente)\s*\d+$/i.test(fold(cells.descripcion))) {
+        category = cells.descripcion; previous = null; incoming = null; continue;
+      }
+      const totalOnly = !!header && !!cells?.parcial && isNumber(cells.parcial) && !!cells.descripcion && !cells.codigo;
+      if (cells?.descripcion && (hasUnit || (hasCode && hasAmount) || totalOnly)) {
+        const rowCategory = category && /^(?:bano|ambiente)\s*\d+$/i.test(fold(category)) && cells.codigo && !cells.codigo.includes(".") ? null : category;
+        const row = sourceRow(cells, line, page, rowCategory);
         if (document.partidas.length >= 500) throw new Error("El documento supera las 500 partidas. Divide el PDF para continuar.");
         document.partidas.push(row); previous = {row, line};
+        if (!row.codigo && header?.some(column => column.key === "codigo")) warnings.add(`Página ${page.page}: hay códigos no reconocidos. Confirma los capítulos y códigos contra el original.`);
         incoming = null; pageContributed = true;
         if (numericKeys.some(key => row[key] !== null && parseConstructionNumber(row[key]) === null)) warnings.add(`Página ${page.page}: hay importes ambiguos o ilegibles; revisa los campos vacíos antes de importar.`);
         if (row.ocrConfidence !== undefined && row.ocrConfidence < 70) warnings.add(`Página ${page.page}: el OCR contiene texto de baja confianza. Contrasta las partidas con el original.`);
