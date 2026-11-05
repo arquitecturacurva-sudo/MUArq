@@ -21,7 +21,7 @@ Referencias: [ficha Parse 2.0](https://docs.api.nvidia.com/nim/reference/nvidia-
 
 ## Validación
 
-- 562 pruebas / 83 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
+- 563 pruebas / 83 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
 - Regresiones sintéticas para celdas vacías, encabezados centrados en dos líneas, cambios de escala, código ausente, capítulos y resumen junto a texto lateral.
 - Pruebas del endpoint: autenticación, autorización, cuota, límite de tamaño, URLs rechazadas, respuesta vacía/truncada y ausencia de datos del proveedor en errores.
 - PDF privado probado en navegador con los modelos locales distribuidos: 15 partidas, seis cantidades/precios unitarios y total de origen identificados. Algunos códigos y letras iniciales requieren corrección; unidades ausentes permanecen vacías.

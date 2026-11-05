@@ -31,6 +31,7 @@ export default async function handler(req, res) {
   let body;
   try { body = await boundedBody(req); }
   catch { return res.status(400).json({error:"Imagen inválida o demasiado grande (máximo 3 MB)."}); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return res.status(400).json({error:"Petición inválida."});
   const {clientId, image} = body;
   if (typeof clientId !== "string" || !/^[\w-]{1,128}$/.test(clientId) || typeof image !== "string" ||
       !/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+=*$/.test(image) || image.length > MAX_BODY - 200) {
