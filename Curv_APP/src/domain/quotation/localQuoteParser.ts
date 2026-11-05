@@ -5,25 +5,27 @@ import { buildQuoteLines, tokenRegion } from "./quoteLayout";
 import type { QuoteLine, QuotePage, QuoteToken } from "./quoteLayout";
 export { quotePageText } from "./quoteLayout";
 
-type Column = keyof Pick<SourceQuoteRow, "codigo" | "descripcion" | "unidad" | "cantidad" | "precioUnitario" | "manoObra" | "materiales" | "utilidadPct" | "riesgoPct" | "parcial" | "categoria">;
+type Column = keyof Pick<SourceQuoteRow, "codigo" | "descripcion" | "unidad" | "cantidad" | "precioUnitario" | "manoObra" | "materiales" | "utilidadPct" | "riesgoPct" | "parcial" | "categoria"> | "responsable";
 type Header = {key: Column; x: number; width: number; height: number};
 const fold = (text: string) => text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const compact = (text: string) => fold(text).replace(/[^a-z0-9]/g, "");
 const aliases: Record<string, Column> = {
-  codigo:"codigo", cod:"codigo", item:"codigo", codigopartida:"codigo", nro:"codigo",
+  codigo:"codigo", cod:"codigo", item:"codigo", codigopartida:"codigo", codigode:"codigo", codigodepartida:"codigo", nro:"codigo",
+  responsable:"responsable", proveedor:"responsable", contratista:"responsable",
   descripcion:"descripcion", concepto:"descripcion", partida:"descripcion", detalle:"descripcion", actividad:"descripcion", descripciondelapartida:"descripcion",
   unidad:"unidad", und:"unidad", unid:"unidad", um:"unidad", unidaddemedida:"unidad",
   cantidad:"cantidad", cant:"cantidad", metrado:"cantidad", metrados:"cantidad", qty:"cantidad",
   pu:"precioUnitario", preciounitario:"precioUnitario", punitario:"precioUnitario", punit:"precioUnitario", costounitario:"precioUnitario",
   mo:"manoObra", manoobra:"manoObra", manodeobra:"manoObra", materiales:"materiales", material:"materiales", mat:"materiales",
   utilidad:"utilidadPct", utilidadpct:"utilidadPct", riesgo:"riesgoPct", riesgopct:"riesgoPct",
-  parcial:"parcial", importe:"parcial", total:"parcial", ptotal:"parcial", montoparcial:"parcial", precioparcial:"parcial",
+  parcial:"parcial", subtotal:"parcial", importe:"parcial", total:"parcial", ptotal:"parcial", montoparcial:"parcial", precioparcial:"parcial",
   capitulo:"categoria", categoria:"categoria", especialidad:"categoria", rubro:"categoria",
 };
 const numericKeys = ["cantidad", "precioUnitario", "manoObra", "materiales", "utilidadPct", "riesgoPct", "parcial"] as const;
 const isNumber = (text: string) => /^(?:(?:S\s*\/\.?|US\$|USD|PEN|MXN|\$)\s*)?-?\d[\d.,\s]*(?:\s*%)?$/i.test(text.trim());
 const value = (text?: string) => text?.trim() || null;
 const codePattern = /^(?:[A-Z]{1,5}[-.]?)?\d[\w.-]*$/i;
+const headerKey = (text: string) => aliases[compact(text.replace(/\s*\((?:S\s*\/\.?|PEN|USD|US\$|\$)\)\s*$/i, ""))];
 
 function headerCandidates(line: QuoteLine): Header[] {
   const found: Header[] = [];
@@ -32,7 +34,7 @@ function headerCandidates(line: QuoteLine): Header[] {
     for (let length = Math.min(5, line.tokens.length - i); length >= 1; length--) {
       const group = line.tokens.slice(i, i + length);
       if (group.some((token, index) => index && token.x - group[index - 1].x - group[index - 1].width > line.height * 2)) continue;
-      const key = aliases[compact(group.map(t => t.text).join(" "))];
+      const key = headerKey(group.map(t => t.text).join(" "));
       if (key) { matched = {key, x: group[0].x, width: group.at(-1)!.x + group.at(-1)!.width - group[0].x, height: line.height}; consumed = length; break; }
     }
     if (matched) found.push(matched);
@@ -42,7 +44,9 @@ function headerCandidates(line: QuoteLine): Header[] {
 }
 
 function completeHeader(candidates: Header[]): Header[] | null {
-  const unique = [...new Map(candidates.map(candidate => [candidate.key, candidate])).values()];
+  const byKey = new Map<Column, Header>();
+  for (const candidate of candidates) if (!byKey.has(candidate.key)) byKey.set(candidate.key, candidate);
+  const unique = [...byKey.values()];
   const keys = new Set(unique.map(header => header.key));
   return keys.size >= 3 && keys.has("descripcion") && (keys.has("unidad") || keys.has("cantidad")) ? unique : null;
 }
@@ -67,7 +71,9 @@ function detectStackedHeader(first: QuoteLine, second?: QuoteLine): Header[] | n
   const upperHeaders = headerCandidates(first), lowerHeaders = headerCandidates(second);
   if (upperHeaders.length >= 2 && lowerHeaders.length >= 2 &&
       ![...first.tokens, ...second.tokens].some(token => isNumber(token.text))) {
-    const combined = completeHeader([...upperHeaders, ...lowerHeaders]);
+    // A spanning “Metrado” label sits above the actual unit/quantity columns.
+    const lowerMetrado = lowerHeaders.some(h => h.key === "unidad") && lowerHeaders.some(h => h.key === "cantidad");
+    const combined = completeHeader([...upperHeaders.filter(h => !lowerMetrado || h.key !== "cantidad"), ...lowerHeaders]);
     if (combined) return combined;
   }
   const top = headerCells(first), bottom = headerCells(second);
@@ -78,7 +84,7 @@ function detectStackedHeader(first: QuoteLine, second?: QuoteLine): Header[] | n
     const lower = bottom.find(cell => Math.abs(cell.x - upper.x) <= Math.max(first.height, second.height));
     if (!lower) continue;
     const key = aliases[compact(`${upper.text} ${lower.text}`)];
-    if (key) candidates.push({key,x:Math.min(upper.x,lower.x),width:Math.max(upper.x+upper.width,lower.x+lower.width)-Math.min(upper.x,lower.x),height:Math.max(first.height,second.height)});
+    if (key) candidates.unshift({key,x:Math.min(upper.x,lower.x),width:Math.max(upper.x+upper.width,lower.x+lower.width)-Math.min(upper.x,lower.x),height:Math.max(first.height,second.height)});
   }
   return completeHeader(candidates);
 }
@@ -103,21 +109,31 @@ function mappedCells(tokens: QuoteToken[], header: Header[]): Partial<Record<Col
     const key = sorted[index]?.key;
     if (key) cells[key] = cells[key] ? `${cells[key]} ${token.text}` : token.text;
   }
+  // A text layer may combine code and description in one glyph run.
+  if (!cells.codigo && cells.descripcion) {
+    const prefix = cells.descripcion.match(/^([A-Z]{1,5}[-.]\d[\w.-]*|\d+(?:[.-]\d+)+)\s+(.+)$/i);
+    if (prefix) { cells.codigo = prefix[1]; cells.descripcion = prefix[2]; }
+  }
+  for (const key of numericKeys) if (cells[key]) cells[key] = cells[key]!.replace(/S\s*\/\.?\s*/gi, "S/ ").trim();
   return cells;
 }
 
 function standardCells(line: QuoteLine): Partial<Record<Column, string>> | null {
-  const text = line.text.normalize("NFKC");
-  // Fallback only for the conventional description / unit / quantity / PU / partial order.
+  const text = line.text.normalize("NFKC").replace(/(?:S\s*\/\.?|US\$|PEN|USD|MXN|\$)\s*(?=\d)/gi, "");
+  // Both common metrado orders: unit/quantity and quantity/unit.
   const pieces = text.split(/\s+/);
   for (let i = pieces.length - 2; i > 0; i--) {
     if (!normalizeCotUnit(pieces[i])) continue;
     const amounts = pieces.slice(i + 1);
+    const before = parseConstructionNumber(pieces[i - 1]);
+    const priceAfter = parseConstructionNumber(amounts[0] || null), totalAfter = parseConstructionNumber(amounts[1] || null);
+    const quantityBefore = amounts.length === 2 && before !== null && priceAfter !== null && totalAfter !== null &&
+      Math.abs(before * priceAfter - totalAfter) <= .02;
     if (!amounts.length || amounts.length > 3 || !amounts.every(isNumber)) continue;
-    const description = pieces.slice(0, i);
+    const description = pieces.slice(0, quantityBefore ? i - 1 : i);
     const code = codePattern.test(description[0]) ? description.shift()! : "";
     if (!description.length) continue;
-    return {codigo:code, descripcion:description.join(" "), unidad:pieces[i], cantidad:amounts[0], precioUnitario:amounts[1], parcial:amounts[2]};
+    return {codigo:code, descripcion:description.join(" "), unidad:pieces[i], cantidad:quantityBefore ? pieces[i-1] : amounts[0], precioUnitario:amounts[quantityBefore ? 0 : 1], parcial:amounts[quantityBefore ? 1 : 2]};
   }
   return null;
 }
@@ -231,7 +247,19 @@ export function parseConstructionQuote(pages: QuotePage[]): SourceQuote {
       }
       const title = chapter(line);
       if (title) { category = title; previous = null; incoming = null; continue; }
-      const cells = header ? mappedCells(line.tokens, header) : standardCells(line);
+      let cells = header ? mappedCells(line.tokens, header) : standardCells(line);
+      if (header && cells && !header.some(column => column.key === "manoObra" || column.key === "materiales") &&
+          [cells.cantidad,cells.precioUnitario,cells.parcial].some(n => parseConstructionNumber(n || null) === null)) {
+        const conventional = standardCells(line);
+        const quantity = parseConstructionNumber(conventional?.cantidad || null);
+        const price = parseConstructionNumber(conventional?.precioUnitario || null);
+        const partial = parseConstructionNumber(conventional?.parcial || null);
+        // Repair an incomplete geometric mapping only when all three printed values agree.
+        if (conventional && quantity !== null && quantity > 0 && price !== null && partial !== null && Math.abs(quantity * price - partial) <= .02) {
+          cells = {...cells, codigo:cells.codigo || conventional.codigo, unidad:conventional.unidad,
+            cantidad:conventional.cantidad, precioUnitario:conventional.precioUnitario, parcial:conventional.parcial};
+        }
+      }
       const hasUnit = !!cells?.unidad && !!normalizeCotUnit(cells.unidad.normalize("NFKC"));
       const hasAmount = cells && numericKeys.some(key => !!cells[key] && isNumber(cells[key]!));
       const hasCode = !!cells?.codigo && codePattern.test(cells.codigo.trim());

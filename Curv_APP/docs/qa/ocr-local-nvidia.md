@@ -4,6 +4,8 @@
 
 El lector local ahora reconoce encabezados centrados y partidos (P. UNITARIO / P. TOTAL), filas sin código ni unidad, capítulos de baños y resúmenes colocados junto a condiciones de pago. Conserva los valores ausentes para revisión. Una segunda pasada de texto disperso se compara con la inicial; se elige una pasada completa sin mezclar celdas de dos OCR.
 
+La revisión de columnas cubre Código de partida, Descripción, Responsable (excluido de la descripción), Metrado con UND/Cantidad en ambos órdenes, Precio unitario y Subtotal, incluidos encabezados con moneda. Se recupera un código prefijado combinado con la descripción. Un rescate por orden convencional solo corrige un mapeo geométrico incompleto si los tres importes impresos concuerdan. Regresiones basadas en la captura P-019: cantidad 11.84, M2, PU 40.00 y parcial 473.60. No se recibió el PDF original de esa captura; la validación de este caso usa tablas sintéticas.
+
 Las filas con solo parcial ofrecen una acción explícita para confirmar importe global (GLB, cantidad 1). No se añaden automáticamente utilidad, maquinaria ni otros recargos como si fueran supervisión.
 
 El botón NVIDIA exige consentimiento para enviar todas las páginas y conserva los borradores locales si falla. El resultado alternativo solo sustituye la revisión al pulsar «Usar lectura NVIDIA y reiniciar revisión». Volver a local también reinicia la revisión. Los PDFs y sus imágenes no se guardan en el servidor.
@@ -21,7 +23,7 @@ Referencias: [ficha Parse 2.0](https://docs.api.nvidia.com/nim/reference/nvidia-
 
 ## Validación
 
-- 563 pruebas / 83 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
+- 570 pruebas / 84 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
 - Regresiones sintéticas para celdas vacías, encabezados centrados en dos líneas, cambios de escala, código ausente, capítulos y resumen junto a texto lateral.
 - Pruebas del endpoint: autenticación, autorización, cuota, límite de tamaño, URLs rechazadas, respuesta vacía/truncada y ausencia de datos del proveedor en errores.
 - PDF privado probado en navegador con los modelos locales distribuidos: 15 partidas, seis cantidades/precios unitarios y total de origen identificados. Algunos códigos y letras iniciales requieren corrección; unidades ausentes permanecen vacías.
