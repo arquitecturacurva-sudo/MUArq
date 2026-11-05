@@ -7,9 +7,22 @@ export function nvidiaTablePage(text: string, page: number): QuotePage {
   const rows = tables.length ? tables.flatMap(table => table.split(/\\\\/).map(row => row.split(/(?<!\\)&/))) :
     text.split(/\r?\n/).filter(line => /^\s*\|.*\|\s*$/.test(line)).map(line => line.trim().slice(1,-1).split("|"));
   const clean = (cell: string) => cell.replace(/\\(?:hline|toprule|midrule|bottomrule)/g, "")
-    .replace(/\\(?:textbf|textit|mathrm|text)\{([^{}]*)\}/g,"$1").replace(/\\([%&_$])/g,"$1").replace(/[{}$]/g,"").trim();
-  const tokens = rows.filter(row => !row.every(cell => /^[\s:-]*$/.test(cell))).flatMap((row, index) => row.map((cell,col) => ({
-    text:clean(cell), x:col * 500 + 20, y:index * 30 + 20, width:Math.min(450,Math.max(10,clean(cell).length * 5)), height:12,
+    .replace(/\\(?:textbf|textit|mathrm|text)\{([^{}]*)\}/g,"$1").replace(/\\([%&_$])/g,"$1").replace(/[{}$*]/g,"").trim()
+    .replace(/\s*\((?:S[I1l]?\/\.?|PEN|USD)\)\s*$/i,"");
+  let combinedCode = false;
+  const normalized = rows.map(row => {
+    const cells = row.map(clean);
+    const first = cells[0].normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    if (/^(?:item|codigo)\s+descripcion$/i.test(first)) {
+      combinedCode = true; return ["ITEM","DESCRIPCIÓN",...cells.slice(1)];
+    }
+    if (/^(?:item|codigo)$/i.test(first)) combinedCode = false;
+    if (!combinedCode) return cells;
+    const match = cells[0].match(/^((?:[A-Z]{1,5}[-.]?)?\d+(?:[.-]\d+)*)\s+(.+)$/i);
+    return [match?.[1] || "", match?.[2] || cells[0], ...cells.slice(1)];
+  });
+  const tokens = normalized.filter(row => !row.every(cell => /^[\s:-]*$/.test(cell))).flatMap((row, index) => row.map((cell,col) => ({
+    text:cell, x:col * 500 + 20, y:index * 30 + 20, width:Math.min(450,Math.max(10,cell.length * 5)), height:12,
   })).filter(token => token.text));
   if (!tokens.length) throw new Error("NVIDIA no devolvió una tabla reconocible. Conservamos la lectura local.");
   return {page, width:500 * Math.max(...rows.map(row => row.length)), height:rows.length * 30 + 40, tokens, method:"ocr"};

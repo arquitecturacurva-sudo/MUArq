@@ -27,3 +27,18 @@ it("accepts markdown without shifting blank columns",()=>{
   const result=parseNvidiaQuote([{page:1,text:"| ITEM | DESCRIPCIÓN | CANT. | P. UNITARIO | P. TOTAL |\n|---|---|---|---|---|\n| 1 | Transporte | | | 80.00 |"}]);
   expect(result.partidas[0]).toMatchObject({cantidad:null,precioUnitario:null,parcial:"80.00"});
 });
+
+it("separates a combined ITEM/DESCRIPCIÓN column returned by the hosted model",()=>{
+  const text=String.raw`\begin{tabular}{ccccc}
+  **CLIENTE** & **FECHA** & & & \\
+  Cliente ficticio & 01-01-2026 & & & \\
+  ITEM DESCRIPCIÓN & CANT. & P. UNITARIO (SI/) & P. TOTAL (SI/) & \\
+  1 Transporte & & & 80.00 & \\
+  2 Baño 1 & & & & \\
+  2.1 Tablero ficticio & 2.00 & S/ 50.00 & 100.00 & \\
+  \end{tabular}`;
+  const result=parseNvidiaQuote([{page:1,text}]);
+  expect(result.partidas).toHaveLength(2);
+  expect(result.partidas[0]).toMatchObject({codigo:"1",descripcion:"Transporte",cantidad:null,parcial:"80.00"});
+  expect(result.partidas[1]).toMatchObject({codigo:"2.1",categoria:"Baño 1",cantidad:"2.00",precioUnitario:"S/ 50.00",parcial:"100.00"});
+});

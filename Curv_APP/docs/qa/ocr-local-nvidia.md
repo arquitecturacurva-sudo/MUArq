@@ -21,12 +21,14 @@ Referencias: [ficha Parse 2.0](https://docs.api.nvidia.com/nim/reference/nvidia-
 
 ## Validación
 
-- 561 pruebas / 83 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
+- 562 pruebas / 83 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
 - Regresiones sintéticas para celdas vacías, encabezados centrados en dos líneas, cambios de escala, código ausente, capítulos y resumen junto a texto lateral.
 - Pruebas del endpoint: autenticación, autorización, cuota, límite de tamaño, URLs rechazadas, respuesta vacía/truncada y ausencia de datos del proveedor en errores.
 - PDF privado probado en navegador con los modelos locales distribuidos: 15 partidas, seis cantidades/precios unitarios y total de origen identificados. Algunos códigos y letras iniciales requieren corrección; unidades ausentes permanecen vacías.
 - Se confirmó e importó una partida global en el proyecto QA local; persistió tras recargar. Un intento NVIDIA sin configuración conservó la revisión local. No se incluyen documentos privados en el repositorio.
-- Pendiente: habilitar la clave de la preview y validar una llamada NVIDIA autenticada de extremo a extremo. La revisión automática rechazó guardar esa credencial en Vercel sin autorización explícita para ese destino.
+- Prueba real adicional de NVIDIA: HTTP 200 en 4,16 s, finalización `stop`. El adaptador comprobó las 15 partidas con sus códigos e importes, incluida la columna combinada ITEM/DESCRIPCIÓN; el proveedor omitió el resumen y se muestra la advertencia correspondiente. Respuesta privada excluida de Git.
+- El usuario autorizó y se configuró `NVIDIA_API_KEY` como secreto exclusivo de Preview/rama del PR. También está en `.env.local` ignorado por Git. Firebase autentica y autoriza el endpoint; la clave no se guarda en Firestore.
+- Pendiente: validar el recorrido NVIDIA con una sesión Curv editor/admin en la preview. El navegador disponible está conectado a una cuenta de Vercel sin acceso al equipo; la protección se mantiene. El CI del primer commit pasó, incluidas reglas y Cloud Functions.
 
 ## Probar
 
