@@ -2,6 +2,8 @@
 
 Fecha: 15 de octubre de 2026. Base: master `014f16af6103130e80d5162e3c4080099d1ab8bb`.
 
+Actualizacion del 19 de octubre: la PR #35 esta integrada y el product owner comunico funcionamiento normal en las pruebas de la checklist HTML. El punto 2 se registra como validado en la [aceptacion posterior](2026-10-19-sync-acceptance.md). Los pendientes que siguen describen el corte original de este informe, no una reapertura de esa aceptacion.
+
 ## Problema y comportamiento
 
 El product owner reporta cinco proyectos visibles en Chrome y uno en Edge. En un proyecto antiguo, Reintentar revela Conflicto de versiones. Los proyectos nuevos y Guardar copia recuperada funcionan segun su comprobacion. El dato disponible no demuestra la causa individual de todos los proyectos ausentes.
