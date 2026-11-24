@@ -16,3 +16,7 @@
 .quote-import-dialog .quote-import-primary{background:var(--ui-text,#172331);color:var(--ui-card,#fff)}
 @media(max-width:760px){.quote-import-overlay{padding:4px}.quote-import-dialog{max-height:99dvh}.quote-import-workspace{grid-template-columns:1fr}.quote-import-source{position:static}.quote-import-source object{height:230px}.quote-import-settings{grid-template-columns:1fr 1fr}.quote-import-header,.quote-import-content,.quote-import-footer{padding:12px}.quote-import-footer>div{width:100%;justify-content:space-between}}
 @media print{.quote-import-overlay{display:none!important}}
+.quote-review-controls{padding:12px;margin-bottom:12px;border:1px solid var(--ui-border,#ddd);border-radius:8px;background:var(--ui-panel,#f8f8f8)}
+.quote-review-actions{display:flex;flex-wrap:wrap;gap:8px}.quote-review-ready{font-weight:600;color:var(--ui-text,#172331)}
+.quote-review-summary{flex:1 1 280px;min-width:0}.quote-review-summary summary{cursor:pointer;margin:6px 0;overflow-wrap:anywhere}.quote-review-summary ul{margin:6px 0;padding-left:20px}
+.quote-import-footer{max-height:35dvh;overflow:auto;flex-shrink:0}.quote-import-row{scroll-margin-top:12px}.quote-import-row:focus{outline:2px solid var(--ui-accent,#b38e53);outline-offset:2px}

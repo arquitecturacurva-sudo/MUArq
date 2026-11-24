@@ -4,7 +4,7 @@ const engine=vi.hoisted(()=>({
   parameters:vi.fn(async()=>{}), terminate:vi.fn(async()=>{}), destroy:vi.fn(async()=>{}),
   createWorker:vi.fn(), recognize:vi.fn(), cleanup:vi.fn(),
 }));
-vi.mock("tesseract.js",()=>({PSM:{AUTO:3,SINGLE_BLOCK:6}, createWorker:engine.createWorker}));
+vi.mock("tesseract.js",()=>({PSM:{AUTO:3,SPARSE_TEXT:11}, createWorker:engine.createWorker}));
 vi.mock("pdfjs-dist/legacy/build/pdf.mjs",()=>({
   GlobalWorkerOptions:{workerSrc:""},
   OPS:{save:1,restore:2,transform:3,paintImageXObject:4,paintInlineImageXObject:5,paintImageXObjectRepeat:6},
@@ -49,7 +49,7 @@ it("extracts a mixed PDF with local assets, recovers an omitted cell on a second
     corePath:expect.stringMatching(/\/quotation-ocr\/core\/$/),
     langPath:expect.stringMatching(/\/quotation-ocr\/lang\/$/), workerBlobURL:false,
   }));
-  expect(engine.parameters).toHaveBeenCalledWith({tessedit_pageseg_mode:6});
+  expect(engine.parameters).toHaveBeenCalledWith({tessedit_pageseg_mode:11});
   expect(engine.recognize).toHaveBeenCalledTimes(2); expect(engine.terminate).toHaveBeenCalledOnce();
   expect(engine.cleanup).toHaveBeenCalledTimes(2); expect(engine.destroy).toHaveBeenCalledOnce();
   expect(canvas.width).toBe(0); expect(canvas.height).toBe(0); expect(fetchSpy).not.toHaveBeenCalled();

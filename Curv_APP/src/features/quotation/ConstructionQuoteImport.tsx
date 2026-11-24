@@ -3,6 +3,7 @@ import type { CotPartida } from "../../domain/project/construction";
 import type { QuoteDraft, QuoteExtraction } from "../../domain/quotation/documentImport";
 import { buildQuoteDrafts, createSpecializedQuoteParts, expectedQuotePartial, parseConstructionNumber, quoteDraftIssues, SPANISH_QUOTE_EXAMPLE } from "../../domain/quotation/documentImport";
 import { calculateQuotationTotals } from "../../domain/quotation/quotationRules";
+import { isQuoteReviewed, selectQuoteRows, type QuoteSelection } from "../../domain/quotation/quoteReview";
 import { COT_UNITS } from "../../domain/project/toolDefaults";
 import { si } from "../ui/tokens";
 import "./constructionQuoteImport.css";
@@ -22,6 +23,7 @@ const nullableNumber = (value: string) => value.trim() === "" ? null : Number(va
 export function ConstructionQuoteImport({extract, currency, rates: initialRates, existing, startId, onClose, onImport}: Props) {
   const [result, setResult] = useState<QuoteExtraction | null>(null);
   const [rows, setRows] = useState<QuoteDraft[]>([]);
+  const [onlyPending, setOnlyPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
@@ -31,6 +33,10 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
   const [accepted, setAccepted] = useState(false);
   const [sourceUrl, setSourceUrl] = useState("");
   const [page, setPage] = useState(1);
+  const [file, setFile] = useState<File | null>(null);
+  const [externalConsent, setExternalConsent] = useState(false);
+  const [alternative, setAlternative] = useState<QuoteExtraction | null>(null);
+  const [localResult, setLocalResult] = useState<QuoteExtraction | null>(null);
   const controller = useRef<AbortController | null>(null);
   const firstButton = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -45,26 +51,58 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
     setRows(prev => prev.map(r => r.id === id ? {...r, acceptPartialDifference: false, ...patch, reviewed: false} : r));
   };
   const load = (data: QuoteExtraction) => {
+    setOnlyPending(false);
     setResult(data); setRows(buildQuoteDrafts(data.document)); setError(""); setAccepted(false); setCurrencyConfirmed(false); setPage(1);
     setPrices(data.document.preciosIncluyenIgv === null ? "" : data.document.preciosIncluyenIgv ? "gross" : "net");
     setRates(initialRates);
   };
   const run = async (file: File) => {
+    setFile(file); setExternalConsent(false); setAlternative(null); setLocalResult(null);
     setBusy(true); setProgress("Abriendo PDF en tu dispositivo…"); setError(""); setResult(null); setRows([]); setAccepted(false);
     const current = new AbortController(); controller.current = current;
     if (url.current) URL.revokeObjectURL(url.current);
     url.current = URL.createObjectURL(file); setSourceUrl(url.current);
-    try { const data = await extract(file, current.signal, message => { if (!current.signal.aborted) setProgress(message); }); if (!current.signal.aborted) load(data); }
+    try { const data = await extract(file, current.signal, message => { if (!current.signal.aborted) setProgress(message); }); if (!current.signal.aborted) { load(data); setLocalResult(data); } }
     catch (e) { if (!current.signal.aborted) setError(e instanceof Error ? e.message : "No se pudo leer el PDF."); }
     finally { if (!current.signal.aborted) setBusy(false); }
+  };
+  const runNvidia = async () => {
+    if (!file || !externalConsent || busy) return;
+    const current = new AbortController(); controller.current = current;
+    setBusy(true);setError("");setAlternative(null);setProgress("Preparando lectura con NVIDIA…");
+    try {
+      const {extractNvidiaQuote}=await import("../../infrastructure/quotation/extractNvidiaQuote");
+      const data=await extractNvidiaQuote(file,current.signal,message=>{if(!current.signal.aborted)setProgress(message);});
+      if(!current.signal.aborted)setAlternative(data);
+    } catch(e) {if(!current.signal.aborted)setError(e instanceof Error?e.message:"NVIDIA no está disponible. Conservamos la lectura local.");}
+    finally {if(!current.signal.aborted)setBusy(false);}
   };
   const cancel = () => { controller.current?.abort(); onClose(); };
   const duplicates = result && existing.some(r => r.documentImport?.fileHash === result.fileHash);
   const selected = rows.filter(r => r.selected);
-  const pending = selected.filter(r => !r.reviewed || quoteDraftIssues(r).length).length;
+  const pending = selected.filter(r => !isQuoteReviewed(r)).length;
+  const reviewedCount = rows.filter(isQuoteReviewed).length;
+  const choose = (selection: QuoteSelection) => {setRows(prev=>selectQuoteRows(prev,selection));setAccepted(false);};
+  const nextPending = () => {
+    const row = rows.find(r=>r.selected && !isQuoteReviewed(r));
+    if (!row) return;
+    const card = document.getElementById(`quote-review-${row.id}`);
+    card?.scrollIntoView({block:"start"}); card?.focus({preventScroll:true});
+  };
   const validRates = [rates.igvPct, rates.ggPct, rates.supPct].every(v => Number.isFinite(v) && v >= 0 && v <= 100);
-  const canImport = !!result && !busy && !duplicates && selected.length > 0 && pending === 0 && !!prices && validRates &&
-    (result.document.moneda === currency || currencyConfirmed) && accepted && !(prices === "gross" && selected.some(r => r.mode === "costs"));
+  const blockers = [
+    !result && "Carga un documento o abre el ejemplo.",
+    busy && "Espera a que termine la lectura.",
+    duplicates && "Este documento ya tiene partidas importadas.",
+    !!result && !selected.length && "Selecciona al menos una partida.",
+    pending > 0 && `Falta revisar ${pending} de las partidas seleccionadas.`,
+    !!result && !prices && "Confirma si los precios incluyen IGV, arriba de las partidas.",
+    !validRates && "Corrige los porcentajes de recargos e IGV (0 a 100).",
+    !!result && result.document.moneda !== currency && !currencyConfirmed && "Confirma la moneda del documento.",
+    prices === "gross" && selected.some(r=>r.mode==="costs") && "Para descontar IGV, cambia las partidas a precio ofertado.",
+    !!result && !accepted && "Marca la confirmación final de selección, moneda y recargos, al pie de la lista.",
+  ].filter((reason): reason is string => typeof reason === "string");
+  const canImport = blockers.length === 0;
   const totals = useMemo(() => {
     if (!result || !prices || !validRates || pending) return null;
     try {
@@ -103,16 +141,23 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
             <input type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => {const file=e.target.files?.[0]; e.target.value=""; if(file) void run(file);}} />
           </label>
           <button type="button" disabled={busy} onClick={() => {
-            if(url.current) URL.revokeObjectURL(url.current); url.current=""; setSourceUrl(""); load(SPANISH_QUOTE_EXAMPLE);
+            if(url.current) URL.revokeObjectURL(url.current); url.current=""; setSourceUrl(""); setFile(null); setAlternative(null); setLocalResult(null); load(SPANISH_QUOTE_EXAMPLE);
           }}>Ver ejemplo de revisión</button>
           <a href={testPdfUrl} download="cotizacion-obra-prueba.pdf">Descargar PDF de prueba</a>
         </div>
-        <p className="quote-import-muted">Lectura gratuita en tu dispositivo, sin claves ni servicios de IA externos. El PDF permanece en tu navegador. La primera lectura escaneada carga el motor desde Curv y puede tardar más. Solo se guardan las partidas que revises y agregues.</p>
+        <p className="quote-import-muted">La lectura local es gratuita y mantiene el PDF en tu navegador. La primera lectura escaneada carga el motor desde Curv y puede tardar más. Solo se guardan las partidas que revises y agregues.</p>
+        {file && <div className="quote-import-warning">
+          <label><input type="checkbox" disabled={busy} checked={externalConsent} onChange={e=>setExternalConsent(e.target.checked)}/> Comparar con NVIDIA: autorizo enviar las imágenes de todas las páginas a este servicio externo.</label>
+          <button type="button" disabled={busy || !externalConsent} onClick={()=>void runNvidia()}>Leer también con NVIDIA</button>
+          <p>Requiere sesión de Curv y configuración del servidor. Nemotron Parse 2.0; puede omitir información. La disponibilidad depende de NVIDIA.</p>
+        </div>}
+        {alternative && <p role="status">NVIDIA encontró {alternative.document.partidas.length} partidas. <button type="button" disabled={busy} onClick={()=>{load(alternative);setAlternative(null);}}>Usar lectura NVIDIA y reiniciar revisión</button></p>}
+        {localResult && result?.schemaVersion === "obra-nvidia-v1" && <button type="button" disabled={busy} onClick={()=>load(localResult)}>Volver a lectura local y reiniciar revisión</button>}
         {busy && <p role="status">{progress} Puedes cancelar cerrando esta ventana.</p>}
         {error && <p role="alert" className="quote-import-warning">{error}</p>}
         {duplicates && <p role="alert" className="quote-import-warning">Este documento ya tiene partidas importadas en la cotización. Elimina esas partidas antes de volver a importarlo.</p>}
         {result && <>
-          <p><strong>{result.fileName}</strong> · {result.pages.length} páginas · {rows.length} partidas · {result.model === "ejemplo" ? "Ejemplo ficticio de revisión, sin leer un archivo" : "Curv OCR · lectura local"}</p>
+          <p><strong>{result.fileName}</strong> · {result.pages.length} páginas · {rows.length} partidas · {result.model === "ejemplo" ? "Ejemplo ficticio de revisión, sin leer un archivo" : result.model}</p>
           {result.document.advertencias.map((warning,i) => <p className="quote-import-warning" key={i}>{warning}</p>)}
           {!rows.length && <p role="status">No se identificaron partidas con suficiente estructura. Puedes agregarlas manualmente usando el original como referencia o probar otro PDF más legible.</p>}
           <div className="quote-import-settings">
@@ -137,18 +182,35 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
             </section>
             <section className="quote-import-rows" aria-label="Partidas extraídas">
               <h3>Revisar partidas</h3>
+              <div className="quote-review-controls">
+                <p role="status">{reviewedCount} de {rows.length} revisadas · {rows.length-reviewedCount} pendientes · {selected.length} seleccionadas</p>
+                <div className="quote-review-actions">
+                  <button type="button" disabled={busy || !rows.length} onClick={()=>choose("all")}>Seleccionar todas</button>
+                  <button type="button" disabled={busy || !selected.length} onClick={()=>choose("none")}>Quitar todas</button>
+                  <button type="button" disabled={busy || !reviewedCount} onClick={()=>{choose("reviewed");setOnlyPending(false);}}>Seleccionar solo revisadas ({reviewedCount})</button>
+                </div>
+                <p className="quote-import-muted">Quitar de la selección conserva los datos y las revisiones.</p>
+                <label><input type="checkbox" checked={onlyPending} onChange={e=>setOnlyPending(e.target.checked)}/> Mostrar solo pendientes ({rows.length-reviewedCount})</label>
+              </div>
               <button type="button" onClick={() => {
                 const manual = buildQuoteDrafts({...result.document, partidas:[{categoria:null,codigo:null,descripcion:"",unidad:null,cantidad:null,precioUnitario:null,manoObra:null,materiales:null,utilidadPct:null,riesgoPct:null,parcial:null,pagina:page,evidencia:"Partida agregada manualmente. Contrasta sus valores con el PDF original."} ]})[0];
                 setRows(prev => [...prev, {...manual,id:`manual-${Date.now()}-${prev.length}`}]); setAccepted(false);
               }}>+ Partida manual</button>
+              {onlyPending && reviewedCount === rows.length && <p role="status">Todas las partidas están revisadas. Desactiva el filtro para verlas.</p>}
               {rows.map((row,index) => {
                 const issues=quoteDraftIssues(row);
-                return <article key={row.id} className="quote-import-row">
+                if (onlyPending && isQuoteReviewed(row)) return null;
+                return <article key={row.id} id={`quote-review-${row.id}`} tabIndex={-1} className="quote-import-row">
                   <div className="quote-import-row-title">
-                    <label><input type="checkbox" checked={row.selected} onChange={e=>update(row.id,{selected:e.target.checked})}/> Incluir partida {index+1}</label>
+                    <label><input type="checkbox" checked={row.selected} onChange={e=>{const selected=e.target.checked;setRows(prev=>prev.map(r=>r.id===row.id?{...r,selected}:r));setAccepted(false);}}/> Incluir partida {index+1}</label>
                     <button type="button" onClick={()=>setPage(row.pagina)}>Ver página {row.pagina}</button>
                   </div>
+                  <p className={isQuoteReviewed(row) ? "quote-review-ready" : "quote-import-warning"}>
+                    {isQuoteReviewed(row) ? "Revisada" : issues.length ? `Pendiente: ${issues.join(" · ")}` : "Pendiente: marca «He contrastado esta partida con el original»."}
+                    {!row.selected && " · Fuera de la selección"}
+                  </p>
                   <blockquote>{row.evidencia}</blockquote>
+                  {row.parcial !== null && row.cantidad === null && row.precioUnitario === null && <button type="button" disabled={busy} onClick={()=>update(row.id,{unidad:"GLB",cantidad:1,precioUnitario:row.parcial,mode:"offered"})}>Confirmar importe global de {money(row.parcial)} (cantidad 1)</button>}
                   {row.ocrConfidence !== undefined && row.ocrConfidence < 70 && <p className="quote-import-warning">El reconocimiento de esta fila tiene baja confianza. Revisa especialmente los números y la unidad.</p>}
                   <div className="quote-import-fields">
                     <label>Capítulo<input style={si} value={row.categoria} onChange={e=>update(row.id,{categoria:e.target.value})}/></label>
@@ -176,7 +238,11 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
         </>}
       </div>
       <footer className="quote-import-footer">
-        <span>{selected.length} seleccionadas · {pending} pendientes de revisión</span>
+        <section className="quote-review-summary" aria-label="Estado de importación">
+          <span role="status">{selected.length} seleccionadas · {selected.length-pending} listas · {pending} pendientes de revisión</span>
+          {blockers.length > 0 && <details><summary>Falta para agregar: {blockers[0]}{blockers.length>1 && ` (+${blockers.length-1})`}</summary><ul>{blockers.map(reason=><li key={reason}>{reason}</li>)}</ul></details>}
+          {pending > 0 && <button type="button" onClick={nextPending}>Ir a la primera pendiente seleccionada</button>}
+        </section>
         <div><button type="button" onClick={cancel}>Cancelar</button><button type="button" className="quote-import-primary" disabled={!canImport} onClick={submit}>Agregar partidas revisadas</button></div>
       </footer>
     </div>

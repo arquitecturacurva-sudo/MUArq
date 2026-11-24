@@ -113,8 +113,13 @@ export async function extractConstructionQuote(file: File, signal: AbortSignal, 
               (parseConstructionNumber(row.precioUnitario) === null && (parseConstructionNumber(row.manoObra) === null || parseConstructionNumber(row.materiales) === null)))) {
             onProgress(`Revisando celdas incompletas de página ${number}…`);
             const {PSM} = await import("tesseract.js");
-            await reader.setParameters({tessedit_pageseg_mode:PSM.SINGLE_BLOCK});
-            try { result = mergeQuotePage(result, {...embedded, tokens:await recognize(), method:"ocr"}); }
+            await reader.setParameters({tessedit_pageseg_mode:PSM.SPARSE_TEXT});
+            try {
+              const sparse = mergeQuotePage(embedded, {...embedded, tokens:await recognize(), method:"ocr"});
+              const score = (layout: QuotePage) => parseConstructionQuote([layout]).partidas.reduce((sum, row) => sum + 1 + [row.parcial,row.cantidad,row.precioUnitario].filter(n => parseConstructionNumber(n) !== null).length, 0);
+              // Select a complete pass: mixing two OCR passes can duplicate or shift table cells.
+              if (score(sparse) > score(result)) result = sparse;
+            }
             finally { if (!signal.aborted) await reader.setParameters({tessedit_pageseg_mode:PSM.AUTO}); }
           }
           // Mixed means PDF glyphs plus OCR, not two recognition passes on a scan.
