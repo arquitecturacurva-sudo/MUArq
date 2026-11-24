@@ -3,6 +3,7 @@ import type { CotPartida } from "../../domain/project/construction";
 import type { QuoteDraft, QuoteExtraction } from "../../domain/quotation/documentImport";
 import { buildQuoteDrafts, createSpecializedQuoteParts, expectedQuotePartial, parseConstructionNumber, quoteDraftIssues, SPANISH_QUOTE_EXAMPLE } from "../../domain/quotation/documentImport";
 import { calculateQuotationTotals } from "../../domain/quotation/quotationRules";
+import { isQuoteReviewed, selectQuoteRows, type QuoteSelection } from "../../domain/quotation/quoteReview";
 import { COT_UNITS } from "../../domain/project/toolDefaults";
 import { si } from "../ui/tokens";
 import "./constructionQuoteImport.css";
@@ -22,6 +23,7 @@ const nullableNumber = (value: string) => value.trim() === "" ? null : Number(va
 export function ConstructionQuoteImport({extract, currency, rates: initialRates, existing, startId, onClose, onImport}: Props) {
   const [result, setResult] = useState<QuoteExtraction | null>(null);
   const [rows, setRows] = useState<QuoteDraft[]>([]);
+  const [onlyPending, setOnlyPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
@@ -49,6 +51,7 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
     setRows(prev => prev.map(r => r.id === id ? {...r, acceptPartialDifference: false, ...patch, reviewed: false} : r));
   };
   const load = (data: QuoteExtraction) => {
+    setOnlyPending(false);
     setResult(data); setRows(buildQuoteDrafts(data.document)); setError(""); setAccepted(false); setCurrencyConfirmed(false); setPage(1);
     setPrices(data.document.preciosIncluyenIgv === null ? "" : data.document.preciosIncluyenIgv ? "gross" : "net");
     setRates(initialRates);
@@ -77,10 +80,29 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
   const cancel = () => { controller.current?.abort(); onClose(); };
   const duplicates = result && existing.some(r => r.documentImport?.fileHash === result.fileHash);
   const selected = rows.filter(r => r.selected);
-  const pending = selected.filter(r => !r.reviewed || quoteDraftIssues(r).length).length;
+  const pending = selected.filter(r => !isQuoteReviewed(r)).length;
+  const reviewedCount = rows.filter(isQuoteReviewed).length;
+  const choose = (selection: QuoteSelection) => {setRows(prev=>selectQuoteRows(prev,selection));setAccepted(false);};
+  const nextPending = () => {
+    const row = rows.find(r=>r.selected && !isQuoteReviewed(r));
+    if (!row) return;
+    const card = document.getElementById(`quote-review-${row.id}`);
+    card?.scrollIntoView({block:"start"}); card?.focus({preventScroll:true});
+  };
   const validRates = [rates.igvPct, rates.ggPct, rates.supPct].every(v => Number.isFinite(v) && v >= 0 && v <= 100);
-  const canImport = !!result && !busy && !duplicates && selected.length > 0 && pending === 0 && !!prices && validRates &&
-    (result.document.moneda === currency || currencyConfirmed) && accepted && !(prices === "gross" && selected.some(r => r.mode === "costs"));
+  const blockers = [
+    !result && "Carga un documento o abre el ejemplo.",
+    busy && "Espera a que termine la lectura.",
+    duplicates && "Este documento ya tiene partidas importadas.",
+    !!result && !selected.length && "Selecciona al menos una partida.",
+    pending > 0 && `Falta revisar ${pending} de las partidas seleccionadas.`,
+    !!result && !prices && "Confirma si los precios incluyen IGV, arriba de las partidas.",
+    !validRates && "Corrige los porcentajes de recargos e IGV (0 a 100).",
+    !!result && result.document.moneda !== currency && !currencyConfirmed && "Confirma la moneda del documento.",
+    prices === "gross" && selected.some(r=>r.mode==="costs") && "Para descontar IGV, cambia las partidas a precio ofertado.",
+    !!result && !accepted && "Marca la confirmación final de selección, moneda y recargos, al pie de la lista.",
+  ].filter((reason): reason is string => typeof reason === "string");
+  const canImport = blockers.length === 0;
   const totals = useMemo(() => {
     if (!result || !prices || !validRates || pending) return null;
     try {
@@ -160,17 +182,33 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
             </section>
             <section className="quote-import-rows" aria-label="Partidas extraídas">
               <h3>Revisar partidas</h3>
+              <div className="quote-review-controls">
+                <p role="status">{reviewedCount} de {rows.length} revisadas · {rows.length-reviewedCount} pendientes · {selected.length} seleccionadas</p>
+                <div className="quote-review-actions">
+                  <button type="button" disabled={busy || !rows.length} onClick={()=>choose("all")}>Seleccionar todas</button>
+                  <button type="button" disabled={busy || !selected.length} onClick={()=>choose("none")}>Quitar todas</button>
+                  <button type="button" disabled={busy || !reviewedCount} onClick={()=>{choose("reviewed");setOnlyPending(false);}}>Seleccionar solo revisadas ({reviewedCount})</button>
+                </div>
+                <p className="quote-import-muted">Quitar de la selección conserva los datos y las revisiones.</p>
+                <label><input type="checkbox" checked={onlyPending} onChange={e=>setOnlyPending(e.target.checked)}/> Mostrar solo pendientes ({rows.length-reviewedCount})</label>
+              </div>
               <button type="button" onClick={() => {
                 const manual = buildQuoteDrafts({...result.document, partidas:[{categoria:null,codigo:null,descripcion:"",unidad:null,cantidad:null,precioUnitario:null,manoObra:null,materiales:null,utilidadPct:null,riesgoPct:null,parcial:null,pagina:page,evidencia:"Partida agregada manualmente. Contrasta sus valores con el PDF original."} ]})[0];
                 setRows(prev => [...prev, {...manual,id:`manual-${Date.now()}-${prev.length}`}]); setAccepted(false);
               }}>+ Partida manual</button>
+              {onlyPending && reviewedCount === rows.length && <p role="status">Todas las partidas están revisadas. Desactiva el filtro para verlas.</p>}
               {rows.map((row,index) => {
                 const issues=quoteDraftIssues(row);
-                return <article key={row.id} className="quote-import-row">
+                if (onlyPending && isQuoteReviewed(row)) return null;
+                return <article key={row.id} id={`quote-review-${row.id}`} tabIndex={-1} className="quote-import-row">
                   <div className="quote-import-row-title">
-                    <label><input type="checkbox" checked={row.selected} onChange={e=>update(row.id,{selected:e.target.checked})}/> Incluir partida {index+1}</label>
+                    <label><input type="checkbox" checked={row.selected} onChange={e=>{const selected=e.target.checked;setRows(prev=>prev.map(r=>r.id===row.id?{...r,selected}:r));setAccepted(false);}}/> Incluir partida {index+1}</label>
                     <button type="button" onClick={()=>setPage(row.pagina)}>Ver página {row.pagina}</button>
                   </div>
+                  <p className={isQuoteReviewed(row) ? "quote-review-ready" : "quote-import-warning"}>
+                    {isQuoteReviewed(row) ? "Revisada" : issues.length ? `Pendiente: ${issues.join(" · ")}` : "Pendiente: marca «He contrastado esta partida con el original»."}
+                    {!row.selected && " · Fuera de la selección"}
+                  </p>
                   <blockquote>{row.evidencia}</blockquote>
                   {row.parcial !== null && row.cantidad === null && row.precioUnitario === null && <button type="button" disabled={busy} onClick={()=>update(row.id,{unidad:"GLB",cantidad:1,precioUnitario:row.parcial,mode:"offered"})}>Confirmar importe global de {money(row.parcial)} (cantidad 1)</button>}
                   {row.ocrConfidence !== undefined && row.ocrConfidence < 70 && <p className="quote-import-warning">El reconocimiento de esta fila tiene baja confianza. Revisa especialmente los números y la unidad.</p>}
@@ -200,7 +238,11 @@ export function ConstructionQuoteImport({extract, currency, rates: initialRates,
         </>}
       </div>
       <footer className="quote-import-footer">
-        <span>{selected.length} seleccionadas · {pending} pendientes de revisión</span>
+        <section className="quote-review-summary" aria-label="Estado de importación">
+          <span role="status">{selected.length} seleccionadas · {selected.length-pending} listas · {pending} pendientes de revisión</span>
+          {blockers.length > 0 && <details><summary>Falta para agregar: {blockers[0]}{blockers.length>1 && ` (+${blockers.length-1})`}</summary><ul>{blockers.map(reason=><li key={reason}>{reason}</li>)}</ul></details>}
+          {pending > 0 && <button type="button" onClick={nextPending}>Ir a la primera pendiente seleccionada</button>}
+        </section>
         <div><button type="button" onClick={cancel}>Cancelar</button><button type="button" className="quote-import-primary" disabled={!canImport} onClick={submit}>Agregar partidas revisadas</button></div>
       </footer>
     </div>

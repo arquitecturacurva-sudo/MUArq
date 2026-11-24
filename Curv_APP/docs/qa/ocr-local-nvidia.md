@@ -23,7 +23,7 @@ Referencias: [ficha Parse 2.0](https://docs.api.nvidia.com/nim/reference/nvidia-
 
 ## Validación
 
-- 570 pruebas / 84 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
+- 572 pruebas / 85 archivos aprobados; ESLint, TypeScript y build de preview aprobados.
 - Regresiones sintéticas para celdas vacías, encabezados centrados en dos líneas, cambios de escala, código ausente, capítulos y resumen junto a texto lateral.
 - Pruebas del endpoint: autenticación, autorización, cuota, límite de tamaño, URLs rechazadas, respuesta vacía/truncada y ausencia de datos del proveedor en errores.
 - PDF privado probado en navegador con los modelos locales distribuidos: 15 partidas, seis cantidades/precios unitarios y total de origen identificados. Algunos códigos y letras iniciales requieren corrección; unidades ausentes permanecen vacías.
@@ -38,3 +38,9 @@ Referencias: [ficha Parse 2.0](https://docs.api.nvidia.com/nim/reference/nvidia-
 2. Revisar las 15 partidas, corregir códigos/unidades ausentes y confirmar los importes globales que correspondan. Revisar IGV y recargos antes de agregar.
 3. Para NVIDIA, abrir la aplicación principal, iniciar sesión como editor/admin y abrir Cotización de Obra. Con la clave habilitada, seleccionar el PDF, autorizar el envío y pulsar «Leer también con NVIDIA».
 4. Comparar la cantidad de partidas y el original antes de elegir el resultado alternativo. La aprobación del PR y su merge son posteriores a esta prueba.
+
+## Controles de revisión
+
+- Seleccionar todas, Quitar todas y Seleccionar solo revisadas conservan los datos y las revisiones ya confirmadas.
+- Contador general, filtro de pendientes, estado por fila y salto a la primera pendiente seleccionada. El pie explica todos los motivos que impiden agregar.
+- Prueba en navegador con ejemplo ficticio: revisar una de dos filas, quitar/reseleccionar sin perder revisión, filtrar y enfocar la pendiente, seleccionar solo la revisada y agregarla. La partida previa se conserva; subtotal resultante S/ 1,600.00.
